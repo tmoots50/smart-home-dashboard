@@ -39,7 +39,8 @@ Architecture: widgets are dumb leaf components, views compose them. Every widget
 ```bash
 cd app
 npm install
-npm run dev          # http://localhost:5173
+npm run dev          # http://localhost:5173 — dev server with HMR
+npm test             # vitest, watch mode
 ```
 
 ## Deploy on the Pi
@@ -48,4 +49,4 @@ See [`docs/install.md`](./docs/install.md) for the full runbook.
 
 ## License
 
-MIT (TBD)
+MIT

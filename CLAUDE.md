@@ -5,6 +5,9 @@ This file is for AI coding assistants (Claude Code, Cursor) working in this repo
 ## Status (one-liner)
 Active. Started 2026-04-20. Target: in-use on the wall before paternity leave ends (~2026-06-07).
 
+## Smart-home reality check
+Tim's current setup: a few Alexas and a couple of smart plugs. **No Home Assistant, no Hue, no Sonos, no cameras.** When research or inspo references HA-shaped widgets (Mushroom cards, Lovelace, light-scene tiles), treat them as *visual* and *concept* references only — don't propose wiring v1 to a Home Assistant instance that doesn't exist. Build for the household we have, not the one a typical r/homeassistant poster has.
+
 ## Where things live
 - [`spec.md`](./spec.md) — what we're building, why, and acceptance criteria. Source of truth.
 - [`todo.md`](./todo.md) — ordered task list for v1.

@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 
 export default defineConfig({
@@ -8,5 +9,8 @@ export default defineConfig({
   preview: {
     host: true,
     port: 4173,
+  },
+  test: {
+    environment: 'happy-dom',
   },
 });
