@@ -1,0 +1,15 @@
+[Unit]
+Description=Smart Home Dashboard — static server (vite preview)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/opt/dashboard/app
+ExecStart=/usr/bin/npm run preview
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

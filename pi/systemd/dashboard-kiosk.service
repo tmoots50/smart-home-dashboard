@@ -1,0 +1,18 @@
+[Unit]
+Description=Smart Home Dashboard — Chromium kiosk
+After=dashboard-server.service graphical.target
+Wants=dashboard-server.service
+Requires=graphical.target
+
+[Service]
+Type=simple
+User=pi
+Environment=DISPLAY=:0
+Environment=DASHBOARD_URL=http://localhost:4173
+ExecStartPre=/bin/sleep 5
+ExecStart=/opt/dashboard/pi/kiosk.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=graphical.target

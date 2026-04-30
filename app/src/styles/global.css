@@ -1,0 +1,36 @@
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  overflow: hidden;
+}
+
+.briefing {
+  height: 100vh;
+  padding: var(--space-5);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: var(--space-5);
+}
+
+.briefing__placeholder {
+  border: 1px dashed var(--color-muted);
+  border-radius: 8px;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.muted { color: var(--color-muted); font-size: 0.9rem; }
+
+.clock { font-family: var(--font-display); }
+.clock__time { font-size: 5rem; line-height: 1; letter-spacing: -0.02em; }
+.clock__date { color: var(--color-muted); font-size: 1.25rem; margin-top: var(--space-2); }

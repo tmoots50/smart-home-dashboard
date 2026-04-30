@@ -19,3 +19,8 @@ venv/
 .vscode/
 .idea/
 .claude-worktrees/
+
+# Vite app
+app/node_modules/
+app/dist/
+app/.vite/
