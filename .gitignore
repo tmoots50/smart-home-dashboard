@@ -24,3 +24,6 @@ venv/
 app/node_modules/
 app/dist/
 app/.vite/
+
+# Claude Code — personal local overlays (project-level skills + settings stay tracked)
+.claude/settings.local.json
