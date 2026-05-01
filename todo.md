@@ -13,15 +13,17 @@ Ordered task list for v1. Check off as we go. Reorder freely — `spec.md` is th
 - [x] First README pass good enough that the repo isn't embarrassing if someone finds it early
 
 ## Phase 1 — Hardware foundation (the boring stuff that has to work)
-- [ ] First-boot keyboard+monitor session: SSH on, hostname, WiFi, locale
-- [ ] SSH key-based auth from laptop, password auth disabled
+- [~] First-boot keyboard+monitor session: SSH on, hostname, WiFi, locale _(SSH/WiFi/locale/user `tmoots` done in wizard 2026-04-30; hostname change `raspberrypi` → `dashboard` still pending — `sudo raspi-config nonint do_hostname dashboard` over SSH)_
+- [~] SSH key-based auth from laptop, password auth disabled _(key auth working from Mac → Pi 2026-05-01; password auth still enabled — disable in `/etc/ssh/sshd_config` after confirming key auth is reliable)_
 - [ ] Static IP via router DHCP reservation
 - [ ] Tailscale installed (so I can fix things after the Pi is on the wall)
 - [ ] Screen rotation working (Wayland / `wlr-randr`) — portrait, persists across reboot
 - [ ] Touch input mapped correctly to rotated display
 - [ ] Display blanking disabled (always-on)
 - [ ] `log2ram` installed (Chromium cache writes)
-- [ ] Hostname resolves on `.local` from laptop
+- [ ] Hostname resolves on `.local` from laptop _(works as `raspberrypi.local` today; will be `dashboard.local` after hostname change)_
+
+> **Hardware setup gotchas captured in [`_context/hardware-setup-notes.md`](./_context/hardware-setup-notes.md)** — HDMI0 vs HDMI1, cocopar own-power requirement, USB-C is power-only on Pi 5, Magic Keyboard via BT not Lightning, etc. Read before re-installing.
 
 ## Phase 2 — Kiosk loop
 - [x] Vite app boots locally on laptop with a "hello world" screen
