@@ -12,18 +12,18 @@ Ordered task list for v1. Check off as we go. Reorder freely — `spec.md` is th
 - [x] Move `_context/decisions.md` log entry: "decision history is in `spec.md`; this log captures *new* decisions only"
 - [x] First README pass good enough that the repo isn't embarrassing if someone finds it early
 
-## Phase 1 — Hardware foundation (the boring stuff that has to work)
-- [~] First-boot keyboard+monitor session: SSH on, hostname, WiFi, locale _(SSH/WiFi/locale/user `tmoots` done in wizard 2026-04-30; hostname change `raspberrypi` → `dashboard` still pending — `sudo raspi-config nonint do_hostname dashboard` over SSH)_
-- [~] SSH key-based auth from laptop, password auth disabled _(key auth working from Mac → Pi 2026-05-01; password auth still enabled — disable in `/etc/ssh/sshd_config` after confirming key auth is reliable)_
-- [ ] Static IP via router DHCP reservation
-- [ ] Tailscale installed (so I can fix things after the Pi is on the wall)
-- [ ] Screen rotation working (Wayland / `wlr-randr`) — portrait, persists across reboot
-- [ ] Touch input mapped correctly to rotated display
-- [ ] Display blanking disabled (always-on)
-- [ ] `log2ram` installed (Chromium cache writes)
-- [ ] Hostname resolves on `.local` from laptop _(works as `raspberrypi.local` today; will be `dashboard.local` after hostname change)_
+## Phase 1 — Hardware foundation (the boring stuff that has to work) ✅ COMPLETE 2026-05-01
+- [x] First-boot keyboard+monitor session: SSH on, hostname, WiFi, locale _(wizard 2026-04-30 + hostname change to `dashboard` 2026-05-01)_
+- [x] SSH key-based auth from laptop, password auth disabled _(key auth working 2026-05-01; `PasswordAuthentication no` in `/etc/ssh/sshd_config.d/99-no-password.conf`)_
+- [-] Static IP via router DHCP reservation _(deferred 2026-05-01 — Tailscale already provides a stable address (`dashboard` / `100.123.125.112`) that works inside and outside the LAN. Logged in `followups.md`. Revisit if/when DHCP rotation actually bites.)_
+- [x] Tailscale installed _(2026-05-01; device name `dashboard` on tailnet, Tailscale SSH enabled with `--ssh` flag)_
+- [x] Screen rotation working (Wayland / `wlr-randr`) — portrait, persists across reboot _(transform=270 in `~/.config/labwc/autostart`)_
+- [x] Touch input mapped correctly to rotated display _(libinput calibration matrix `0 1 0 -1 0 1` via udev rule on Wacom-branded touch device)_
+- [x] Display blanking disabled (always-on) _(`raspi-config nonint do_blanking 1`)_
+- [x] `log2ram` installed (Chromium cache writes) _(2026-05-01; activates after next reboot)_
+- [x] Hostname resolves on `.local` from laptop _(`dashboard.local` via mDNS; also `dashboard` via Tailscale MagicDNS from any tailnet device)_
 
-> **Hardware setup gotchas captured in [`_context/hardware-setup-notes.md`](./_context/hardware-setup-notes.md)** — HDMI0 vs HDMI1, cocopar own-power requirement, USB-C is power-only on Pi 5, Magic Keyboard via BT not Lightning, etc. Read before re-installing.
+> **Hardware setup runbook in [`_context/hardware-setup-notes.md`](./_context/hardware-setup-notes.md)** — covers HDMI0 vs HDMI1, cocopar own-power requirement, USB-C is power-only on Pi 5, Magic Keyboard via BT not Lightning, labwc-not-Wayfire compositor, screen rotation + touch matrix recipe. Read before any rebuild.
 
 ## Phase 2 — Kiosk loop
 - [x] Vite app boots locally on laptop with a "hello world" screen

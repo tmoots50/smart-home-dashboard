@@ -28,6 +28,11 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 ## Ideas / parking lot
 *(uncategorized; weighed cost vs. benefit when something else triggers re-evaluation)*
 
+- **Commute card → Maps overlay.** When commute returns to the dashboard, tapping it should open a Maps view with alternate routes. Use case: explore Maps app integration; Caroline can see if the recommended route still wins. (Currently no commute card in the live view since weather replaced it in the time card.)
+- **Calendar / Todo "See more" overlays.** Buttons exist (stubs alert "coming soon"). Real version: full-month calendar overlay; full editable todo list with view/edit/delete. Likely a single overlay component reused.
+- **Coming Up source = family calendar.** Today the countdown is its own mock. Real wiring: derive from the family Google Calendar with future-dated events tagged "family" or in a dedicated family calendar.
+- **Monarch Money button → Monarch view.** `?theme=light` shows a `$` button in the action bar (replaces phone). Stubbed alert. Real wiring: open Monarch in the same kiosk window or a focused overlay; show $ goals.
+
 - **USB lavalier mic + Whisper.cpp on the Pi.** ~$30 hardware, one weekend of wiring. Closes the "I'd add this to a chore list but only my phone can type" loop — turns the wall from a display into a capture surface. Pairs with the Claude / OpenClaw integration the spec already anticipates. *Source: `_audits/2026-04-29-ui-audit.md`.*
 - **Voice commands via wall mic** (broader than the lavalier idea — full conversational interface). *Migrated from `todo.md`.*
 - **Motion-sensor wake/sleep** to extend monitor lifespan and reduce midnight glow. *Migrated from `todo.md`.*
@@ -40,7 +45,7 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 ## Active limitations
 *(known gaps we're living with for now — explicit accept-it-for-now decisions)*
 
-- *(none yet)*
+- **Pi's LAN IP is not reservation-locked.** Currently `10.0.0.110` via DHCP lease; could rotate after a router reboot or lease expiry. Decided 2026-05-01 to skip the Xfinity DHCP reservation flow because Tailscale already provides a permanent stable address (`dashboard` / `100.123.125.112`) that works inside and outside the LAN. Revisit if: (a) we add another LAN device that needs to hit the Pi by hardcoded IP, (b) Tailscale ever has an outage that costs us real time, or (c) DHCP rotation actually shifts the IP and breaks something. Xfinity reservation requires enabling Admin Tool access in the Xfinity app first, then `http://10.0.0.1` → Connected Devices → Edit → Reserved IP.
 
 ## Recently resolved
 *(last ~10 items, prune older)*

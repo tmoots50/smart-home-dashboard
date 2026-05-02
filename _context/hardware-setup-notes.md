@@ -100,16 +100,64 @@ ssh <user>@<ip>             # password-less SSH from now on
 
 ---
 
-## What's next once SSH works
+## Wayland on Pi OS Bookworm: labwc, not Wayfire
 
-Phase 1 goes entirely remote from here. From the Mac SSH session:
-- Set hostname (above)
-- Static IP via the router's DHCP reservation (router admin UI; not on the Pi)
-- Install Tailscale (`curl -fsSL https://tailscale.com/install.sh | sh`)
-- Wayland screen rotation (`wlr-randr`) and persistence (`kanshi`)
-- Touch input mapping to the rotated display
-- Disable display blanking
-- Install `log2ram`
-- Disable password SSH auth once key auth is confirmed working
+Pi OS Bookworm 64-bit on Pi 5 uses **`labwc`** as the default Wayland compositor as of late 2024. Most blog posts and forum threads online still describe Wayfire — they're stale. Confirm via `ps -ef | grep labwc`. The compositor difference matters because config paths and conventions diverge: Wayfire uses `~/.config/wayfire.ini`; labwc uses `~/.config/labwc/{autostart,rc.xml,environment}`.
 
-Don't re-touch the Pi physically unless something is broken.
+## Screen rotation (Wayland / labwc)
+
+Live rotation, run from any SSH session that exports the active user's Wayland env:
+
+```
+export XDG_RUNTIME_DIR=/run/user/$(id -u)
+export WAYLAND_DISPLAY=wayland-0
+wlr-randr --output HDMI-A-1 --transform 270
+```
+
+Transform values: `0` (normal landscape), `90`, `180`, `270`. For our cocopar mounting (USB-C ports facing down on the wall), **`270` is the correct portrait orientation**. `90` rotates the wrong way.
+
+**Persist across reboots** by adding the command to labwc's autostart hook:
+
+```
+mkdir -p ~/.config/labwc
+cat > ~/.config/labwc/autostart <<'EOF'
+wlr-randr --output HDMI-A-1 --transform 270 &
+EOF
+chmod +x ~/.config/labwc/autostart
+```
+
+The `&` is important — autostart waits for each line, and `wlr-randr` doesn't always exit cleanly. Forking it lets the rest of session startup proceed.
+
+## Touch input rotation (libinput calibration matrix via udev)
+
+Rotating the display does **not** automatically rotate touch coordinates on labwc. You'll see the desktop in portrait but taps land at the wrong location. The fix is a libinput calibration matrix delivered via udev.
+
+The cocopar's touch controller advertises as a Wacom-branded HID — vendor `056a`, product `0529`, with two device entries: `Wacom TouchScreen Finger` (the one that matters) and `Wacom TouchScreen Pen`. Match both:
+
+```
+sudo tee /etc/udev/rules.d/90-cocopar-touch.rules <<'EOF'
+ATTRS{name}=="Wacom TouchScreen Finger", ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1"
+ATTRS{name}=="Wacom TouchScreen Pen",    ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1"
+EOF
+sudo udevadm control --reload-rules
+sudo udevadm trigger --subsystem-match=input
+```
+
+The matrix `0 1 0 -1 0 1` is the correct one for `transform 270`. (For `transform 90` you'd want `0 -1 1 1 0 0`. For `180`, `-1 0 1 0 -1 1`.)
+
+`udevadm trigger` re-fires events for already-attached devices, but libinput may have already opened the touch device with the old config. If taps still land wrong after the reload, **unplug the cocopar's touch USB cable and re-plug it** to force libinput to re-read.
+
+## Phase 1 ladder (in case of rebuild)
+
+In execution order, with what's locally manual vs. SSH-doable:
+
+1. **First-boot wizard on the Pi** (manual, requires display + keyboard) — locale/user/WiFi/password
+2. **Enable SSH** (local terminal): `sudo systemctl enable --now ssh`
+3. **SSH key auth from laptop** (Mac terminal): `ssh-copy-id <user>@<ip>`
+4. **Hostname change** (over SSH): `sudo raspi-config nonint do_hostname dashboard && sudo reboot`
+5. **Tailscale** (over SSH): install script + `sudo tailscale up --ssh --hostname dashboard`, browser auth from any device
+6. **log2ram + display blanking off + SSH password auth disable** (over SSH, parallel)
+7. **Screen rotation + touch matrix** (over SSH, but cocopar must be physically connected so you can verify visually)
+8. (Deferred) Static IP DHCP reservation — Tailscale already provides a stable address (`dashboard` / `100.x.x.x`); revisit only if it actually bites
+
+After step 5, every remaining step is SSH-only and works from anywhere on the tailnet. Don't re-touch the Pi physically unless something is broken or you're swapping displays.
