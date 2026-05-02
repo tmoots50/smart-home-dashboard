@@ -1,16 +1,16 @@
 import { renderMorningBriefing } from './views/morning-briefing.js';
-import { mountPhotoBackground } from './widgets/photo.js';
-import { getMockPhotos } from './lib/photos-mock.js';
+
+const params = new URLSearchParams(window.location.search);
 
 // Pi kiosk launcher will hit /?kiosk=1 — that flag locks scrolling and any
 // other dev-only affordances out of the wall view.
-if (new URLSearchParams(window.location.search).has('kiosk')) {
+if (params.has('kiosk')) {
   document.documentElement.classList.add('kiosk');
 }
 
-const bgHost = document.createElement('div');
-document.body.prepend(bgHost);
-mountPhotoBackground(bgHost, getMockPhotos());
+// ?theme=fun swaps the editorial dark theme for the warm light variant.
+const theme = params.get('theme');
+if (theme) document.documentElement.dataset.theme = theme;
 
 const root = document.querySelector('#app');
 renderMorningBriefing(root);

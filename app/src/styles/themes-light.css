@@ -1,0 +1,109 @@
+/* Light variant — same warm cream palette as fun, but with these differences:
+   - Phone button replaced with money/$ button (Monarch Money launcher)
+   - Coming Up labelled as Family · Coming up
+   Activate via ?theme=light. Independent of themes-fun.css so they don't conflict. */
+
+:root[data-theme="light"] {
+  --color-bg: #fdf6ee;
+  --color-fg: #2a2520;
+  --color-muted: #8c7a68;
+  --color-accent: #ff7a59;
+  --color-surface: #ffffff;
+  --color-border: #f0e6d8;
+
+  --color-event-feed: #f4a261;
+  --color-event-nurse: #e76f51;
+  --color-event-pee: #6cb4cf;
+  --color-event-poop: #b5876a;
+  --color-event-diaper: #6cb4cf;
+
+  --font-display: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif;
+
+  --radius-card: 24px;
+  --shadow-card: 0 2px 8px rgba(120, 90, 60, 0.06), 0 12px 32px rgba(120, 90, 60, 0.06);
+}
+
+[data-theme="light"] .photo-bg { display: none; }
+
+[data-theme="light"] .btn,
+[data-theme="light"] .action-btn {
+  background: rgba(255, 122, 89, 0.10);
+  border-color: transparent;
+  color: var(--color-accent);
+}
+[data-theme="light"] .btn:hover,
+[data-theme="light"] .action-btn:hover {
+  background: rgba(255, 122, 89, 0.18);
+  color: var(--color-accent);
+}
+
+[data-theme="light"] .btn--text {
+  background: transparent;
+  color: var(--color-accent);
+}
+[data-theme="light"] .btn--text:hover {
+  background: transparent;
+  color: var(--color-fg);
+}
+
+[data-theme="light"] .card__title {
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+[data-theme="light"] .calendar__section-label,
+[data-theme="light"] .chores__owner-label {
+  color: var(--color-accent);
+}
+
+[data-theme="light"] .clock__time,
+[data-theme="light"] .weather__temp,
+[data-theme="light"] .traffic__duration,
+[data-theme="light"] .mabel__since-value {
+  font-weight: 600;
+}
+
+[data-theme="light"] .countdown__days {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+[data-theme="light"] .card.card--slim {
+  background: linear-gradient(90deg, rgba(255, 122, 89, 0.06), rgba(255, 122, 89, 0.02));
+}
+
+[data-theme="light"] .todos__check--done,
+[data-theme="light"] .chores__check--done,
+[data-theme="light"] .groceries__check--done {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+[data-theme="light"] .todos__due--today {
+  color: var(--color-accent);
+}
+
+/* Emoji prefixes — same as fun. */
+[data-theme="light"] .traffic .card__title::before  { content: '🚗 '; }
+[data-theme="light"] .weather .card__title::before  { content: '☀️ '; }
+[data-theme="light"] .mabel .card__title::before    { content: '👶 '; }
+[data-theme="light"] .calendar .card__title::before { content: '📅 '; }
+[data-theme="light"] .countdown .card__title::before{ content: '🎉 '; }
+[data-theme="light"] .todos .card__title::before    { content: '✅ '; }
+[data-theme="light"] .groceries .card__title::before{ content: '🛒 '; }
+[data-theme="light"] .headlines .card__title::before{ content: '📰 '; }
+
+[data-theme="light"] .calendar__section:nth-of-type(1) .calendar__section-label::before { content: '👨‍👩‍👧 '; }
+[data-theme="light"] .calendar__section:nth-of-type(2) .calendar__section-label::before { content: '💼 '; }
+[data-theme="light"] .calendar__section:nth-of-type(3) .calendar__section-label::before { content: '💼 '; }
+
+[data-theme="light"] .bible__text::before { content: '✨ '; }
+
+[data-theme="light"] .mabel__dot { width: 10px; height: 10px; }
+
+/* ───── Light-variant exclusives ─────
+   Phone button hidden, money button revealed. */
+[data-theme="light"] .action-btn[data-launch="phone"] { display: none; }
+[data-theme="light"] .action-btn[data-launch="money"] { display: inline-flex; }
+
+/* "Coming Up" gets the family-calendar emoji + relabel via ::before. */
+[data-theme="light"] .countdown .card__title::before { content: '👨‍👩‍👧 '; }

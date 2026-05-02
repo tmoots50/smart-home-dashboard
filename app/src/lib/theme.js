@@ -16,6 +16,7 @@ export const color = {
   'event-nurse': '#c97a8a',
   'event-pee': '#6e8aa3',
   'event-poop': '#8a6e4f',
+  'event-diaper': '#6e8aa3',
 };
 
 export const font = {

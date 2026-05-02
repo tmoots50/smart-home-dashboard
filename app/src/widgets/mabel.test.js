@@ -21,18 +21,32 @@ describe('renderMabel', () => {
   it('shows the last feed type and clock time', () => {
     const data = getMockMabel(NOW);
     const html = renderMabel(data, NOW);
-    // last feed in the mock is a nurse 75 min ago
     expect(html).toContain('nurse');
     expect(html).toMatch(/at \d+:\d+\s?(AM|PM)/);
   });
 
-  it('renders 24h counts for all four types', () => {
+  it('renders 24h counts for bottles, nursings, diapers', () => {
     const data = getMockMabel(NOW);
     const html = renderMabel(data, NOW);
     expect(html).toMatch(/\d+ bottles/);
     expect(html).toMatch(/\d+ nursings/);
-    expect(html).toMatch(/\d+ wets/);
-    expect(html).toMatch(/\d+ dirties/);
+    expect(html).toMatch(/\d+ diapers/);
+  });
+
+  it('combines wets and dirties into a single diapers count', () => {
+    const data = {
+      childName: 'Test',
+      birthDate: '2026-04-01T00:00:00',
+      events: [
+        { type: 'pee',  at: new Date(NOW.getTime() - 1 * 3_600_000).toISOString() },
+        { type: 'pee',  at: new Date(NOW.getTime() - 2 * 3_600_000).toISOString() },
+        { type: 'poop', at: new Date(NOW.getTime() - 3 * 3_600_000).toISOString() },
+      ],
+    };
+    const html = renderMabel(data, NOW);
+    expect(html).toContain('3 diapers');
+    expect(html).not.toContain('wets');
+    expect(html).not.toContain('dirties');
   });
 
   it('does not render a timeline track', () => {
@@ -52,7 +66,7 @@ describe('renderMabel', () => {
       ],
     };
     const html = renderMabel(data, NOW);
-    expect(html).toMatch(/1 wets/);
+    expect(html).toMatch(/1 diapers/);
   });
 });
 

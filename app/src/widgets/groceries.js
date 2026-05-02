@@ -11,7 +11,7 @@ export function renderGroceries(items) {
       ${!items.length ? '<p class="muted">List is empty.</p>' : `
         <ul class="groceries__list">
           ${items.map((item, i) => `
-            <li class="groceries__item">
+            <li class="groceries__item" data-action="toggle" data-idx="${i}">
               <span class="groceries__check${item.done ? ' groceries__check--done' : ''}" data-action="toggle" data-idx="${i}"></span>
               <span class="groceries__text${item.done ? ' groceries__text--done' : ''}">
                 ${escapeHtml(item.text)}${item.qty ? ` <span class="groceries__qty">· ${escapeHtml(item.qty)}</span>` : ''}
@@ -36,9 +36,10 @@ export function mountGroceries(slot, initialItems) {
   };
 
   slot.addEventListener('click', (e) => {
-    const action = e.target.dataset.action;
-    if (!action) return;
-    const idx = Number(e.target.dataset.idx);
+    const target = e.target.closest('[data-action]');
+    if (!target) return;
+    const action = target.dataset.action;
+    const idx = Number(target.dataset.idx);
 
     if (action === 'add') {
       const text = window.prompt('What to add?');

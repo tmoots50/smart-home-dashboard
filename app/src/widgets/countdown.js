@@ -24,7 +24,10 @@ export function renderCountdown(items, now = new Date()) {
       <ul class="countdown__list">
         ${upcoming.map(it => `
           <li class="countdown__item">
-            <span class="countdown__days">${formatDays(it.days)}</span>
+            <span>
+              <div class="countdown__days">${formatDays(it.days)}</div>
+              <div class="countdown__date">${formatAbsolute(it.date)}</div>
+            </span>
             <span>
               <div class="countdown__name">${escapeHtml(it.name)}</div>
               ${it.sub ? `<div class="countdown__sub">${escapeHtml(it.sub)}</div>` : ''}
@@ -55,6 +58,19 @@ function formatDays(days) {
   if (days === 0) return 'today';
   if (days === 1) return 'tomorrow';
   return `${days} days`;
+}
+
+function formatAbsolute(dateStr) {
+  const d = parseLocalDate(dateStr);
+  const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(d);
+  const month = new Intl.DateTimeFormat(undefined, { month: 'short' }).format(d);
+  return `${weekday}, ${month} ${ordinal(d.getDate())}`;
+}
+
+function ordinal(n) {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 function escapeHtml(s) {

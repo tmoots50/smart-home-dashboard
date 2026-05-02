@@ -1,0 +1,76 @@
+/* Cosy theme — warm dark. Activate via ?theme=cosy.
+   Dark background so the screen blends with the monitor's black bezel,
+   but warm-leaning palette + rounded display font + emoji prefixes
+   borrow the cheerfulness of the fun/light themes without their cream
+   background that clashes with the rim. */
+
+:root[data-theme="cosy"] {
+  --color-bg: #0c0c0d;
+  --color-fg: #f5ede0;
+  --color-muted: #a89a86;
+  --color-accent: #e8a87c;
+  --color-surface: #1a1612;
+  --color-border: #2c2620;
+
+  --color-event-feed: #d49b5e;
+  --color-event-nurse: #d68a8a;
+  --color-event-pee: #7a9bb5;
+  --color-event-poop: #a08066;
+  --color-event-diaper: #7a9bb5;
+
+  --font-display: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif;
+}
+
+[data-theme="cosy"] .card__title {
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+[data-theme="cosy"] .calendar__section-label,
+[data-theme="cosy"] .chores__owner-label {
+  color: var(--color-accent);
+}
+
+[data-theme="cosy"] .clock__time,
+[data-theme="cosy"] .weather__temp,
+[data-theme="cosy"] .traffic__duration,
+[data-theme="cosy"] .mabel__since-value {
+  font-weight: 600;
+}
+
+[data-theme="cosy"] .countdown__days {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+[data-theme="cosy"] .card.card--slim {
+  background: linear-gradient(90deg, rgba(232, 168, 124, 0.06), rgba(232, 168, 124, 0.02));
+}
+
+[data-theme="cosy"] .todos__check--done,
+[data-theme="cosy"] .chores__check--done,
+[data-theme="cosy"] .groceries__check--done {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+[data-theme="cosy"] .todos__due--today {
+  color: var(--color-accent);
+}
+
+/* Emoji prefixes — same set as fun. */
+[data-theme="cosy"] .traffic .card__title::before  { content: '🚗 '; }
+[data-theme="cosy"] .weather .card__title::before  { content: '☀️ '; }
+[data-theme="cosy"] .mabel .card__title::before    { content: '👶 '; }
+[data-theme="cosy"] .calendar .card__title::before { content: '📅 '; }
+[data-theme="cosy"] .countdown .card__title::before{ content: '🎉 '; }
+[data-theme="cosy"] .todos .card__title::before    { content: '✅ '; }
+[data-theme="cosy"] .groceries .card__title::before{ content: '🛒 '; }
+[data-theme="cosy"] .headlines .card__title::before{ content: '📰 '; }
+
+[data-theme="cosy"] .calendar__section:nth-of-type(1) .calendar__section-label::before { content: '👨‍👩‍👧 '; }
+[data-theme="cosy"] .calendar__section:nth-of-type(2) .calendar__section-label::before { content: '💼 '; }
+[data-theme="cosy"] .calendar__section:nth-of-type(3) .calendar__section-label::before { content: '💼 '; }
+
+[data-theme="cosy"] .bible__text::before { content: '✨ '; }
+
+[data-theme="cosy"] .mabel__dot { width: 10px; height: 10px; }

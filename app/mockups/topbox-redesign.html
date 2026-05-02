@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mockup — Topbox redesign</title>
+    <link rel="stylesheet" href="/src/styles/tokens.css" />
+    <link rel="stylesheet" href="/src/styles/global.css" />
+    <link rel="stylesheet" href="/src/styles/themes-fun.css" />
+    <style>
+      /* Mockup-only overrides — illustrate the proposed layout. These would
+         move into global.css if we ship this design. */
+      body { padding: 2rem; }
+
+      /* Time card becomes flex-column so action bar can pin to bottom. */
+      .time-card {
+        display: flex;
+        flex-direction: column;
+      }
+      .time-card .action-bar { margin-top: auto; padding-top: var(--space-4); }
+
+      /* Mabel: 2-column. Left = title + since-stat stacked. Right = 3 counts stacked. */
+      .mabel {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: var(--space-4);
+      }
+      .mabel__primary, .mabel__stats {
+        display: flex;
+        flex-direction: column;
+      }
+      .mabel__primary .mabel__since-value {
+        margin-top: var(--space-2);
+      }
+      .mabel__primary .mabel__since-label {
+        margin-top: var(--space-1);
+        text-align: left;
+      }
+      .mabel__primary .mabel__since-detail {
+        text-align: left;
+      }
+      .mabel__stats {
+        gap: var(--space-3);
+      }
+      .mabel__stats .mabel__counts-label {
+        margin-top: var(--space-2);
+      }
+
+      /* Photo at the bottom of the right card. */
+      .card__photo {
+        position: relative;
+        overflow: hidden;
+        border-radius: 12px;
+        aspect-ratio: 16 / 9;
+        background: linear-gradient(135deg, #2a1f1a, #7a5a3a);
+      }
+      .card__photo-caption {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: var(--space-3) var(--space-4);
+        background: linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0));
+        color: var(--color-fg);
+        font-size: 0.95rem;
+      }
+
+      /* Mockup banner */
+      .mockup-banner {
+        max-width: 1080px;
+        margin: 0 auto var(--space-4);
+        padding: var(--space-3) var(--space-4);
+        border: 1px dashed var(--color-muted);
+        border-radius: var(--radius-card);
+        color: var(--color-muted);
+        font-size: 0.85rem;
+      }
+      .mockup-banner strong { color: var(--color-fg); }
+    </style>
+  </head>
+  <body>
+    <div class="mockup-banner">
+      <strong>Mockup · topbox redesign.</strong>
+      Time card: clock → weather → action bar. Right card: Mabel (counts as 2×2 grid) → photo.
+      Add <code>?theme=fun</code> to the URL to preview against the warm theme.
+    </div>
+
+    <main class="briefing">
+      <section class="briefing__topbox">
+        <!-- TIME CARD: clock → weather → action bar -->
+        <div class="card time-card">
+          <div class="clock">
+            <div class="clock__time">9:22 PM</div>
+            <div class="clock__date">Friday, May 1</div>
+          </div>
+
+          <hr class="card__divider"/>
+
+          <div class="weather">
+            <h2 class="card__title">Atlanta, GA</h2>
+            <div class="weather__main">
+              <div class="weather__current">
+                <div class="weather__now">
+                  <span class="weather__temp">71°</span>
+                  <span class="weather__condition">Partly cloudy</span>
+                </div>
+                <div class="weather__hilo">H 78° · L 58°</div>
+              </div>
+              <div class="weather__forecast">
+                <div class="weather__day"><div class="weather__day-label">Tue</div><div class="weather__day-temp">80°</div></div>
+                <div class="weather__day"><div class="weather__day-label">Wed</div><div class="weather__day-temp">76°</div></div>
+                <div class="weather__day"><div class="weather__day-label">Thu</div><div class="weather__day-temp">82°</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="action-bar">
+            <button class="action-btn" aria-label="Voice input">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="9" y1="21" x2="15" y2="21"/>
+              </svg>
+            </button>
+            <button class="action-btn" aria-label="Music">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/><path d="M9 18V5l12-2v12"/>
+              </svg>
+            </button>
+            <button class="action-btn" aria-label="Lights">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 18h6M10 21h4M12 2a7 7 0 0 0-4 12.5V17h8v-2.5A7 7 0 0 0 12 2z"/>
+              </svg>
+            </button>
+            <button class="action-btn" aria-label="Phone">
+              <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- RIGHT CARD: Mabel (top, 2x2 counts grid) → photo -->
+        <div class="card">
+          <div class="mabel">
+            <div class="mabel__primary">
+              <h2 class="card__title">Mabel · 4w</h2>
+              <div class="mabel__since-value">1h 45m</div>
+              <div class="mabel__since-label">since last feed</div>
+              <div class="mabel__since-detail">nurse at 7:36 PM</div>
+            </div>
+            <div class="mabel__stats">
+              <span class="mabel__count"><span class="mabel__dot mabel__dot--bottle"></span>3 bottles</span>
+              <span class="mabel__count"><span class="mabel__dot mabel__dot--nurse"></span>6 nursings</span>
+              <span class="mabel__count"><span class="mabel__dot mabel__dot--pee"></span>14 diapers</span>
+              <div class="mabel__counts-label">Last 24 hours</div>
+            </div>
+          </div>
+
+          <hr class="card__divider"/>
+
+          <div class="card__photo">
+            <div class="card__photo-caption">Mabel · week 3 · porch swing</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

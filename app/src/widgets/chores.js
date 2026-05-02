@@ -22,7 +22,7 @@ export function renderChores(chores) {
           ${group.items.length ? `
             <ul class="chores__list">
               ${group.items.map(item => `
-                <li class="chores__item">
+                <li class="chores__item" data-action="toggle" data-idx="${item._idx}">
                   <span class="chores__check${item.done ? ' chores__check--done' : ''}" data-action="toggle" data-idx="${item._idx}"></span>
                   <span class="chores__text${item.done ? ' chores__text--done' : ''}">${escapeHtml(item.text)}</span>
                   <span class="card__row-actions">
@@ -45,9 +45,10 @@ export function mountChores(slot, initial) {
   const draw = () => { slot.innerHTML = renderChores(items); };
 
   slot.addEventListener('click', (e) => {
-    const action = e.target.dataset.action;
-    if (!action) return;
-    const idx = Number(e.target.dataset.idx);
+    const target = e.target.closest('[data-action]');
+    if (!target) return;
+    const action = target.dataset.action;
+    const idx = Number(target.dataset.idx);
 
     if (action === 'add') {
       const text = window.prompt('What chore?');

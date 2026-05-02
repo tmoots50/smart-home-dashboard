@@ -1,0 +1,103 @@
+/* Fun theme — light, warm, emoji-forward. Activate via ?theme=fun.
+   Overrides only — falls back to defaults from tokens.css when no theme set. */
+
+:root[data-theme="fun"] {
+  --color-bg: #fdf6ee;
+  --color-fg: #2a2520;
+  --color-muted: #8c7a68;
+  --color-accent: #ff7a59;
+  --color-surface: #ffffff;
+  --color-border: #f0e6d8;
+
+  --color-event-feed: #f4a261;
+  --color-event-nurse: #e76f51;
+  --color-event-pee: #6cb4cf;
+  --color-event-poop: #b5876a;
+
+  --font-display: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif;
+
+  --radius-card: 24px;
+  --shadow-card: 0 2px 8px rgba(120, 90, 60, 0.06), 0 12px 32px rgba(120, 90, 60, 0.06);
+}
+
+/* Photo watermark fights with a light bg — drop it. */
+[data-theme="fun"] .photo-bg { display: none; }
+
+/* Buttons get a friendly tinted-pill treatment. */
+[data-theme="fun"] .btn,
+[data-theme="fun"] .action-btn {
+  background: rgba(255, 122, 89, 0.10);
+  border-color: transparent;
+  color: var(--color-accent);
+}
+[data-theme="fun"] .btn:hover,
+[data-theme="fun"] .action-btn:hover {
+  background: rgba(255, 122, 89, 0.18);
+  color: var(--color-accent);
+}
+
+/* Card titles bolder + warmer in fun theme. */
+[data-theme="fun"] .card__title {
+  color: var(--color-muted);
+  font-weight: 700;
+}
+
+/* Section labels (calendar / chores) brighten to coral. */
+[data-theme="fun"] .calendar__section-label,
+[data-theme="fun"] .chores__owner-label {
+  color: var(--color-accent);
+}
+
+/* Big numbers get extra weight for friendly emphasis. */
+[data-theme="fun"] .clock__time,
+[data-theme="fun"] .weather__temp,
+[data-theme="fun"] .traffic__duration,
+[data-theme="fun"] .mabel__since-value {
+  font-weight: 600;
+}
+
+/* Countdown days pop in coral, semi-bold. */
+[data-theme="fun"] .countdown__days {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+/* Bible card — soft tinted background, italic stays. */
+[data-theme="fun"] .bible {
+  color: var(--color-fg);
+}
+[data-theme="fun"] .card.card--slim {
+  background: linear-gradient(90deg, rgba(255, 122, 89, 0.06), rgba(255, 122, 89, 0.02));
+}
+
+/* Done checkmarks pop in coral. */
+[data-theme="fun"] .todos__check--done,
+[data-theme="fun"] .chores__check--done,
+[data-theme="fun"] .groceries__check--done {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+[data-theme="fun"] .todos__due--today {
+  color: var(--color-accent);
+}
+
+/* Emoji prefixes on card titles. Pure visual flair, no content change. */
+[data-theme="fun"] .traffic .card__title::before  { content: '🚗 '; }
+[data-theme="fun"] .weather .card__title::before  { content: '☀️ '; }
+[data-theme="fun"] .mabel .card__title::before    { content: '👶 '; }
+[data-theme="fun"] .calendar .card__title::before { content: '📅 '; }
+[data-theme="fun"] .countdown .card__title::before{ content: '🎉 '; }
+[data-theme="fun"] .todos .card__title::before    { content: '✅ '; }
+[data-theme="fun"] .groceries .card__title::before{ content: '🛒 '; }
+[data-theme="fun"] .headlines .card__title::before{ content: '📰 '; }
+
+/* Emoji prefixes on calendar section labels. */
+[data-theme="fun"] .calendar__section:nth-of-type(1) .calendar__section-label::before { content: '👨‍👩‍👧 '; }
+[data-theme="fun"] .calendar__section:nth-of-type(2) .calendar__section-label::before { content: '💼 '; }
+[data-theme="fun"] .calendar__section:nth-of-type(3) .calendar__section-label::before { content: '💼 '; }
+
+/* Bible verse gets a sparkle. */
+[data-theme="fun"] .bible__text::before { content: '✨ '; }
+
+/* Mabel legend dots become a touch larger for visibility on light bg. */
+[data-theme="fun"] .mabel__dot { width: 10px; height: 10px; }

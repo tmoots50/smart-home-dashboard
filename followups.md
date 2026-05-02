@@ -50,4 +50,4 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 ## Recently resolved
 *(last ~10 items, prune older)*
 
-- *(none yet)*
+- **Touch calibration off after screen rotation (transform=270)** — *Resolved 2026-05-01.* Root cause was double-rotation: the udev rule applied `LIBINPUT_CALIBRATION_MATRIX` at the libinput layer, AND labwc's `rc.xml` applied the output transform via `<touch mapToOutput="HDMI-A-1"/>`. Both layers rotating compounded into the "close but off" symptom. Fix: removed `/etc/udev/rules.d/90-cocopar-touch.rules` (renamed to `.disabled-2026-05-01`), let labwc + `mapToOutput` own touch rotation alone. Verified taps register accurately after reboot. Lesson: on modern wlroots compositors, prefer compositor-level touch mapping over libinput calibration — the two don't compose.

@@ -17,7 +17,10 @@ export function renderCalendar(data, now = new Date()) {
 
   return `
     <div class="calendar">
-      <h2 class="card__title">Next 3 hours</h2>
+      <div class="card__header">
+        <h2 class="card__title">Next 3 hours</h2>
+        <button class="btn btn--text" data-overlay="calendar">See more</button>
+      </div>
       ${sections.map(section => renderSection(section, data.nextEventId)).join('')}
     </div>
   `;

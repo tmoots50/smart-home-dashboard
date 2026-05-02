@@ -73,6 +73,23 @@ html.kiosk, html.kiosk body { overflow: hidden; }
   font-size: 0.7rem;
   border-color: transparent;
 }
+.btn--text {
+  background: transparent;
+  border: none;
+  color: var(--color-muted);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0;
+  cursor: pointer;
+}
+.btn--text:hover { color: var(--color-fg); }
+
+.card__header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
 
 .muted { color: var(--color-muted); }
 
@@ -128,8 +145,8 @@ html.kiosk, html.kiosk body { overflow: hidden; }
   margin-top: var(--space-4);
 }
 .action-btn {
-  width: 4.5rem;
-  height: 4.5rem;
+  width: 5.5rem;
+  height: 5.5rem;
   border-radius: 999px;
   background: transparent;
   border: 1px solid var(--color-border);
@@ -140,12 +157,13 @@ html.kiosk, html.kiosk body { overflow: hidden; }
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
-.action-btn svg { width: 28px; height: 28px; }
+.action-btn svg { width: 36px; height: 36px; }
 .action-btn:hover {
   color: var(--color-fg);
   border-color: var(--color-muted);
   background: rgba(255, 255, 255, 0.02);
 }
+.action-btn[data-launch="money"] { display: none; }
 
 /* ───── photo watermark ─────
    Mounted by main.js into a fixed-position host behind everything. */
@@ -263,7 +281,7 @@ html.kiosk, html.kiosk body { overflow: hidden; }
 .countdown__list { list-style: none; padding: 0; margin: 0; }
 .countdown__item {
   display: grid;
-  grid-template-columns: 5rem 1fr;
+  grid-template-columns: 7rem 1fr;
   gap: var(--space-3);
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--color-border);
@@ -273,6 +291,13 @@ html.kiosk, html.kiosk body { overflow: hidden; }
   font-family: var(--font-display);
   color: var(--color-accent);
   font-size: 1rem;
+  white-space: nowrap;
+}
+.countdown__date {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
   white-space: nowrap;
 }
 .countdown__name {
@@ -377,16 +402,18 @@ html.kiosk, html.kiosk body { overflow: hidden; }
   grid-template-columns: auto 1fr auto;
   gap: var(--space-3);
   align-items: center;
-  padding: var(--space-2) 0;
+  padding: var(--space-3) 0;
   border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
 }
 .chores__item:last-child { border-bottom: none; }
 .chores__check {
-  width: 1rem;
-  height: 1rem;
-  border: 1px solid var(--color-muted);
-  border-radius: 4px;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--color-muted);
+  border-radius: 6px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 .chores__check--done {
   background: var(--color-accent);
@@ -402,16 +429,18 @@ html.kiosk, html.kiosk body { overflow: hidden; }
   grid-template-columns: auto 1fr auto auto;
   gap: var(--space-3);
   align-items: center;
-  padding: var(--space-2) 0;
+  padding: var(--space-3) 0;
   border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
 }
 .todos__item:last-child { border-bottom: none; }
 .todos__check {
-  width: 1rem;
-  height: 1rem;
-  border: 1px solid var(--color-muted);
-  border-radius: 4px;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--color-muted);
+  border-radius: 6px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 .todos__check--done {
   background: var(--color-accent);
@@ -441,16 +470,18 @@ html.kiosk, html.kiosk body { overflow: hidden; }
   grid-template-columns: auto 1fr auto;
   gap: var(--space-3);
   align-items: center;
-  padding: var(--space-2) 0;
+  padding: var(--space-3) 0;
   border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
 }
 .groceries__item:last-child { border-bottom: none; }
 .groceries__check {
-  width: 1rem;
-  height: 1rem;
-  border: 1px solid var(--color-muted);
-  border-radius: 4px;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--color-muted);
+  border-radius: 6px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 .groceries__check--done {
   background: var(--color-accent);
@@ -522,20 +553,21 @@ html.kiosk, html.kiosk body { overflow: hidden; }
   white-space: nowrap;
 }
 
-/* ───── mabel (compact) ───── */
-.mabel__top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--space-3);
+/* ───── mabel (2-column: primary stat | counts list) ───── */
+.mabel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
 }
-.mabel__since {
-  text-align: right;
+.mabel__primary, .mabel__stats {
+  display: flex;
+  flex-direction: column;
 }
 .mabel__since-value {
   font-family: var(--font-display);
   font-size: 2.25rem;
   line-height: 1;
+  margin-top: var(--space-2);
 }
 .mabel__since-label {
   margin-top: var(--space-1);
@@ -550,18 +582,13 @@ html.kiosk, html.kiosk body { overflow: hidden; }
   font-size: 0.8rem;
   font-style: italic;
 }
-.mabel__counts {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3) var(--space-4);
-  margin-top: var(--space-4);
-  font-size: 0.95rem;
-  color: var(--color-fg);
-}
+.mabel__stats { gap: var(--space-3); }
 .mabel__count {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  font-size: 0.95rem;
+  color: var(--color-fg);
 }
 .mabel__dot {
   width: 8px;
@@ -571,14 +598,77 @@ html.kiosk, html.kiosk body { overflow: hidden; }
 }
 .mabel__dot--bottle { background: var(--color-event-feed); }
 .mabel__dot--nurse  { background: var(--color-event-nurse); }
-.mabel__dot--pee    { background: var(--color-event-pee); }
-.mabel__dot--poop   { background: var(--color-event-poop); }
+.mabel__dot--diaper { background: var(--color-event-diaper); }
 .mabel__counts-label {
   margin-top: var(--space-2);
   color: var(--color-muted);
   font-size: 0.7rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+/* ───── time card — action bar sits close under weather ───── */
+.time-card .action-bar {
+  margin-top: var(--space-4);
+}
+
+/* ───── on this day ───── */
+.onthisday__fact {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: var(--color-fg);
+}
+
+/* ───── ai message ───── */
+.aimessage {
+  margin-top: var(--space-3);
+}
+.aimessage__text {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--color-fg);
+  font-style: italic;
+}
+
+/* ───── photo at the bottom of the right card ───── */
+.card--photo-fill {
+  display: flex;
+  flex-direction: column;
+}
+.card--photo-fill .card__photo {
+  flex: 1;
+  min-height: 0;
+}
+.card__photo {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  aspect-ratio: 16 / 9;
+}
+.card--photo-fill .card__photo {
+  aspect-ratio: unset;
+}
+.card__photo img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1.5s ease-in-out;
+}
+.card__photo img.is-current { opacity: 1; }
+.card__photo-caption {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: var(--space-3) var(--space-4);
+  background: linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0));
+  color: var(--color-fg);
+  font-size: 0.95rem;
 }
 
 /* ───── headlines ───── */

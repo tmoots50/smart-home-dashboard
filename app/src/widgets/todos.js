@@ -9,12 +9,15 @@ export function renderTodos(todos, now = new Date()) {
     <div class="todos">
       <div class="card__header">
         <h2 class="card__title">Todo</h2>
-        <button class="btn btn--add" data-action="add" aria-label="Add todo">+</button>
+        <span class="card__header-actions">
+          <button class="btn btn--text" data-overlay="todos">See more</button>
+          <button class="btn btn--add" data-action="add" aria-label="Add todo">+</button>
+        </span>
       </div>
       ${!todos.length ? '<p class="muted">Nothing on the list.</p>' : `
         <ul class="todos__list">
           ${todos.map((t, i) => `
-            <li class="todos__item">
+            <li class="todos__item" data-action="toggle" data-idx="${i}">
               <span class="todos__check${t.done ? ' todos__check--done' : ''}" data-action="toggle" data-idx="${i}"></span>
               <div class="todos__body">
                 <span class="todos__text${t.done ? ' todos__text--done' : ''}">${escapeHtml(t.text)}</span>
@@ -39,9 +42,10 @@ export function mountTodos(slot, initial) {
   const draw = () => { slot.innerHTML = renderTodos(items, new Date()); };
 
   slot.addEventListener('click', (e) => {
-    const action = e.target.dataset.action;
-    if (!action) return;
-    const idx = Number(e.target.dataset.idx);
+    const target = e.target.closest('[data-action]');
+    if (!target) return;
+    const action = target.dataset.action;
+    const idx = Number(target.dataset.idx);
 
     if (action === 'add') {
       const text = window.prompt('What needs doing?');

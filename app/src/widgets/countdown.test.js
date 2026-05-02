@@ -38,6 +38,13 @@ describe('renderCountdown', () => {
     expect(html).toMatch(/\d+ days/);
   });
 
+  it('renders the absolute date with weekday + ordinal', () => {
+    const html = renderCountdown([
+      { name: 'X', date: '2026-05-05', sub: '' },
+    ], NOW);
+    expect(html).toMatch(/Tue, May 5th/);
+  });
+
   it('shows empty state with no upcoming events', () => {
     const html = renderCountdown([], NOW);
     expect(html).toContain('Nothing on the horizon');

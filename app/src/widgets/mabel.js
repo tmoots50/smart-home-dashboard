@@ -15,21 +15,18 @@ export function renderMabel(data, now = new Date()) {
 
   return `
     <div class="mabel">
-      <div class="mabel__top">
+      <div class="mabel__primary">
         <h2 class="card__title">${escapeHtml(data.childName)} · ${age}</h2>
-        <div class="mabel__since">
-          <div class="mabel__since-value">${sinceLast}</div>
-          <div class="mabel__since-label">since last feed</div>
-          ${lastFeedDetail ? `<div class="mabel__since-detail">${escapeHtml(lastFeedDetail)}</div>` : ''}
-        </div>
+        <div class="mabel__since-value">${sinceLast}</div>
+        <div class="mabel__since-label">since last feed</div>
+        ${lastFeedDetail ? `<div class="mabel__since-detail">${escapeHtml(lastFeedDetail)}</div>` : ''}
       </div>
-      <div class="mabel__counts">
+      <div class="mabel__stats">
         <span class="mabel__count"><span class="mabel__dot mabel__dot--bottle"></span>${counts.bottles} bottles</span>
         <span class="mabel__count"><span class="mabel__dot mabel__dot--nurse"></span>${counts.nurses} nursings</span>
-        <span class="mabel__count"><span class="mabel__dot mabel__dot--pee"></span>${counts.pees} wets</span>
-        <span class="mabel__count"><span class="mabel__dot mabel__dot--poop"></span>${counts.poops} dirties</span>
+        <span class="mabel__count"><span class="mabel__dot mabel__dot--diaper"></span>${counts.diapers} diapers</span>
+        <div class="mabel__counts-label">Last 24 hours</div>
       </div>
-      <div class="mabel__counts-label">Last 24 hours</div>
     </div>
   `;
 }
@@ -51,15 +48,14 @@ function findLastFeed(events) {
 
 function countByType(events, now) {
   const cutoff = now - WINDOW_HOURS * HOUR_MS;
-  let bottles = 0, nurses = 0, pees = 0, poops = 0;
+  let bottles = 0, nurses = 0, diapers = 0;
   for (const e of events) {
     if (new Date(e.at) < cutoff) continue;
     if (e.type === 'bottle') bottles++;
     else if (e.type === 'nurse') nurses++;
-    else if (e.type === 'pee') pees++;
-    else if (e.type === 'poop') poops++;
+    else if (e.type === 'pee' || e.type === 'poop') diapers++;
   }
-  return { bottles, nurses, pees, poops };
+  return { bottles, nurses, diapers };
 }
 
 function formatSince(then, now) {
