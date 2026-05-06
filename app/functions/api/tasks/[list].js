@@ -36,21 +36,6 @@ export async function onRequest(context) {
   }
 
   const listId = listIdFor(env, params.list);
-  // TEMP diagnostic: ?diag=1 — full trace of the Google Tasks call
-  if (new URL(request.url).searchParams.get('diag') === '1') {
-    const hex = listId ? [...new TextEncoder().encode(listId)].map(b => b.toString(16).padStart(2, '0')).join('') : null;
-    const tokenInfoRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`);
-    const tokenInfo = await tokenInfoRes.json().catch(() => ({}));
-    const url = `https://tasks.googleapis.com/tasks/v1/lists/${encodeURIComponent(listId)}/tasks?showCompleted=true&showDeleted=false&showHidden=false&maxResults=100`;
-    const upstream = await fetch(url, { headers: { authorization: `Bearer ${accessToken}` } });
-    const upstreamBody = await upstream.text();
-    return json({
-      list: params.list, listId, len: listId?.length, hex,
-      accessTokenPrefix: accessToken?.slice(0, 12),
-      tokenScope: tokenInfo.scope, tokenAud: tokenInfo.aud, tokenEmail: tokenInfo.email,
-      url, upstreamStatus: upstream.status, upstreamBody: upstreamBody.slice(0, 600),
-    }, {}, cors);
-  }
   if (!listId) {
     return json({
       error: `unknown list "${params.list}". Configure ${params.list === 'todos' ? 'GOOGLE_TASKS_LIST_TODOS_ID' : params.list === 'groceries' ? 'GOOGLE_TASKS_LIST_GROCERIES_ID' : 'env var'}.`,
