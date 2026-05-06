@@ -22,9 +22,11 @@ export function renderMabel(data, now = new Date()) {
         ${lastFeedDetail ? `<div class="mabel__since-detail">${escapeHtml(lastFeedDetail)}</div>` : ''}
       </div>
       <div class="mabel__stats">
-        <span class="mabel__count"><span class="mabel__dot mabel__dot--bottle"></span>${counts.bottles} bottles</span>
-        <span class="mabel__count"><span class="mabel__dot mabel__dot--nurse"></span>${counts.nurses} nursings</span>
-        <span class="mabel__count"><span class="mabel__dot mabel__dot--diaper"></span>${counts.diapers} diapers</span>
+        <div class="mabel__counts-row">
+          <span class="mabel__count"><span class="mabel__dot mabel__dot--bottle"></span>${counts.bottles} bottles</span>
+          <span class="mabel__count"><span class="mabel__dot mabel__dot--nurse"></span>${counts.nurses} nursings</span>
+          <span class="mabel__count"><span class="mabel__dot mabel__dot--diaper"></span>${counts.diapers} diapers</span>
+        </div>
         <div class="mabel__counts-label">Last 24 hours</div>
       </div>
     </div>

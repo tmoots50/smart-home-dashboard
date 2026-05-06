@@ -21,9 +21,11 @@ export function renderTodos(todos, now = new Date()) {
               <span class="todos__check${t.done ? ' todos__check--done' : ''}" data-action="toggle" data-idx="${i}"></span>
               <div class="todos__body">
                 <span class="todos__text${t.done ? ' todos__text--done' : ''}">${escapeHtml(t.text)}</span>
-                ${t.due ? `<span class="todos__due ${dueClass(t.due, now)}">${formatDue(t.due, now)}</span>` : ''}
+                <span class="todos__meta">
+                  ${t.due ? `<span class="todos__due ${dueClass(t.due, now)}">${formatDue(t.due, now)}</span>` : ''}
+                  <span class="todos__owner">${escapeHtml(t.owner)}</span>
+                </span>
               </div>
-              <span class="todos__owner">${escapeHtml(t.owner)}</span>
               <span class="card__row-actions">
                 <button class="btn btn--icon" data-action="edit" data-idx="${i}" aria-label="Edit">✎</button>
                 <button class="btn btn--icon" data-action="delete" data-idx="${i}" aria-label="Delete">✕</button>

@@ -26,12 +26,19 @@ Ordered task list for v1. Check off as we go. Reorder freely — `spec.md` is th
 > **Hardware setup runbook in [`_context/hardware-setup-notes.md`](./_context/hardware-setup-notes.md)** — covers HDMI0 vs HDMI1, cocopar own-power requirement, USB-C is power-only on Pi 5, Magic Keyboard via BT not Lightning, labwc-not-Wayfire compositor, screen rotation + touch matrix recipe. Read before any rebuild.
 
 ## Phase 2 — Kiosk loop
+*(2026-05-05: pivoted from Pi+Chromium to Meswao tablet + Fully Kiosk Browser + Cloudflare Pages. Pi-side items archived below.)*
 - [x] Vite app boots locally on laptop with a "hello world" screen
-- [ ] Vite app deployed to Pi (`/opt/dashboard/` or similar), runs on `localhost:4173`
-- [ ] systemd unit serves the Vite preview build at boot
-- [ ] systemd unit launches Chromium `--kiosk` pointing at `localhost`
-- [ ] Cold-boot test: power-cycle the Pi, dashboard comes up unattended in <60s
+- [x] Cloudflare Pages deployment configured _(2026-05-05; see `docs/deploy.md`)_
+- [ ] Cloudflare Pages first deploy succeeds, URL captured
+- [ ] Fully Kiosk Browser side-loaded on Meswao _(handed off to other agent)_
+- [ ] Fully Kiosk pointed at the Pages URL with `?kiosk=1`, locked, autostart-on-boot
+- [ ] Cold-boot test: power-cycle the tablet, dashboard comes up unattended in <60s
 - [ ] WiFi-blip test: drop WiFi for 30s, dashboard recovers without intervention
+
+### Phase 2 — Pi-side items (archived 2026-05-05, not on the v1 critical path)
+- [ ] ~~Vite app deployed to Pi (`/opt/dashboard/` or similar), runs on `localhost:4173`~~
+- [ ] ~~systemd unit serves the Vite preview build at boot~~
+- [ ] ~~systemd unit launches Chromium `--kiosk` pointing at `localhost`~~
 
 ## Phase 3 — First widget: clock + date
 - [x] `app/src/widgets/clock.js` — pure render, gets `now: Date` as input
@@ -43,8 +50,9 @@ Ordered task list for v1. Check off as we go. Reorder freely — `spec.md` is th
 ## Phase 4 — Weather widget
 - [x] `lib/weather-mock.js` — fixture data
 - [x] `widgets/weather.js` against the mock
-- [ ] Wire real API (Open-Meteo? — no key needed, simple)
-- [ ] Cache + refresh logic (every 15min, fail-soft on outage)
+- [x] Wire real API (Open-Meteo, no key) _(2026-05-05; `lib/weather.js`)_
+- [x] Cache + refresh logic (15min localStorage TTL, fail-soft to mock on error) _(2026-05-05)_
+- [ ] Periodic refresh while the page is open (currently only refreshes on load)
 
 ## Phase 5 — Calendar widget
 - [x] `lib/calendar-mock.js` — today + next 3 events fixture
@@ -63,8 +71,9 @@ Ordered task list for v1. Check off as we go. Reorder freely — `spec.md` is th
 - [ ] Remote-push mechanism: edit JSON over SSH? Tiny endpoint? Defer decision.
 
 ## Phase 8 — Family todos widget
-- [ ] Shape decision: which app does shared todos? (Apple Reminders vs Todoist vs custom)
+- [x] Shape decision: shared todos live in the existing "TODOs" Apple Note (already wired into openclaw-setup family-copilot via `mfb-inote-*` helpers) _(2026-05-05)_
 - [x] `widgets/todos.js` against a mock
+- [ ] Build Apple Notes HTTP bridge on Old Mac (see `followups.md` — "Apple Notes (iNote) HTTP bridge")
 - [ ] Wire real source
 
 ## Phase 9 — Headlines widget

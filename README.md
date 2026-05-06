@@ -1,8 +1,9 @@
 # Smart Home Dashboard
 
-A wall-mounted, touchscreen morning briefing for our home, built on a Raspberry Pi 5. Time, weather, today's calendar, family todos, a rotating photo, an occasional message — at a glance, on the way out the door.
+A wall-mounted, touchscreen morning briefing for our home. Time, weather, today's calendar, family todos, a rotating photo, an occasional message — at a glance, on the way out the door.
 
 > **Status:** in development. Started April 2026, target on-the-wall by mid-June 2026.
+> **Stack pivot, 2026-05-05:** v1 ships on a Meswao Android tablet running Fully Kiosk Browser, loading the dashboard from Cloudflare Pages. Original Pi 5 + cocopar plan is shelved; the Pi will eventually host Home Assistant as a back-end data source.
 
 ## Why
 
@@ -15,11 +16,11 @@ Three goals:
 
 ## How it's built
 
-- **Display:** cocopar 15.6" 1080P FHD touchscreen, mounted portrait between two existing mirror cabinets in the master bathroom
-- **Compute:** Raspberry Pi 5 (8GB, NVMe boot), CanaKit bundle
-- **OS:** Raspberry Pi OS 64-bit (Bookworm), headless after first boot
-- **Display layer:** Chromium in `--kiosk` mode, autostarted via systemd
-- **App:** Vite + vanilla JS, served from the Pi at `localhost:4173`
+- **Display:** Meswao Android tablet, mounted portrait between two existing mirror cabinets in the master bathroom (1080×1920 target)
+- **Display layer:** Fully Kiosk Browser, locked to the dashboard URL
+- **Hosting:** Cloudflare Pages, auto-deployed from `main`
+- **App:** Vite + vanilla JS
+- **Future back end:** Raspberry Pi 5 (already provisioned, Phase 1 hardware foundation complete) will host Home Assistant + a small HTTP shim that bridges the dashboard to Apple Notes (todos / groceries) and the family calendar
 
 Architecture: widgets are dumb leaf components, views compose them. Every widget gets a mock-data adapter before any real API is wired — keeps the visual loop fast and turns real-data wiring into a small swap.
 
@@ -43,9 +44,11 @@ npm run dev          # http://localhost:5173 — dev server with HMR
 npm test             # vitest, watch mode
 ```
 
-## Deploy on the Pi
+## Deploy
 
-See [`docs/install.md`](./docs/install.md) for the full runbook.
+See [`docs/deploy.md`](./docs/deploy.md) for the Cloudflare Pages setup and Fully Kiosk URL params.
+
+The original Pi-side install runbook ([`docs/install.md`](./docs/install.md)) is preserved for reference and for the eventual Home Assistant deployment.
 
 ## License
 

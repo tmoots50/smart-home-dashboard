@@ -12,5 +12,19 @@ if (params.has('kiosk')) {
 const theme = params.get('theme');
 if (theme) document.documentElement.dataset.theme = theme;
 
+// ?scale=0.6 shrinks the whole UI proportionally. Needed for tablets where
+// the CSS viewport is small but the physical screen is large (MESWAO B3 etc.).
+// Every rem-based dimension scales together since this multiplies the root font.
+const scale = parseFloat(params.get('scale'));
+if (scale > 0 && scale < 4) {
+  document.documentElement.style.fontSize = `${scale * 16}px`;
+}
+
 const root = document.querySelector('#app');
 renderMorningBriefing(root);
+
+document.addEventListener('pointerdown', () => {
+  if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  }
+}, true);

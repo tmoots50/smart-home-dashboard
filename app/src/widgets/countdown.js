@@ -24,14 +24,12 @@ export function renderCountdown(items, now = new Date()) {
       <ul class="countdown__list">
         ${upcoming.map(it => `
           <li class="countdown__item">
-            <span>
-              <div class="countdown__days">${formatDays(it.days)}</div>
-              <div class="countdown__date">${formatAbsolute(it.date)}</div>
-            </span>
-            <span>
-              <div class="countdown__name">${escapeHtml(it.name)}</div>
-              ${it.sub ? `<div class="countdown__sub">${escapeHtml(it.sub)}</div>` : ''}
-            </span>
+            <div class="countdown__when">
+              <span class="countdown__days">${formatDays(it.days)}</span>
+              <span class="countdown__date">${formatAbsolute(it.date)}</span>
+            </div>
+            <div class="countdown__name">${escapeHtml(it.name)}</div>
+            ${it.sub ? `<div class="countdown__sub">${escapeHtml(it.sub)}</div>` : ''}
           </li>
         `).join('')}
       </ul>

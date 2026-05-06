@@ -1,11 +1,17 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; height: 100%; }
 
+/* Root font-size defaults to 16px. Override per-device via ?scale= URL param
+   (handled in main.js) — needed because tablet CSS viewports report similar
+   widths regardless of physical screen size, so media queries can't tell a
+   14" tablet from an 8" one. */
+html { font-size: 16px; }
+
 body {
   background: var(--color-bg);
   color: var(--color-fg);
   font-family: var(--font-body);
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
   user-select: none;
@@ -52,7 +58,7 @@ html.kiosk, html.kiosk body { overflow: hidden; }
 /* ───── buttons ───── */
 .btn {
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid rgba(201, 169, 106, 0.4);
   color: var(--color-muted);
   font-family: var(--font-body);
   font-size: 0.85rem;
@@ -61,17 +67,16 @@ html.kiosk, html.kiosk body { overflow: hidden; }
   cursor: pointer;
   line-height: 1;
 }
-.btn:hover { color: var(--color-fg); border-color: var(--color-muted); }
+.btn:hover { color: var(--color-fg); border-color: var(--color-accent); }
 .btn--add {
-  width: 1.75rem;
-  height: 1.75rem;
-  font-size: 1rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  font-size: 1.4rem;
 }
 .btn--icon {
-  width: 1.5rem;
-  height: 1.5rem;
-  font-size: 0.7rem;
-  border-color: transparent;
+  width: 2.75rem;
+  height: 2.75rem;
+  font-size: 1rem;
 }
 .btn--text {
   background: transparent;
@@ -145,11 +150,11 @@ html.kiosk, html.kiosk body { overflow: hidden; }
   margin-top: var(--space-4);
 }
 .action-btn {
-  width: 5.5rem;
-  height: 5.5rem;
+  width: 4.4rem;
+  height: 4.4rem;
   border-radius: 999px;
   background: transparent;
-  border: 1px solid var(--color-border);
+  border: 1px solid rgba(201, 169, 106, 0.4);
   color: var(--color-muted);
   display: inline-flex;
   align-items: center;
@@ -157,10 +162,10 @@ html.kiosk, html.kiosk body { overflow: hidden; }
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
-.action-btn svg { width: 36px; height: 36px; }
+.action-btn svg { width: 1.8rem; height: 1.8rem; }
 .action-btn:hover {
   color: var(--color-fg);
-  border-color: var(--color-muted);
+  border-color: var(--color-accent);
   background: rgba(255, 255, 255, 0.02);
 }
 .action-btn[data-launch="money"] { display: none; }
@@ -280,13 +285,18 @@ html.kiosk, html.kiosk body { overflow: hidden; }
 /* ───── countdown ───── */
 .countdown__list { list-style: none; padding: 0; margin: 0; }
 .countdown__item {
-  display: grid;
-  grid-template-columns: 7rem 1fr;
-  gap: var(--space-3);
-  padding: var(--space-2) 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-3) 0;
   border-bottom: 1px solid var(--color-border);
 }
 .countdown__item:last-child { border-bottom: none; }
+.countdown__when {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
 .countdown__days {
   font-family: var(--font-display);
   color: var(--color-accent);
@@ -297,12 +307,12 @@ html.kiosk, html.kiosk body { overflow: hidden; }
   color: var(--color-muted);
   font-size: 0.75rem;
   letter-spacing: 0.04em;
-  margin-top: 2px;
   white-space: nowrap;
 }
 .countdown__name {
   font-size: 1rem;
   color: var(--color-fg);
+  margin-top: 2px;
 }
 .countdown__sub {
   color: var(--color-muted);
@@ -426,12 +436,18 @@ html.kiosk, html.kiosk body { overflow: hidden; }
 .todos__list { list-style: none; padding: 0; margin: 0; }
 .todos__item {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto 1fr auto;
   gap: var(--space-3);
   align-items: center;
   padding: var(--space-3) 0;
   border-bottom: 1px solid var(--color-border);
   cursor: pointer;
+}
+.todos__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
 }
 .todos__item:last-child { border-bottom: none; }
 .todos__check {
@@ -553,15 +569,21 @@ html.kiosk, html.kiosk body { overflow: hidden; }
   white-space: nowrap;
 }
 
-/* ───── mabel (2-column: primary stat | counts list) ───── */
+/* ───── mabel (vertical: primary stat above, counts row below) ───── */
 .mabel {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
 }
 .mabel__primary, .mabel__stats {
   display: flex;
   flex-direction: column;
+}
+.mabel__counts-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
 }
 .mabel__since-value {
   font-family: var(--font-display);

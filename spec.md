@@ -2,11 +2,13 @@
 
 The durable "what we're building" contract. Read top to bottom before suggesting changes.
 
+> **2026-05-05 device pivot:** v1 hardware switched from **Pi 5 + cocopar 15.6" monitor** to a **Meswao Android tablet running Fully Kiosk Browser**. The dashboard is now hosted on Cloudflare Pages and loaded as a URL, not served from the Pi. The Pi stays in the project as a future back-end host for Home Assistant and the Apple Notes / iCloud bridge. Most of the spec below still applies — only the "Hardware" and "Software stack" sections describe the old plan; see the **Hardware (current state)** section update below and [`_context/decisions.md`](./_context/decisions.md) for the why.
+
 ---
 
 ## Project summary
 
-A wall-mounted smart home dashboard for my family home. A 15.6" portrait-orientation touchscreen monitor, driven by a Raspberry Pi 5, runs a custom web app in Chromium kiosk mode. The dashboard lives in our master bathroom, between two existing mirror cabinets, above an existing outlet.
+A wall-mounted smart home dashboard for my family home. A 15.6" portrait-orientation touchscreen device runs a custom web app in kiosk mode. The dashboard lives in our master bathroom, between two existing mirror cabinets, above an existing outlet.
 
 **Three user-facing goals:**
 1. **Family calendar** — what's happening today, this week
@@ -70,6 +72,8 @@ A 24" touchscreen monitor (ViewSonic TD2455 or Elo 2402L) wall-mounted in portra
 ---
 
 ## Hardware (current state)
+
+> **As of 2026-05-05:** the active production hardware is a **Meswao Android tablet** running Fully Kiosk Browser, pointing at the Cloudflare Pages-hosted app. The Pi 5 + cocopar bundle described below is **shelved but fully functional** — the Pi is being repurposed as the future back-end host (Home Assistant + an Apple Notes HTTP shim). The cocopar monitor is available for redeploy if the tablet plan ever fails the wife test.
 
 ### Display — purchased
 **cocopar 15.6" 1080P FHD touchscreen portable monitor.** 90% sRGB, HDMI + USB-C, VESA-mountable, built-in speaker. Anti-glare matte protector to be added. Portrait orientation — native 1920×1080, rotated to 1080×1920 for the dashboard.
