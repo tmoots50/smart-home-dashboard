@@ -23,6 +23,15 @@ export function renderWeather(data) {
   `;
 }
 
+// Mounts into a slot. Renders `initial` instantly, then swaps to `live` when it
+// resolves. Caller passes the result of getWeather({ lat, lon, location }).
+export function mountWeather(el, { initial, live }) {
+  el.innerHTML = renderWeather(initial);
+  live.then(data => {
+    if (data) el.innerHTML = renderWeather(data);
+  });
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',

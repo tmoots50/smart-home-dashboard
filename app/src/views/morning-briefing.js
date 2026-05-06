@@ -1,6 +1,5 @@
 import { mountClock } from '../widgets/clock.js';
-import { renderWeather } from '../widgets/weather.js';
-import { renderOnThisDay } from '../widgets/onthisday.js';
+import { mountWeather } from '../widgets/weather.js';
 import { renderAiMessage } from '../widgets/aimessage.js';
 import { renderHeadlines } from '../widgets/headlines.js';
 import { renderCalendar } from '../widgets/calendar.js';
@@ -11,8 +10,7 @@ import { mountMabel } from '../widgets/mabel.js';
 import { renderBible } from '../widgets/bible.js';
 import { mountCardPhoto } from '../widgets/card-photo.js';
 
-import { getMockWeather } from '../lib/weather-mock.js';
-import { getMockOnThisDay } from '../lib/onthisday-mock.js';
+import { getWeather } from '../lib/weather.js';
 import { getMockAiMessage } from '../lib/aimessage-mock.js';
 import { getMockHeadlines } from '../lib/headlines-mock.js';
 import { getMockCalendar } from '../lib/calendar-mock.js';
@@ -43,8 +41,17 @@ const OVERLAY_STUBS = {
   todos: 'Full todo list overlay coming soon.',
 };
 
+// Default location. Override at runtime via ?lat=…&lon=…&location=… on the URL.
+const DEFAULT_LOC = { lat: 33.7490, lon: -84.3880, location: 'Atlanta, GA' };
+
 export function renderMorningBriefing(root) {
-  const weather = getMockWeather();
+  const params = new URLSearchParams(window.location.search);
+  const loc = {
+    lat: parseFloat(params.get('lat')) || DEFAULT_LOC.lat,
+    lon: parseFloat(params.get('lon')) || DEFAULT_LOC.lon,
+    location: params.get('location') || DEFAULT_LOC.location,
+  };
+  const weather = getWeather(loc);
   const headlines = getMockHeadlines();
   const calendar = getMockCalendar();
   const countdowns = getMockCountdowns();
@@ -53,7 +60,6 @@ export function renderMorningBriefing(root) {
   const mabel = getMockMabel();
   const verse = getMockBibleVerse();
   const photos = getMockPhotos();
-  const onthisday = getMockOnThisDay();
   const aimessage = getMockAiMessage();
 
   root.innerHTML = `
@@ -64,10 +70,9 @@ export function renderMorningBriefing(root) {
         <div class="card time-card">
           <div data-slot="clock"></div>
           <hr class="card__divider"/>
-          ${renderOnThisDay(onthisday)}
           ${renderAiMessage(aimessage)}
           <hr class="card__divider"/>
-          ${renderWeather(weather)}
+          <div data-slot="weather"></div>
           <div class="action-bar">
             <button class="action-btn" data-launch="mic" aria-label="Voice input">${MIC_SVG}</button>
             <button class="action-btn" data-launch="music" aria-label="Music">${MUSIC_SVG}</button>
@@ -98,6 +103,7 @@ export function renderMorningBriefing(root) {
   `;
 
   mountClock(root.querySelector('[data-slot="clock"]'));
+  mountWeather(root.querySelector('[data-slot="weather"]'), weather);
   mountTodos(root.querySelector('[data-slot="todos"]'), todos);
   mountGroceries(root.querySelector('[data-slot="groceries"]'), groceries);
   mountMabel(root.querySelector('[data-slot="mabel"]'), mabel);
