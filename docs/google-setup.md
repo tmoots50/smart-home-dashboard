@@ -1,9 +1,13 @@
-# Google setup — Photos + Tasks
+# Google setup — Drive (photos) + Tasks (lists) + Calendar (events)
 
-The dashboard reads from your Google Photos shared album and your Google Tasks lists via two CF Pages Functions:
+The dashboard reads photos from a Google Drive folder, shared lists from Google Tasks, and events from Google Calendar via four CF Pages Functions:
 
-- `/api/photos` — proxies Google Photos Library API
+- `/api/photos` — lists images in the configured Drive folder
+- `/api/photos/[id]` — proxies image bytes (Drive files aren't browser-fetchable without OAuth)
 - `/api/tasks/[list]` and `/api/tasks/[list]/strike` — proxies Google Tasks API
+- `/api/calendar` — fetches today's events across configured calendars
+
+> **Why Drive instead of Google Photos?** Google deprecated the `photoslibrary.readonly` scope on 2025-03-31. Third-party apps can no longer read user-curated photo albums via the Photos Library API — Google's replacement (Picker API) requires a human to interactively pick photos per session. For an ambient dashboard, Drive is the stable alternative: drop photos into a Drive folder, dashboard pulls them.
 
 Both Functions use a single OAuth refresh token for your Google account, stored in CF Pages env vars (server-side, never in the browser bundle). The dashboard hits the Functions with a shared bearer token.
 
@@ -16,8 +20,9 @@ This is a **one-time setup**. After it's done, deploys are just `git push`.
 1. Go to [console.cloud.google.com](https://console.cloud.google.com).
 2. **Create project** → name it `smart-home-dashboard` (or similar).
 3. **APIs & Services → Library**, enable:
-   - **Google Photos Library API**
+   - **Google Drive API**
    - **Google Tasks API**
+   - **Google Calendar API**
 
 ## 2. Configure OAuth consent screen
 
@@ -25,8 +30,9 @@ This is a **one-time setup**. After it's done, deploys are just `git push`.
 2. **User type:** External (this is a personal-use app).
 3. App name: `Smart Home Dashboard`. App logo + support email: skip / your email.
 4. **Scopes**, add:
-   - `https://www.googleapis.com/auth/photoslibrary.readonly`
+   - `https://www.googleapis.com/auth/drive.readonly`
    - `https://www.googleapis.com/auth/tasks`
+   - `https://www.googleapis.com/auth/calendar.readonly`
 5. **Test users**, add: your Google account email (and Caroline's, if she should also be able to grant). Test mode is fine — no public verification needed for personal use.
 
 ## 3. Create OAuth client credentials
@@ -39,28 +45,15 @@ This is a **one-time setup**. After it's done, deploys are just `git push`.
 
 ## 4. Mint a refresh token
 
-This is the one-time interactive part. We use the OAuth 2.0 device-code-style flow on your laptop.
+One-time interactive flow. Use the helper script:
 
 ```bash
-# Your client ID + secret from step 3:
-export CID="your-client-id.apps.googleusercontent.com"
-export CSECRET="your-client-secret"
-export SCOPES="https://www.googleapis.com/auth/photoslibrary.readonly https://www.googleapis.com/auth/tasks"
-
-# Step a — open the consent URL in a browser and grant access:
-echo "https://accounts.google.com/o/oauth2/v2/auth?client_id=$CID&redirect_uri=urn:ietf:wg:oauth:2.0:oob&response_type=code&scope=$(python3 -c 'import urllib.parse,os;print(urllib.parse.quote(os.environ["SCOPES"]))')&access_type=offline&prompt=consent"
-
-# Open the URL it printed. After granting, Google shows you an auth code.
-# Copy it.
-
-# Step b — exchange the auth code for a refresh token:
-export AUTH_CODE="paste-the-code-here"
-curl -s -d "client_id=$CID" -d "client_secret=$CSECRET" -d "code=$AUTH_CODE" -d "grant_type=authorization_code" -d "redirect_uri=urn:ietf:wg:oauth:2.0:oob" https://oauth2.googleapis.com/token
+node scripts/mint-google-token.mjs
 ```
 
-The response is a JSON blob containing a `refresh_token`. **Save it.** This is the long-lived credential the Functions will use to mint access tokens automatically forever.
+It prompts for the Client ID + Client Secret from step 3, prints the consent URL, asks you to paste the auth code Google shows after you grant access, then prints all the env-var values you need (in copy-pasteable format) for the next step.
 
-> **Important:** Google only returns `refresh_token` on the FIRST exchange after consent. If you ever lose it, revoke access at [myaccount.google.com/permissions](https://myaccount.google.com/permissions) and re-do step 4.
+> **Important:** Google only returns `refresh_token` on the FIRST exchange after consent. If you ever lose it, revoke access at [myaccount.google.com/permissions](https://myaccount.google.com/permissions) and re-run the script.
 
 ## 5. Find your Google Tasks list IDs
 
@@ -78,7 +71,27 @@ Returns:
 
 Note the `id` for the list you want to use as **Todos** and the one for **Groceries**. Create them in the Google Tasks app first if they don't exist.
 
-## 6. Find your Google Photos album ID
+## 5b. Find your Google Calendar IDs
+
+Same pattern, different endpoint:
+
+```bash
+curl -H "Authorization: Bearer $DASHBOARD_TOKEN" "https://your-app.pages.dev/api/calendar?_lists=1"
+```
+
+Returns:
+
+```json
+{ "calendars": [
+  { "id": "primary", "summary": "tim.moots@gmail.com", "primary": true, "accessRole": "owner" },
+  { "id": "abc123@group.calendar.google.com", "summary": "Family", "accessRole": "owner" },
+  { "id": "def456@group.calendar.google.com", "summary": "Caroline (work)", "accessRole": "reader" }
+]}
+```
+
+Pick the calendars you want to surface and shape them into a JSON array for the env var (see step 7). The `label` is what shows on the dashboard ("Family", "Tim (Work)", "Caroline (Work)") and is independent of Google's `summary`.
+
+## 6. Find your Drive photos folder ID
 
 Same pattern:
 
@@ -89,10 +102,10 @@ curl -H "Authorization: Bearer $DASHBOARD_TOKEN" "https://your-app.pages.dev/api
 Returns:
 
 ```json
-{ "albums": [{ "id": "AKq...", "title": "Mabel — Year One", "count": 87 }] }
+{ "folders": [{ "id": "1AbC...", "name": "Dashboard Photos" }, ...] }
 ```
 
-Note the `id` for the family album you want to display.
+Note the `id` of the folder you dropped photos in.
 
 ## 7. Set Cloudflare Pages env vars
 
@@ -104,9 +117,10 @@ In the CF Pages dashboard → your project → **Settings → Environment variab
 | `GOOGLE_CLIENT_ID` | From step 3 |
 | `GOOGLE_CLIENT_SECRET` | From step 3 |
 | `GOOGLE_REFRESH_TOKEN` | From step 4 |
-| `GOOGLE_PHOTOS_ALBUM_ID` | From step 6 |
+| `GOOGLE_DRIVE_PHOTOS_FOLDER_ID` | From step 6 |
 | `GOOGLE_TASKS_LIST_TODOS_ID` | From step 5 |
 | `GOOGLE_TASKS_LIST_GROCERIES_ID` | From step 5 |
+| `GOOGLE_CALENDARS_JSON` | JSON array shaped like `[{"label":"Family","id":"abc@group.calendar.google.com"},{"label":"Tim (Work)","id":"primary"}]`. From step 5b. |
 | `ALLOW_ORIGIN` | Comma-separated origins for CORS, e.g. `https://your-app.pages.dev,http://localhost:5173` |
 | `VITE_DASHBOARD_TOKEN` | **Same string as `DASHBOARD_TOKEN`** — this one ships in the client bundle so the dashboard sends it on every request. |
 
@@ -136,8 +150,10 @@ npx wrangler pages dev dist --compatibility-date=2024-01-01
 - **401 from /api/...** — `DASHBOARD_TOKEN` (server) doesn't match `VITE_DASHBOARD_TOKEN` (bundle). Check both, redeploy.
 - **500 "GOOGLE_*" not set** — env var missing in CF Pages. Re-check spelling, redeploy.
 - **502 "google token refresh"** — refresh token expired or revoked. Re-do step 4.
-- **502 "photos search 403"** — scope missing or album access lost. Re-grant scopes (step 2 / step 4 again).
-- **Empty photos / tasks** — wrong album ID / list ID. Re-run discovery (steps 5-6).
+- **502 "drive list 403"** — scope missing or folder access lost. Re-grant scopes (step 2 / step 4 again).
+- **502 "calendar … 403"** — `calendar.readonly` scope wasn't granted at the latest token mint. Re-run step 4 to mint a fresh refresh token with the calendar scope included.
+- **500 "GOOGLE_CALENDARS_JSON not set or empty"** — env var missing or malformed JSON. Hit `/api/calendar?_lists=1` to discover IDs, then set the env var as a JSON array.
+- **Empty photos / tasks / calendar** — wrong album ID / list ID / calendar ID. Re-run discovery (steps 5, 5b, 6).
 
 ## Token rotation
 

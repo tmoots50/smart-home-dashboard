@@ -19,6 +19,7 @@ export function renderWeather(data) {
             <div class="weather__day">
               <div class="weather__day-label">${escapeHtml(day.label)}</div>
               <div class="weather__day-temp">${day.tempF}°</div>
+              ${day.emoji ? `<div class="weather__day-emoji" aria-hidden="true">${day.emoji}</div>` : ''}
             </div>
           `).join('')}
         </div>

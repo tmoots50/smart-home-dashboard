@@ -10,9 +10,9 @@ export function getMockWeather() {
       lo: 58,
     },
     forecast: [
-      { label: 'Tue', tempF: 80 },
-      { label: 'Wed', tempF: 76 },
-      { label: 'Thu', tempF: 82 },
+      { label: 'Tue', tempF: 80, code: 0, emoji: '☀️' },
+      { label: 'Wed', tempF: 76, code: 2, emoji: '⛅' },
+      { label: 'Thu', tempF: 82, code: 95, emoji: '⛈️' },
     ],
   };
 }

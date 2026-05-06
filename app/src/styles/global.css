@@ -255,6 +255,11 @@ html.kiosk, html.kiosk body { overflow: hidden; }
   font-family: var(--font-display);
   font-size: 1.05rem;
 }
+.weather__day-emoji {
+  font-size: 1.1rem;
+  line-height: 1;
+  margin-top: 2px;
+}
 
 /* ───── traffic ───── */
 .traffic__row {

@@ -17,7 +17,12 @@ export function checkAuth(request, env) {
     });
   }
   const auth = request.headers.get('authorization') || '';
-  if (auth !== `Bearer ${env.DASHBOARD_TOKEN}`) {
+  // Accept either Authorization: Bearer <token> OR ?token=<token> query param.
+  // The query-param fallback exists so that <img src> can be authenticated
+  // (browsers don't send Authorization on image requests).
+  const queryToken = new URL(request.url).searchParams.get('token') || '';
+  const ok = auth === `Bearer ${env.DASHBOARD_TOKEN}` || queryToken === env.DASHBOARD_TOKEN;
+  if (!ok) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), {
       status: 401, headers: { 'content-type': 'application/json' },
     });

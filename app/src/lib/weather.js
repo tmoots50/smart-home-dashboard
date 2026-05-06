@@ -21,6 +21,22 @@ const WMO = {
   95: 'Thunderstorm', 96: 'Thunderstorm', 99: 'Thunderstorm',
 };
 
+// WMO weather code → emoji. Same code groupings as the labels above.
+const WMO_EMOJI = {
+  0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️',
+  45: '🌫️', 48: '🌫️',
+  51: '🌦️', 53: '🌦️', 55: '🌦️',
+  56: '🌧️', 57: '🌧️',
+  61: '🌧️', 63: '🌧️', 65: '🌧️',
+  66: '🌧️', 67: '🌧️',
+  71: '🌨️', 73: '🌨️', 75: '🌨️', 77: '🌨️',
+  80: '🌦️', 81: '🌧️', 82: '🌧️',
+  85: '🌨️', 86: '🌨️',
+  95: '⛈️', 96: '⛈️', 99: '⛈️',
+};
+
+export function codeToEmoji(code) { return WMO_EMOJI[code] ?? ''; }
+
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function readCache() {
@@ -52,6 +68,8 @@ function normalize(api, location) {
     forecast: d.time.slice(1, 4).map((iso, i) => ({
       label: DOW[new Date(iso + 'T12:00:00').getDay()],
       tempF: Math.round(d.temperature_2m_max[i + 1]),
+      code: d.weather_code[i + 1],
+      emoji: WMO_EMOJI[d.weather_code[i + 1]] ?? '',
     })),
   };
 }

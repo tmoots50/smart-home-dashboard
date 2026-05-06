@@ -41,10 +41,14 @@ function shuffleAndTake(arr, n) {
 }
 
 function toWidgetShape(apiPhotos) {
+  // Append the dashboard token to image URLs as a query param. <img src=...>
+  // can't carry an Authorization header, so the Function accepts ?token= as
+  // a fallback for image-byte requests.
+  const tokenSuffix = TOKEN ? `?token=${encodeURIComponent(TOKEN)}` : '';
   return apiPhotos.map(p => ({
-    src: p.url,
-    // Google Photos doesn't expose user-set captions; use the creation month
-    // as a soft label. Caption is optional in the widget so this is fine to omit.
+    src: `${p.url}${tokenSuffix}`,
+    // Drive doesn't expose user-set captions; show the creation month as a
+    // soft label when available. Caption is optional in the widget.
     caption: p.takenAt ? MONTH_FMT.format(new Date(p.takenAt)) : '',
   }));
 }

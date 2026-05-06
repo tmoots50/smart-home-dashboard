@@ -1,0 +1,72 @@
+// Google Calendar API helpers. Mirrors tasks-api.js shape.
+//
+// We support N calendars per Tim's account (Family, Tim Work, Caroline Work,
+// etc.) configured via a single JSON env var instead of one per calendar:
+//
+//   GOOGLE_CALENDARS_JSON='[{"label":"Family","id":"abc@group.calendar.google.com"},{"label":"Tim (Work)","id":"primary"}]'
+//
+// JSON because the labels are user-arbitrary (need quoting) and adding a fourth
+// section shouldn't require a code change.
+
+export function parseCalendars(env) {
+  const raw = env.GOOGLE_CALENDARS_JSON;
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(c => c && typeof c.label === 'string' && typeof c.id === 'string');
+  } catch {
+    return [];
+  }
+}
+
+// Fetch events for a single calendar in [timeMin, timeMax].
+// `singleEvents=true` expands recurring events into instances.
+export async function listEvents(accessToken, calendarId, timeMin, timeMax) {
+  const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`);
+  url.search = new URLSearchParams({
+    timeMin,
+    timeMax,
+    singleEvents: 'true',
+    orderBy: 'startTime',
+    maxResults: '50',
+  }).toString();
+
+  const res = await fetch(url, { headers: { authorization: `Bearer ${accessToken}` } });
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`calendar ${calendarId} ${res.status}: ${detail}`);
+  }
+  const data = await res.json();
+  return data.items || [];
+}
+
+// Map Google Calendar event → dashboard widget shape. All-day events get
+// dropped from the "next 3 hours" view since they don't have a meaningful
+// start *time*. They belong in a separate all-day strip if/when we add one.
+export function normalize(events) {
+  return events
+    .filter(e => e.start?.dateTime) // skip all-day (start.date instead of start.dateTime)
+    .map(e => ({
+      id: e.id,
+      startsAt: e.start.dateTime,
+      title: e.summary || '(no title)',
+      sub: e.location || '',
+    }));
+}
+
+// Pick the soonest upcoming event across all sections — widget highlights it.
+export function pickNextEventId(sections, now = new Date()) {
+  let nextId = null;
+  let nextStart = null;
+  for (const s of sections) {
+    for (const ev of s.events) {
+      const start = new Date(ev.startsAt);
+      if (start > now && (!nextStart || start < nextStart)) {
+        nextStart = start;
+        nextId = ev.id;
+      }
+    }
+  }
+  return nextId;
+}

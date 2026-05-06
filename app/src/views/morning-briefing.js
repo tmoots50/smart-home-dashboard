@@ -2,7 +2,7 @@ import { mountClock } from '../widgets/clock.js';
 import { mountWeather } from '../widgets/weather.js';
 import { mountAiMessage } from '../widgets/aimessage.js';
 import { renderHeadlines } from '../widgets/headlines.js';
-import { renderCalendar } from '../widgets/calendar.js';
+import { mountCalendar } from '../widgets/calendar.js';
 import { renderCountdown } from '../widgets/countdown.js';
 import { mountTodos } from '../widgets/todos.js';
 import { mountGroceries } from '../widgets/groceries.js';
@@ -12,7 +12,6 @@ import { mountCardPhoto } from '../widgets/card-photo.js';
 
 import { getAiMessage } from '../lib/aimessage.js';
 import { getMockHeadlines } from '../lib/headlines-mock.js';
-import { getMockCalendar } from '../lib/calendar-mock.js';
 import { getMockCountdowns } from '../lib/countdown-mock.js';
 import { getMockMabel } from '../lib/mabel-mock.js';
 import { getMockBibleVerse } from '../lib/bible-mock.js';
@@ -55,7 +54,6 @@ export function renderMorningBriefing(root) {
     location: params.get('location') || DEFAULT_LOC.location,
   };
   const headlines = getMockHeadlines();
-  const calendar = getMockCalendar();
   const countdowns = getMockCountdowns();
   const todos = getTodos();
   const groceries = getGroceries();
@@ -92,7 +90,7 @@ export function renderMorningBriefing(root) {
 
       <div class="briefing__columns">
         <div class="briefing__col">
-          <div class="card">${renderCalendar(calendar)}</div>
+          <div class="card" data-slot="calendar"></div>
           <div class="card">${renderCountdown(countdowns)}</div>
           <div class="card">${renderHeadlines(headlines)}</div>
         </div>
@@ -107,6 +105,7 @@ export function renderMorningBriefing(root) {
   mountClock(root.querySelector('[data-slot="clock"]'));
   mountWeather(root.querySelector('[data-slot="weather"]'), loc);
   mountAiMessage(root.querySelector('[data-slot="aimessage"]'), aimessage);
+  mountCalendar(root.querySelector('[data-slot="calendar"]'));
 
   const todoActions = tasksConfigured ? { append: appendTodo, strike: strikeTodo } : null;
   const groceryActions = tasksConfigured ? { append: appendGrocery, strike: strikeGrocery } : null;

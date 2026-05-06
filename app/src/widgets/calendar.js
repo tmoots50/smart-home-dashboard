@@ -1,9 +1,12 @@
+import { getCalendar, fetchCalendar } from '../lib/calendar.js';
+
 const TIME_FMT = new Intl.DateTimeFormat(undefined, {
   hour: 'numeric',
   minute: '2-digit',
 });
 const WINDOW_HOURS = 3;
 const WINDOW_MS = WINDOW_HOURS * 3_600_000;
+const REFRESH_MS = 5 * 60 * 1000; // re-fetch every 5min — events can be added during the day
 
 export function renderCalendar(data, now = new Date()) {
   const cutoff = new Date(now.getTime() + WINDOW_MS);
@@ -49,6 +52,23 @@ function renderSection(section, nextEventId) {
       ` : '<p class="calendar__empty muted">Nothing scheduled.</p>'}
     </div>
   `;
+}
+
+// Mounts into a slot. Renders cached/mock data instantly, then fetches live and
+// swaps in. Re-fetches every REFRESH_MS so a long-running kiosk doesn't sit on
+// stale data. Returns a teardown function.
+export function mountCalendar(el) {
+  const { initial, live } = getCalendar();
+  el.innerHTML = renderCalendar(initial);
+  live.then(data => { if (data) el.innerHTML = renderCalendar(data); });
+
+  const id = setInterval(() => {
+    fetchCalendar()
+      .then(data => { el.innerHTML = renderCalendar(data); })
+      .catch(() => { /* keep showing the last good frame */ });
+  }, REFRESH_MS);
+
+  return () => clearInterval(id);
 }
 
 function escapeHtml(s) {
