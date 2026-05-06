@@ -62,6 +62,7 @@ export async function fetchPhotos() {
   const data = await res.json();
   const sample = shuffleAndTake(data.photos || [], MAX_RENDER);
   const widgetPhotos = toWidgetShape(sample);
+  console.log('[photos] live ok:', { apiCount: data.photos?.length, sample: sample.length, widget: widgetPhotos.length, first: widgetPhotos[0] });
   writeCache(widgetPhotos);
   return widgetPhotos;
 }
@@ -71,7 +72,7 @@ export function getPhotos() {
   const cached = readCache();
   const initial = cached ?? getMockPhotos();
   const live = TOKEN
-    ? fetchPhotos().catch(() => initial)
+    ? fetchPhotos().catch((err) => { console.error('[photos] live fetch failed:', err); return initial; })
     : Promise.resolve(initial);
   return { initial, live };
 }
