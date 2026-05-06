@@ -36,6 +36,11 @@ export async function onRequest(context) {
   }
 
   const listId = listIdFor(env, params.list);
+  // TEMP diagnostic: ?diag=1 returns the resolved listId + its byte-level rep
+  if (new URL(request.url).searchParams.get('diag') === '1') {
+    const hex = listId ? [...new TextEncoder().encode(listId)].map(b => b.toString(16).padStart(2, '0')).join('') : null;
+    return json({ list: params.list, listId, len: listId?.length, hex }, {}, cors);
+  }
   if (!listId) {
     return json({
       error: `unknown list "${params.list}". Configure ${params.list === 'todos' ? 'GOOGLE_TASKS_LIST_TODOS_ID' : params.list === 'groceries' ? 'GOOGLE_TASKS_LIST_GROCERIES_ID' : 'env var'}.`,
