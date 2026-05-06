@@ -27,3 +27,8 @@ app/.vite/
 
 # Claude Code — personal local overlays (project-level skills + settings stay tracked)
 .claude/settings.local.json
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
