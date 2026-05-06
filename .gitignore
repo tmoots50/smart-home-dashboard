@@ -27,3 +27,9 @@ app/.vite/
 
 # Claude Code — personal local overlays (project-level skills + settings stay tracked)
 .claude/settings.local.json
+
+# Vite local env (Google OAuth + dashboard token)
+app/.env.local
+
+# Wrangler dev secrets
+app/.dev.vars

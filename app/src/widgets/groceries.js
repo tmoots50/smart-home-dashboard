@@ -1,5 +1,9 @@
 // v1 edit UX uses window.prompt/confirm — functional placeholder, will be
 // replaced with proper touch UI later.
+//
+// `actions` (optional) wires mutations through to the iNote bridge. When passed,
+// add/toggle/delete persist via actions.{append,strike} with optimistic-update
+// + revert-on-failure. When omitted, behaves as a pure-local widget.
 
 export function renderGroceries(items) {
   return `
@@ -28,7 +32,7 @@ export function renderGroceries(items) {
   `;
 }
 
-export function mountGroceries(slot, initialItems) {
+export function mountGroceries(slot, initialItems, actions = null) {
   let items = [...initialItems];
 
   const draw = () => {
@@ -44,24 +48,53 @@ export function mountGroceries(slot, initialItems) {
     if (action === 'add') {
       const text = window.prompt('What to add?');
       if (!text) return;
-      const qty = window.prompt('Quantity (optional):') ?? '';
-      items = [...items, { text, qty, done: false }];
+      if (actions) {
+        // Apple Notes doesn't carry qty — skip the prompt when wired to bridge.
+        items = [...items, { text, done: false }];
+        draw();
+        actions.append(text).catch(() => {
+          items = items.filter(x => x.text !== text);
+          draw();
+        });
+      } else {
+        const qty = window.prompt('Quantity (optional):') ?? '';
+        items = [...items, { text, qty, done: false }];
+        draw();
+      }
     } else if (action === 'edit') {
+      // No bridge edit endpoint — local-only.
       const next = window.prompt('Edit:', items[idx].text);
       if (next === null) return;
       items = items.map((it, i) => i === idx ? { ...it, text: next } : it);
+      draw();
     } else if (action === 'delete') {
       if (!window.confirm(`Delete "${items[idx].text}"?`)) return;
+      const removed = items[idx];
       items = items.filter((_, i) => i !== idx);
+      draw();
+      actions?.strike(removed.text).catch(() => {
+        items.splice(idx, 0, removed);
+        draw();
+      });
     } else if (action === 'toggle') {
-      items = items.map((it, i) => i === idx ? { ...it, done: !it.done } : it);
-    } else {
-      return;
+      const it = items[idx];
+      if (actions && it.done) return; // no unstrike yet
+      items = items.map((x, i) => i === idx ? { ...x, done: !x.done } : x);
+      draw();
+      if (actions && !it.done) {
+        actions.strike(it.text).catch(() => {
+          items = items.map((x, i) => i === idx ? { ...x, done: false } : x);
+          draw();
+        });
+      }
     }
-    draw();
   });
 
   draw();
+
+  return {
+    setItems(next) { items = [...next]; draw(); },
+  };
 }
 
 function escapeHtml(s) {

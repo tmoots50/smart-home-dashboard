@@ -63,18 +63,29 @@ Ordered task list for v1. Check off as we go. Reorder freely — `spec.md` is th
 ## Phase 6 — Photo widget
 - [x] `lib/photos-mock.js` — local fixture images _(SVG gradients, no binary fixtures)_
 - [x] `widgets/photo.js` against the mock (slow crossfade rotation)
-- [ ] `rclone` Google Drive → local folder cron on the Pi
-- [ ] Wire widget to local folder
+- [x] Wire to Google Photos shared album via `/api/photos` CF Pages Function _(2026-05-06)_
+- [x] 60s rotation, random sample of up to 30 photos, 1h edge cache _(2026-05-06)_
+- [ ] Tim: complete one-time Google OAuth setup per [`docs/google-setup.md`](./docs/google-setup.md), set CF Pages env vars
 
 ## Phase 7 — Daily message widget
-- [x] `widgets/message.js` — reads from a small JSON file in app/ _(currently mock; JSON wiring deferred)_
-- [ ] Remote-push mechanism: edit JSON over SSH? Tiny endpoint? Defer decision.
+- [x] `widgets/aimessage.js` — renders msg with source + time-ago badge
+- [x] `lib/aimessage.js` — fetches `/messages.json`, picks today's entry, falls back to most-recent past, then mock _(2026-05-06)_
+- [x] `app/public/messages.json` seeded with sample dates
+- [x] Remote-push mechanism: edit `messages.json` + git push → CF Pages auto-deploys _(2026-05-06)_
 
-## Phase 8 — Family todos widget
-- [x] Shape decision: shared todos live in the existing "TODOs" Apple Note (already wired into openclaw-setup family-copilot via `mfb-inote-*` helpers) _(2026-05-05)_
-- [x] `widgets/todos.js` against a mock
-- [ ] Build Apple Notes HTTP bridge on Old Mac (see `followups.md` — "Apple Notes (iNote) HTTP bridge")
-- [ ] Wire real source
+## Phase 8 — Family todos + groceries widgets
+- [x] Shape decision (2026-05-05): shared lists in Apple Notes via openclaw bridge — *superseded 2026-05-06*
+- [x] Shape decision (2026-05-06): shared lists in **Google Tasks** (Todos + Groceries lists), accessed via CF Pages Functions wrapping the Google Tasks API
+- [x] `widgets/{todos,groceries}.js` against mocks
+- [x] Build CF Pages Functions: `/api/tasks/[list]` (GET/POST), `/api/tasks/[list]/strike` (POST), discovery endpoint `/api/tasks/_lists` _(2026-05-06)_
+- [x] Wire dashboard via `lib/tasks.js` — same {initial, live} + actions contract as iNote had _(2026-05-06)_
+- [ ] Tim: complete one-time Google OAuth setup per [`docs/google-setup.md`](./docs/google-setup.md)
+- [ ] Tim: create "Todos" + "Groceries" task lists in Google Tasks; capture IDs into CF env vars
+- [ ] Caroline migration: she installs Google Tasks app, learns the new add/check flow
+
+## Phase 8b — iNote bridge (deferred, code lives in openclaw-setup)
+- [x] Built and tested in this repo _(2026-05-06)_
+- [x] Moved to `openclaw-setup/bridges/inote/` as a generic capability for any future consumer _(2026-05-06)_
 
 ## Phase 9 — Headlines widget
 - [ ] Curated source list (dry, no doom)

@@ -1,0 +1,15 @@
+{
+  "_doc": "Daily message overrides. Edit + git push to publish (CF Pages auto-deploys). Date is matched against the dashboard's local date (YYYY-MM-DD). If no entry matches today, the most recent past entry is shown. Source is the byline.",
+  "messages": [
+    {
+      "date": "2026-05-05",
+      "text": "Pivoted v1 to the Meswao tablet today. Real weather, real notes, real deploy story — the dashboard is finally an actual thing.",
+      "source": "Tim"
+    },
+    {
+      "date": "2026-05-06",
+      "text": "Halfway through paternity leave. Mabel's first real giggle is on the calendar somewhere.",
+      "source": "Tim"
+    }
+  ]
+}

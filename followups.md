@@ -39,7 +39,7 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 
 - **USB lavalier mic + Whisper.cpp on the Pi.** ~$30 hardware, one weekend of wiring. Closes the "I'd add this to a chore list but only my phone can type" loop — turns the wall from a display into a capture surface. Pairs with the Claude / OpenClaw integration the spec already anticipates. *Source: `_audits/2026-04-29-ui-audit.md`.*
 - **Voice commands via wall mic** (broader than the lavalier idea — full conversational interface). *Migrated from `todo.md`.*
-- **Motion-sensor wake/sleep** to extend monitor lifespan and reduce midnight glow. *Migrated from `todo.md`.*
+- **Motion-sensor wake/sleep** to extend monitor lifespan and reduce midnight glow. *Migrated from `todo.md`.* **Important: PIR (passive infrared), NOT camera-based.** Fully Kiosk Plus offers camera-based motion via the tablet's front cam; rejected 2026-05-06 because the dashboard mounts in a bathroom — a camera there is a non-starter regardless of on-device-only claims (future Fully bugs, Caroline's comfort, family/guest perception). Real implementation: external PIR sensor (ESP32 + HC-SR501, Aqara wireless, or similar) wired to hit an HTTP endpoint that toggles brightness. v1 fallback: schedule-based dimming via Fully's daily schedule (bright 06:30 → dim 22:00).
 - **Display upgrade to Elo 1502L FHD 15.6"** (commercial-grade, 5–7yr humid-bathroom lifespan) if the family loves the v1 build. *Migrated from `todo.md`.*
 - **Smart-home control surface** — lights, thermostat, locks — once Home Assistant joins the stack. *Migrated from `todo.md`.*
 - **Multi-device personalization** — face/phone-proximity → which view (morning Caroline vs. evening Tim). *Migrated from `todo.md`.*
@@ -53,5 +53,10 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 
 ## Recently resolved
 *(last ~10 items, prune older)*
+
+- **Pivot to Google Tasks + Google Photos via CF Pages Functions.** *Resolved 2026-05-06.* Tim ruled out any Old Mac dependency for new features; Apple Notes and Apple Photos are inaccessible from non-Apple infra. Switched: shared lists move to Google Tasks (Caroline migrates from Apple Notes), photos move to Google Photos shared album. Three new Functions (`/api/photos`, `/api/tasks/[list]`, `/api/tasks/[list]/strike`) hold the Google OAuth refresh token server-side; dashboard talks to them with a shared bearer token. Setup runbook in `docs/google-setup.md`.
+- **iNote bridge moved to openclaw-setup.** *Resolved 2026-05-06.* The Apple Notes bridge built earlier today moved to `openclaw-setup/bridges/inote/` since this dashboard no longer needs it. Code preserved as a generic capability for any future consumer of the `mfb-inote-*` helpers.
+- **Daily message wired via JSON + CF Pages.** *Resolved 2026-05-06.* `app/public/messages.json` keyed by date; `lib/aimessage.js` picks today (or most-recent past) on each load. Publishing = edit + push.
+- **Periodic weather refresh.** *Resolved 2026-05-06.* `mountWeather` now refreshes every 15min; long-running kiosk no longer sits on stale data.
 
 - **Touch calibration off after screen rotation (transform=270)** — *Resolved 2026-05-01.* Root cause was double-rotation: the udev rule applied `LIBINPUT_CALIBRATION_MATRIX` at the libinput layer, AND labwc's `rc.xml` applied the output transform via `<touch mapToOutput="HDMI-A-1"/>`. Both layers rotating compounded into the "close but off" symptom. Fix: removed `/etc/udev/rules.d/90-cocopar-touch.rules` (renamed to `.disabled-2026-05-01`), let labwc + `mapToOutput` own touch rotation alone. Verified taps register accurately after reboot. Lesson: on modern wlroots compositors, prefer compositor-level touch mapping over libinput calibration — the two don't compose.

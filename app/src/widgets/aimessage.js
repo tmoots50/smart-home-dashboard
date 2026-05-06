@@ -9,6 +9,13 @@ export function renderAiMessage(msg, now = new Date()) {
   `;
 }
 
+// Mounts into a slot. Renders `initial` instantly, swaps to `live` when it
+// resolves. Caller passes the result of getAiMessage().
+export function mountAiMessage(el, { initial, live }) {
+  el.innerHTML = renderAiMessage(initial);
+  live.then(msg => { if (msg) el.innerHTML = renderAiMessage(msg); });
+}
+
 function formatAgo(then, now) {
   const ms = now - then;
   if (ms < 60_000) return 'just now';

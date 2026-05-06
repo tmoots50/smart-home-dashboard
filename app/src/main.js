@@ -28,3 +28,13 @@ document.addEventListener('pointerdown', () => {
     document.documentElement.requestFullscreen().catch(() => {});
   }
 }, true);
+
+// Nightly self-reload at 04:00 local. Clears any accumulated state / leak; runs
+// while the screen is asleep so it's invisible to the user.
+(function scheduleNightlyReload() {
+  const now = new Date();
+  const next = new Date();
+  next.setHours(4, 0, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  setTimeout(() => window.location.reload(), next - now);
+})();

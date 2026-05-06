@@ -1,4 +1,8 @@
 // v1 edit UX uses window.prompt/confirm.
+//
+// `actions` (optional) wires mutations through to a backend (the iNote bridge).
+// When passed, toggle/add/delete persist via actions.{strike,append} and revert
+// the optimistic update on failure. When omitted, behaves as a pure-local widget.
 
 const OWNERS = ['Tim', 'Caroline'];
 const DAY_MS = 86_400_000;
@@ -21,10 +25,10 @@ export function renderTodos(todos, now = new Date()) {
               <span class="todos__check${t.done ? ' todos__check--done' : ''}" data-action="toggle" data-idx="${i}"></span>
               <div class="todos__body">
                 <span class="todos__text${t.done ? ' todos__text--done' : ''}">${escapeHtml(t.text)}</span>
-                <span class="todos__meta">
+                ${(t.due || t.owner) ? `<span class="todos__meta">
                   ${t.due ? `<span class="todos__due ${dueClass(t.due, now)}">${formatDue(t.due, now)}</span>` : ''}
-                  <span class="todos__owner">${escapeHtml(t.owner)}</span>
-                </span>
+                  ${t.owner ? `<span class="todos__owner">${escapeHtml(t.owner)}</span>` : ''}
+                </span>` : ''}
               </div>
               <span class="card__row-actions">
                 <button class="btn btn--icon" data-action="edit" data-idx="${i}" aria-label="Edit">✎</button>
@@ -38,7 +42,7 @@ export function renderTodos(todos, now = new Date()) {
   `;
 }
 
-export function mountTodos(slot, initial) {
+export function mountTodos(slot, initial, actions = null) {
   let items = [...initial];
 
   const draw = () => { slot.innerHTML = renderTodos(items, new Date()); };
@@ -52,28 +56,61 @@ export function mountTodos(slot, initial) {
     if (action === 'add') {
       const text = window.prompt('What needs doing?');
       if (!text) return;
-      const owner = window.prompt(`Whose? (${OWNERS.join(' or ')})`, OWNERS[0]);
-      if (!owner) return;
-      const due = window.prompt('Due (YYYY-MM-DD, blank for none):', todayString()) ?? '';
-      items = [...items, { text, owner, due, done: false }];
+      // When wired to the bridge, owner/due aren't structured fields in Apple
+      // Notes — skip those prompts. Fall back to the richer prompts for local-only.
+      if (actions) {
+        items = [...items, { text, done: false }];
+        draw();
+        actions.append(text).catch(() => {
+          items = items.filter(x => x.text !== text);
+          draw();
+        });
+      } else {
+        const owner = window.prompt(`Whose? (${OWNERS.join(' or ')})`, OWNERS[0]);
+        if (!owner) return;
+        const due = window.prompt('Due (YYYY-MM-DD, blank for none):', todayString()) ?? '';
+        items = [...items, { text, owner, due, done: false }];
+        draw();
+      }
     } else if (action === 'edit') {
+      // Apple Notes has no clean "edit one line" — skip persistence here.
       const next = window.prompt('Edit text:', items[idx].text);
       if (next === null) return;
       const due = window.prompt('Due (YYYY-MM-DD, blank for none):', items[idx].due ?? '');
       if (due === null) return;
       items = items.map((it, i) => i === idx ? { ...it, text: next, due } : it);
+      draw();
     } else if (action === 'delete') {
       if (!window.confirm(`Delete "${items[idx].text}"?`)) return;
+      const removed = items[idx];
       items = items.filter((_, i) => i !== idx);
+      draw();
+      // With the bridge: "delete" means strike — Apple Notes keeps the line, just
+      // marks it done. Matches family-copilot semantics.
+      actions?.strike(removed.text).catch(() => {
+        items.splice(idx, 0, removed);
+        draw();
+      });
     } else if (action === 'toggle') {
-      items = items.map((it, i) => i === idx ? { ...it, done: !it.done } : it);
-    } else {
-      return;
+      const it = items[idx];
+      // The bridge has no "unstrike" endpoint — uncheck is local-only for now.
+      if (actions && it.done) return;
+      items = items.map((x, i) => i === idx ? { ...x, done: !x.done } : x);
+      draw();
+      if (actions && !it.done) {
+        actions.strike(it.text).catch(() => {
+          items = items.map((x, i) => i === idx ? { ...x, done: false } : x);
+          draw();
+        });
+      }
     }
-    draw();
   });
 
   draw();
+
+  return {
+    setItems(next) { items = [...next]; draw(); },
+  };
 }
 
 function parseLocalDate(s) {

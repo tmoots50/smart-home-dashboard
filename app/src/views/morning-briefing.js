@@ -1,6 +1,6 @@
 import { mountClock } from '../widgets/clock.js';
 import { mountWeather } from '../widgets/weather.js';
-import { renderAiMessage } from '../widgets/aimessage.js';
+import { mountAiMessage } from '../widgets/aimessage.js';
 import { renderHeadlines } from '../widgets/headlines.js';
 import { renderCalendar } from '../widgets/calendar.js';
 import { renderCountdown } from '../widgets/countdown.js';
@@ -10,16 +10,19 @@ import { mountMabel } from '../widgets/mabel.js';
 import { renderBible } from '../widgets/bible.js';
 import { mountCardPhoto } from '../widgets/card-photo.js';
 
-import { getWeather } from '../lib/weather.js';
-import { getMockAiMessage } from '../lib/aimessage-mock.js';
+import { getAiMessage } from '../lib/aimessage.js';
 import { getMockHeadlines } from '../lib/headlines-mock.js';
 import { getMockCalendar } from '../lib/calendar-mock.js';
 import { getMockCountdowns } from '../lib/countdown-mock.js';
-import { getMockTodos } from '../lib/todos-mock.js';
-import { getMockGroceries } from '../lib/groceries-mock.js';
 import { getMockMabel } from '../lib/mabel-mock.js';
 import { getMockBibleVerse } from '../lib/bible-mock.js';
-import { getMockPhotos } from '../lib/photos-mock.js';
+import { getPhotos } from '../lib/photos.js';
+import {
+  getTodos, getGroceries,
+  appendTodo, strikeTodo,
+  appendGrocery, strikeGrocery,
+  isConfigured as tasksConfigured,
+} from '../lib/tasks.js';
 
 const SVG_ATTRS = 'viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"';
 const MIC_SVG = `<svg ${SVG_ATTRS}><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="9" y1="21" x2="15" y2="21"/></svg>`;
@@ -51,16 +54,15 @@ export function renderMorningBriefing(root) {
     lon: parseFloat(params.get('lon')) || DEFAULT_LOC.lon,
     location: params.get('location') || DEFAULT_LOC.location,
   };
-  const weather = getWeather(loc);
   const headlines = getMockHeadlines();
   const calendar = getMockCalendar();
   const countdowns = getMockCountdowns();
-  const todos = getMockTodos();
-  const groceries = getMockGroceries();
+  const todos = getTodos();
+  const groceries = getGroceries();
   const mabel = getMockMabel();
   const verse = getMockBibleVerse();
-  const photos = getMockPhotos();
-  const aimessage = getMockAiMessage();
+  const photos = getPhotos();
+  const aimessage = getAiMessage();
 
   root.innerHTML = `
     <main class="briefing">
@@ -70,7 +72,7 @@ export function renderMorningBriefing(root) {
         <div class="card time-card">
           <div data-slot="clock"></div>
           <hr class="card__divider"/>
-          ${renderAiMessage(aimessage)}
+          <div data-slot="aimessage"></div>
           <hr class="card__divider"/>
           <div data-slot="weather"></div>
           <div class="action-bar">
@@ -103,9 +105,16 @@ export function renderMorningBriefing(root) {
   `;
 
   mountClock(root.querySelector('[data-slot="clock"]'));
-  mountWeather(root.querySelector('[data-slot="weather"]'), weather);
-  mountTodos(root.querySelector('[data-slot="todos"]'), todos);
-  mountGroceries(root.querySelector('[data-slot="groceries"]'), groceries);
+  mountWeather(root.querySelector('[data-slot="weather"]'), loc);
+  mountAiMessage(root.querySelector('[data-slot="aimessage"]'), aimessage);
+
+  const todoActions = tasksConfigured ? { append: appendTodo, strike: strikeTodo } : null;
+  const groceryActions = tasksConfigured ? { append: appendGrocery, strike: strikeGrocery } : null;
+  const todosCtl = mountTodos(root.querySelector('[data-slot="todos"]'), todos.initial, todoActions);
+  const groceriesCtl = mountGroceries(root.querySelector('[data-slot="groceries"]'), groceries.initial, groceryActions);
+  todos.live.then(items => { if (items) todosCtl.setItems(items); });
+  groceries.live.then(items => { if (items) groceriesCtl.setItems(items); });
+
   mountMabel(root.querySelector('[data-slot="mabel"]'), mabel);
   mountCardPhoto(root.querySelector('[data-slot="photo"]'), photos);
 
