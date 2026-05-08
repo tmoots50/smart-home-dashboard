@@ -10,9 +10,11 @@ export function renderWeather(data) {
         <div class="weather__current">
           <div class="weather__now">
             <span class="weather__temp">${data.current.tempF}°</span>
-            <span class="weather__condition">${escapeHtml(data.current.condition)}</span>
+            <div class="weather__meta">
+              <span class="weather__condition">${escapeHtml(data.current.condition)}</span>
+              <div class="weather__hilo">H ${data.current.hi}° · L ${data.current.lo}°</div>
+            </div>
           </div>
-          <div class="weather__hilo">H ${data.current.hi}° · L ${data.current.lo}°</div>
         </div>
         <div class="weather__forecast">
           ${data.forecast.map(day => `
