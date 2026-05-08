@@ -87,4 +87,18 @@ describe('mountMabel', () => {
     const later = slot.querySelector('.mabel__since-value').textContent;
     expect(later).not.toBe(initial);
   });
+
+  it('setData swaps the rendered data without remounting', () => {
+    vi.setSystemTime(NOW);
+    const slot = document.createElement('div');
+    const ctl = mountMabel(slot, getMockMabel(NOW));
+    expect(slot.querySelector('.card__title').textContent).toContain('Mabel');
+
+    ctl.setData({
+      childName: 'Renamed',
+      birthDate: '2026-04-01T00:00:00',
+      events: [{ type: 'nurse', at: new Date(NOW.getTime() - 30 * 60_000).toISOString() }],
+    });
+    expect(slot.querySelector('.card__title').textContent).toContain('Renamed');
+  });
 });

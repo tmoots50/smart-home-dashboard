@@ -25,14 +25,21 @@ export async function onRequest(context) {
   if (authErr) return withCors(authErr, cors);
 
   const cache = caches.default;
-  const cacheKey = new Request(new URL(request.url).origin + '/api/headlines/__cache');
+  const cacheKey = new Request(new URL(request.url).origin + '/api/headlines/__cache/v2');
   const hit = await cache.match(cacheKey);
   if (hit) return withCors(hit, cors);
 
   try {
     const groups = await Promise.all(FEEDS.map(async (f) => {
       try {
-        const res = await fetch(f.url, { cf: { cacheTtl: CACHE_TTL_S, cacheEverything: true } });
+        const res = await fetch(f.url, {
+          headers: {
+            // WordPress (ATL Mag) and a few CDNs 403 the default Workers UA.
+            'user-agent': 'SmartHomeDashboard/1.0 (+https://smart-home-dashboard-de0.pages.dev)',
+            'accept': 'application/rss+xml, application/atom+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.1',
+          },
+          cf: { cacheTtl: CACHE_TTL_S, cacheEverything: true },
+        });
         if (!res.ok) return { source: f.source, items: [] };
         const xml = await res.text();
         const items = parseFeed(xml).map(i => ({ ...i, source: f.source }));

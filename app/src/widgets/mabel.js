@@ -33,10 +33,19 @@ export function renderMabel(data, now = new Date()) {
   `;
 }
 
-export function mountMabel(slot, data) {
+// Mounts the widget against `initialData` (cached or mock) and returns a
+// controller. Call `setData` to swap in fresh data when a live fetch resolves.
+// The widget re-renders every 60s on its own so "since last feed" keeps
+// ticking even between fetches.
+export function mountMabel(slot, initialData) {
+  let data = initialData;
   const tick = () => { slot.innerHTML = renderMabel(data, new Date()); };
   tick();
-  setInterval(tick, 60_000);
+  const id = setInterval(tick, 60_000);
+  return {
+    setData(next) { if (next) { data = next; tick(); } },
+    teardown() { clearInterval(id); },
+  };
 }
 
 function findLastFeed(events) {
