@@ -51,15 +51,21 @@ async function request(path, opts = {}) {
   return res.json();
 }
 
+// Filter completed items out at the fetch layer — once an item is checked off,
+// the local widget shows a strikethrough during the optimistic update, then on
+// the next fetch the item disappears entirely. The bridge has no "unstrike"
+// path anyway, so completed items have no reason to stick around on screen.
 export async function fetchTodos() {
   const data = await request('/api/tasks/todos');
-  writeCache(CACHE_KEYS.todos, data.items);
-  return data.items;
+  const items = (data.items || []).filter(i => !i.done);
+  writeCache(CACHE_KEYS.todos, items);
+  return items;
 }
 export async function fetchGroceries() {
   const data = await request('/api/tasks/groceries');
-  writeCache(CACHE_KEYS.groceries, data.items);
-  return data.items;
+  const items = (data.items || []).filter(i => !i.done);
+  writeCache(CACHE_KEYS.groceries, items);
+  return items;
 }
 
 export async function appendTodo(text) {
