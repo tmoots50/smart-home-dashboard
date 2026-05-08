@@ -45,6 +45,7 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 - **Multi-device personalization** — face/phone-proximity → which view (morning Caroline vs. evening Tim). *Migrated from `todo.md`.*
 - **Anthropic Claude / OpenClaw integration** for AI-rearranged views per person/moment. *Migrated from `todo.md`. (Note: also referenced in `spec.md` "What done looks like" — this entry is the implementation parking lot, the spec is the vision.)*
 - **Postpartum-arc widget.** The dashboard knows Mabel's age in weeks; surface week-N normalcy hints (Claude-curated, midwife/pediatric sources). Pairs with a real referent for the "Halfway through" greeting. *Source: `_audits/2026-04-29-ui-audit.md` (idea #2).*
+- **Photo focal point = Mabel's face.** Today the photo card uses CSS `object-fit: cover` which crops to the geometric center — fine for landscapes, awful for portraits where Mabel's face ends up clipped or off-frame. Want the crop to keep her face centered in the visible card. Implementation options to weigh when this surfaces: (a) Drive folder convention — pre-crop sources to ~16:9 around the face; (b) browser-side `face-api.js`/MediaPipe inference + `object-position` per image; (c) server-side detection (Vision API or onnx model in the Function) and bake `focal: {x, y}` into `/api/photos` response. (a) is simplest, (c) is the only one that scales without tablet CPU cost.
 
 ## Active limitations
 *(known gaps we're living with for now — explicit accept-it-for-now decisions)*
