@@ -27,12 +27,6 @@ if (scale > 0 && scale < 4) {
 const root = document.querySelector('#app');
 renderMorningBriefing(root);
 
-document.addEventListener('pointerdown', () => {
-  if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-    document.documentElement.requestFullscreen().catch(() => {});
-  }
-}, true);
-
 // Nightly self-reload at 04:00 local. Clears any accumulated state / leak; runs
 // while the screen is asleep so it's invisible to the user.
 (function scheduleNightlyReload() {
