@@ -65,7 +65,7 @@ function normalize(api, location) {
       hi: Math.round(d.temperature_2m_max[0]),
       lo: Math.round(d.temperature_2m_min[0]),
     },
-    forecast: d.time.slice(1, 4).map((iso, i) => ({
+    forecast: d.time.slice(1, 6).map((iso, i) => ({
       label: DOW[new Date(iso + 'T12:00:00').getDay()],
       tempF: Math.round(d.temperature_2m_max[i + 1]),
       code: d.weather_code[i + 1],
@@ -87,7 +87,7 @@ export async function fetchWeather({ lat, lon, location }) {
     daily: 'temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset',
     temperature_unit: 'fahrenheit',
     timezone: 'auto',
-    forecast_days: '4',
+    forecast_days: '6',
   }).toString();
 
   const res = await fetch(url, { cache: 'no-store' });
