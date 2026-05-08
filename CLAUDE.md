@@ -30,6 +30,15 @@ Provides: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
 `GOOGLE_REFRESH_TOKEN`. If the file is missing, ask Tim to recreate it; do
 not paste tokens into commits or chat history.
 
+## Shipping changes to pages.dev
+Tim does most testing on the deployed CF Pages URL (`smart-home-dashboard-de0.pages.dev`), not the local dev server. When he says "ship it" / "push it" / "deploy" or asks for a change to be live on pages.dev:
+
+```bash
+scripts/ship.sh "feat: short conventional-commit message"
+```
+
+That one command stages all changes, commits with the given message, and pushes to `main` — CF Pages auto-rebuilds in ~1-2 min. Always pass a meaningful conventional-commit message; the script auto-generates a `wip:` one if omitted, but explicit beats default.
+
 ## Conventions
 - **Mock data first.** Every widget gets a mock-data adapter in `app/src/lib/` before touching real APIs. Real-data wiring is a swap, not a rewrite.
 - **Tests co-located with code.** `widgets/clock.test.js` next to `widgets/clock.js`. No top-level `tests/` folder.

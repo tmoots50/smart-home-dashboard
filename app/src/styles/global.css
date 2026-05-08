@@ -439,6 +439,11 @@ html.kiosk, html.kiosk body { overflow: hidden; }
 
 /* ───── todos (with owner + due + buttons) ───── */
 .todos__list { list-style: none; padding: 0; margin: 0; }
+.todos__more {
+  display: flex;
+  justify-content: center;
+  padding-top: var(--space-3);
+}
 .todos__item {
   display: grid;
   grid-template-columns: auto 1fr auto;

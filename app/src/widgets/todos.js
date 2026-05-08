@@ -7,20 +7,22 @@
 const OWNERS = ['Tim', 'Caroline'];
 const DAY_MS = 86_400_000;
 const DATE_FMT = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
+const PAGE_SIZE = 5;
 
-export function renderTodos(todos, now = new Date()) {
+export function renderTodos(todos, visibleCount = PAGE_SIZE, now = new Date()) {
+  const visible = todos.slice(0, visibleCount);
+  const remaining = todos.length - visible.length;
   return `
     <div class="todos">
       <div class="card__header">
         <h2 class="card__title">Todo</h2>
         <span class="card__header-actions">
-          <button class="btn btn--text" data-overlay="todos">See more</button>
           <button class="btn btn--add" data-action="add" aria-label="Add todo">+</button>
         </span>
       </div>
       ${!todos.length ? '<p class="muted">Nothing on the list.</p>' : `
         <ul class="todos__list">
-          ${todos.map((t, i) => `
+          ${visible.map((t, i) => `
             <li class="todos__item" data-action="toggle" data-idx="${i}">
               <span class="todos__check${t.done ? ' todos__check--done' : ''}" data-action="toggle" data-idx="${i}"></span>
               <div class="todos__body">
@@ -37,6 +39,11 @@ export function renderTodos(todos, now = new Date()) {
             </li>
           `).join('')}
         </ul>
+        ${remaining > 0 ? `
+          <div class="todos__more">
+            <button class="btn btn--text" data-action="more">See more (${remaining})</button>
+          </div>
+        ` : ''}
       `}
     </div>
   `;
@@ -44,14 +51,21 @@ export function renderTodos(todos, now = new Date()) {
 
 export function mountTodos(slot, initial, actions = null) {
   let items = [...initial];
+  let visibleCount = PAGE_SIZE;
 
-  const draw = () => { slot.innerHTML = renderTodos(items, new Date()); };
+  const draw = () => { slot.innerHTML = renderTodos(items, visibleCount, new Date()); };
 
   slot.addEventListener('click', (e) => {
     const target = e.target.closest('[data-action]');
     if (!target) return;
     const action = target.dataset.action;
     const idx = Number(target.dataset.idx);
+
+    if (action === 'more') {
+      visibleCount += PAGE_SIZE;
+      draw();
+      return;
+    }
 
     if (action === 'add') {
       const text = window.prompt('What needs doing?');
