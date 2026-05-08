@@ -240,6 +240,8 @@ html.kiosk, html.kiosk body { overflow: hidden; }
 }
 .weather__forecast {
   display: flex;
+  justify-content: space-between;
+  flex: 1;
   gap: var(--space-3);
   margin-top: var(--space-2);
 }
