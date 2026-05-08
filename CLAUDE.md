@@ -16,6 +16,20 @@ Tim's current setup: a few Alexas and a couple of smart plugs. **No Home Assista
 - [`docs/`](./docs/) — public-facing install + architecture docs, screenshots, demo video.
 - [`_context/`](./_context/) — decision log, hardware BOM, working notes.
 
+## Local credentials
+`.envrc.local` (gitignored) holds CF API + Google OAuth values used by the
+scripts under `scripts/`. **Before running any script that needs them, source
+the file in the same Bash invocation:**
+
+```bash
+source .envrc.local && node scripts/...
+```
+
+Provides: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
+`CLOUDFLARE_PAGES_PROJECT`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`,
+`GOOGLE_REFRESH_TOKEN`. If the file is missing, ask Tim to recreate it; do
+not paste tokens into commits or chat history.
+
 ## Conventions
 - **Mock data first.** Every widget gets a mock-data adapter in `app/src/lib/` before touching real APIs. Real-data wiring is a swap, not a rewrite.
 - **Tests co-located with code.** `widgets/clock.test.js` next to `widgets/clock.js`. No top-level `tests/` folder.
