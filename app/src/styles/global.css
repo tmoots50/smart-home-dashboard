@@ -216,7 +216,7 @@ html.kiosk, html.kiosk body { overflow: hidden; }
 }
 .weather__now {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-2);
 }
 .weather__temp {
