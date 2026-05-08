@@ -3,7 +3,7 @@
 
 import { getMockWeather } from './weather-mock.js';
 
-const CACHE_KEY = 'weather:v1';
+const CACHE_KEY = 'weather:v2';
 const CACHE_TTL_MS = 15 * 60 * 1000;
 
 // WMO weather code → short human label. Source: open-meteo.com/en/docs.
