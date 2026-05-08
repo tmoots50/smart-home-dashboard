@@ -45,12 +45,14 @@ function toWidgetShape(apiPhotos) {
   // can't carry an Authorization header, so the Function accepts ?token= as
   // a fallback for image-byte requests.
   const tokenSuffix = TOKEN ? `?token=${encodeURIComponent(TOKEN)}` : '';
-  return apiPhotos.map(p => ({
-    src: `${p.url}${tokenSuffix}`,
-    // Drive doesn't expose user-set captions; show the creation month as a
-    // soft label when available. Caption is optional in the widget.
-    caption: p.takenAt ? MONTH_FMT.format(new Date(p.takenAt)) : '',
-  }));
+  return apiPhotos.map(p => {
+    let caption = '';
+    if (p.takenAt) {
+      const d = new Date(p.takenAt);
+      if (!isNaN(d.getTime())) caption = MONTH_FMT.format(d);
+    }
+    return { src: `${p.url}${tokenSuffix}`, caption };
+  });
 }
 
 export async function fetchPhotos() {
@@ -62,7 +64,6 @@ export async function fetchPhotos() {
   const data = await res.json();
   const sample = shuffleAndTake(data.photos || [], MAX_RENDER);
   const widgetPhotos = toWidgetShape(sample);
-  console.log('[photos] live ok:', { apiCount: data.photos?.length, sample: sample.length, widget: widgetPhotos.length, first: widgetPhotos[0] });
   writeCache(widgetPhotos);
   return widgetPhotos;
 }
@@ -72,7 +73,7 @@ export function getPhotos() {
   const cached = readCache();
   const initial = cached ?? getMockPhotos();
   const live = TOKEN
-    ? fetchPhotos().catch((err) => { console.error('[photos] live fetch failed:', err); return initial; })
+    ? fetchPhotos().catch(() => initial)
     : Promise.resolve(initial);
   return { initial, live };
 }
