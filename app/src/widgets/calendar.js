@@ -4,7 +4,7 @@ const TIME_FMT = new Intl.DateTimeFormat(undefined, {
   hour: 'numeric',
   minute: '2-digit',
 });
-const WINDOW_HOURS = 3;
+const WINDOW_HOURS = 24;
 const WINDOW_MS = WINDOW_HOURS * 3_600_000;
 const REFRESH_MS = 5 * 60 * 1000; // re-fetch every 5min — events can be added during the day
 
@@ -21,7 +21,7 @@ export function renderCalendar(data, now = new Date()) {
   return `
     <div class="calendar">
       <div class="card__header">
-        <h2 class="card__title">Next 3 hours</h2>
+        <h2 class="card__title">Next 24 hours</h2>
         <button class="btn btn--text" data-overlay="calendar">See more</button>
       </div>
       ${sections.map(section => renderSection(section, data.nextEventId)).join('')}

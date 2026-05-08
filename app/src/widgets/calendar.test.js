@@ -14,17 +14,33 @@ describe('renderCalendar', () => {
 
   it('shows placeholder text in empty sections', () => {
     const NOW = new Date('2026-04-29T08:00:00');
-    const data = getMockCalendar(NOW);
-    const html = renderCalendar(data, NOW);
+    const start = new Date(NOW.getTime() + 30 * 60_000).toISOString();
+    const html = renderCalendar({
+      sections: [
+        { label: 'Family', events: [{ id: 'a', startsAt: start, title: 'Standup', sub: '' }] },
+        { label: 'Tim (Work)', events: [] },
+      ],
+      nextEventId: 'a',
+    }, NOW);
     expect(html).toContain('Nothing scheduled');
   });
 
-  it('only renders events within the next 3 hours', () => {
+  it('only renders events within the next 24 hours', () => {
     const NOW = new Date('2026-04-29T08:00:00');
-    const data = getMockCalendar(NOW);
-    const html = renderCalendar(data, NOW);
-    expect(html).toContain('Coffee with Sara');
-    expect(html).not.toContain('Strategy review');
+    const inWindow = new Date(NOW.getTime() + 23 * 3_600_000).toISOString();
+    const outOfWindow = new Date(NOW.getTime() + 25 * 3_600_000).toISOString();
+    const html = renderCalendar({
+      sections: [{
+        label: 'Family',
+        events: [
+          { id: 'a', startsAt: inWindow, title: 'Just inside window', sub: '' },
+          { id: 'b', startsAt: outOfWindow, title: 'Just outside window', sub: '' },
+        ],
+      }],
+      nextEventId: 'a',
+    }, NOW);
+    expect(html).toContain('Just inside window');
+    expect(html).not.toContain('Just outside window');
   });
 
   it('marks the next-up event with the highlight class', () => {

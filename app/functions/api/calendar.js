@@ -1,8 +1,7 @@
 // GET /api/calendar          → { sections: [{ label, events: [{id, startsAt, title, sub}] }], nextEventId }
 // GET /api/calendar?_lists=1 → { calendars: [{ id, summary, primary }] } (one-time discovery)
 //
-// Window: now-1h to now+24h. Widget filters to whatever sub-window it cares
-// about (today's "next 3 hours" view; eventually maybe a full-day list).
+// Window: now-1h to now+24h. Widget filters to whatever sub-window it cares about.
 //
 // Configuration via GOOGLE_CALENDARS_JSON env var — see calendar-api.js header.
 
