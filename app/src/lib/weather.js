@@ -71,6 +71,10 @@ function normalize(api, location) {
       code: d.weather_code[i + 1],
       emoji: WMO_EMOJI[d.weather_code[i + 1]] ?? '',
     })),
+    sun: {
+      sunrise: d.sunrise?.[0] ?? null,
+      sunset: d.sunset?.[0] ?? null,
+    },
   };
 }
 
@@ -80,7 +84,7 @@ export async function fetchWeather({ lat, lon, location }) {
     latitude: lat,
     longitude: lon,
     current: 'temperature_2m,weather_code',
-    daily: 'temperature_2m_max,temperature_2m_min,weather_code',
+    daily: 'temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset',
     temperature_unit: 'fahrenheit',
     timezone: 'auto',
     forecast_days: '4',

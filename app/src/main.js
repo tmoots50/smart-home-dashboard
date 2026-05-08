@@ -1,4 +1,5 @@
 import { renderMorningBriefing } from './views/morning-briefing.js';
+import { applyTheme } from './lib/theme-mode.js';
 
 const params = new URLSearchParams(window.location.search);
 
@@ -8,9 +9,12 @@ if (params.has('kiosk')) {
   document.documentElement.classList.add('kiosk');
 }
 
-// ?theme=fun swaps the editorial dark theme for the warm light variant.
-const theme = params.get('theme');
-if (theme) document.documentElement.dataset.theme = theme;
+// Time-of-day theme: `light` during the day, `cosy` after sunset (sunrise/sunset
+// come from the weather cache). `?theme=` URL param forces a specific theme for
+// previews. Re-evaluated every 5 minutes so a long-running kiosk crosses sunset
+// cleanly without a reload.
+applyTheme();
+setInterval(applyTheme, 5 * 60 * 1000);
 
 // ?scale=0.6 shrinks the whole UI proportionally. Needed for tablets where
 // the CSS viewport is small but the physical screen is large (MESWAO B3 etc.).

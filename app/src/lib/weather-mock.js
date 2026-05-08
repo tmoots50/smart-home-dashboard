@@ -14,5 +14,6 @@ export function getMockWeather() {
       { label: 'Wed', tempF: 76, code: 2, emoji: '⛅' },
       { label: 'Thu', tempF: 82, code: 95, emoji: '⛈️' },
     ],
+    sun: { sunrise: null, sunset: null },
   };
 }
