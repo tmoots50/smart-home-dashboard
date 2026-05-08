@@ -437,16 +437,35 @@ html.kiosk, html.kiosk body { overflow: hidden; }
 .chores__text { font-size: 1rem; }
 .chores__text--done { text-decoration: line-through; color: var(--color-muted); }
 
+/* ───── shared row affordances ───── */
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  color: var(--color-muted);
+  font-size: 1.1rem;
+  letter-spacing: -2px;
+  line-height: 1;
+  cursor: grab;
+  user-select: none;
+  touch-action: none; /* prevent scroll-fight while dragging */
+}
+.drag-handle:active { cursor: grabbing; }
+.sortable-ghost { opacity: 0.4; }
+.sortable-chosen { background: rgba(201, 169, 106, 0.06); }
+
 /* ───── todos (with owner + due + buttons) ───── */
 .todos__list { list-style: none; padding: 0; margin: 0; }
 .todos__more {
   display: flex;
   justify-content: center;
+  gap: var(--space-3);
   padding-top: var(--space-3);
 }
 .todos__item {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto auto 1fr auto;
   gap: var(--space-3);
   align-items: center;
   padding: var(--space-3) 0;
@@ -493,7 +512,7 @@ html.kiosk, html.kiosk body { overflow: hidden; }
 .groceries__list { list-style: none; padding: 0; margin: 0; }
 .groceries__item {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto auto 1fr auto;
   gap: var(--space-3);
   align-items: center;
   padding: var(--space-3) 0;

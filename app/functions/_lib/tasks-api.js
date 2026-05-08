@@ -40,6 +40,19 @@ export async function insertTask(accessToken, listId, title) {
   return res.json();
 }
 
+// Move a task to a new position in the list. `previousId` (optional) is the ID
+// of the task it should go after — omit to move to the top.
+export async function moveTask(accessToken, listId, taskId, previousId) {
+  const url = new URL(`${BASE}/lists/${encodeURIComponent(listId)}/tasks/${encodeURIComponent(taskId)}/move`);
+  if (previousId) url.searchParams.set('previous', previousId);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error(`tasks move ${res.status}: ${await res.text().catch(() => '')}`);
+  return res.json();
+}
+
 export async function completeTask(accessToken, listId, taskId) {
   const res = await fetch(`${BASE}/lists/${encodeURIComponent(listId)}/tasks/${encodeURIComponent(taskId)}`, {
     method: 'PATCH',

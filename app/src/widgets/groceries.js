@@ -2,8 +2,12 @@
 // replaced with proper touch UI later.
 //
 // `actions` (optional) wires mutations through to the iNote bridge. When passed,
-// add/toggle/delete persist via actions.{append,strike} with optimistic-update
+// add/toggle/delete persist via actions.{append,strike,move} with optimistic-update
 // + revert-on-failure. When omitted, behaves as a pure-local widget.
+
+import Sortable from 'sortablejs';
+
+const DRAG_HANDLE = '<span class="drag-handle" aria-label="Drag to reorder">⋮⋮</span>';
 
 export function renderGroceries(items) {
   return `
@@ -15,7 +19,8 @@ export function renderGroceries(items) {
       ${!items.length ? '<p class="muted">List is empty.</p>' : `
         <ul class="groceries__list">
           ${items.map((item, i) => `
-            <li class="groceries__item" data-action="toggle" data-idx="${i}">
+            <li class="groceries__item" data-action="toggle" data-idx="${i}" data-id="${escapeHtml(item.id ?? '')}">
+              ${DRAG_HANDLE}
               <span class="groceries__check${item.done ? ' groceries__check--done' : ''}" data-action="toggle" data-idx="${i}"></span>
               <span class="groceries__text${item.done ? ' groceries__text--done' : ''}">
                 ${escapeHtml(item.text)}${item.qty ? ` <span class="groceries__qty">· ${escapeHtml(item.qty)}</span>` : ''}
@@ -34,10 +39,39 @@ export function renderGroceries(items) {
 
 export function mountGroceries(slot, initialItems, actions = null) {
   let items = [...initialItems];
+  let sortable = null;
 
   const draw = () => {
+    if (sortable) { sortable.destroy(); sortable = null; }
     slot.innerHTML = renderGroceries(items);
+    const list = slot.querySelector('.groceries__list');
+    if (list) sortable = wireSortable(list);
   };
+
+  function wireSortable(list) {
+    return Sortable.create(list, {
+      handle: '.drag-handle',
+      animation: 150,
+      delay: 200,
+      delayOnTouchOnly: true,
+      onEnd(evt) {
+        if (evt.oldIndex === evt.newIndex) return;
+        const before = items.slice();
+        const moved = items[evt.oldIndex];
+        const next = items.slice();
+        next.splice(evt.oldIndex, 1);
+        next.splice(evt.newIndex, 0, moved);
+        const previous = evt.newIndex > 0 ? next[evt.newIndex - 1] : null;
+        items = next;
+        if (actions?.move && moved?.id) {
+          actions.move(moved.id, previous?.id ?? null).catch(() => {
+            items = before;
+            draw();
+          });
+        }
+      },
+    });
+  }
 
   slot.addEventListener('click', (e) => {
     const target = e.target.closest('[data-action]');

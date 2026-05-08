@@ -1,17 +1,22 @@
 // v1 edit UX uses window.prompt/confirm.
 //
 // `actions` (optional) wires mutations through to a backend (the iNote bridge).
-// When passed, toggle/add/delete persist via actions.{strike,append} and revert
+// When passed, toggle/add/delete persist via actions.{strike,append,move} and revert
 // the optimistic update on failure. When omitted, behaves as a pure-local widget.
+
+import Sortable from 'sortablejs';
 
 const OWNERS = ['Tim', 'Caroline'];
 const DAY_MS = 86_400_000;
 const DATE_FMT = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
 const PAGE_SIZE = 5;
 
+const DRAG_HANDLE = '<span class="drag-handle" aria-label="Drag to reorder">⋮⋮</span>';
+
 export function renderTodos(todos, visibleCount = PAGE_SIZE, now = new Date()) {
   const visible = todos.slice(0, visibleCount);
   const remaining = todos.length - visible.length;
+  const expanded = visibleCount > PAGE_SIZE;
   return `
     <div class="todos">
       <div class="card__header">
@@ -23,7 +28,8 @@ export function renderTodos(todos, visibleCount = PAGE_SIZE, now = new Date()) {
       ${!todos.length ? '<p class="muted">Nothing on the list.</p>' : `
         <ul class="todos__list">
           ${visible.map((t, i) => `
-            <li class="todos__item" data-action="toggle" data-idx="${i}">
+            <li class="todos__item" data-action="toggle" data-idx="${i}" data-id="${escapeHtml(t.id ?? '')}">
+              ${DRAG_HANDLE}
               <span class="todos__check${t.done ? ' todos__check--done' : ''}" data-action="toggle" data-idx="${i}"></span>
               <div class="todos__body">
                 <span class="todos__text${t.done ? ' todos__text--done' : ''}">${escapeHtml(t.text)}</span>
@@ -39,9 +45,10 @@ export function renderTodos(todos, visibleCount = PAGE_SIZE, now = new Date()) {
             </li>
           `).join('')}
         </ul>
-        ${remaining > 0 ? `
+        ${(remaining > 0 || expanded) ? `
           <div class="todos__more">
-            <button class="btn btn--text" data-action="more">See more (${remaining})</button>
+            ${remaining > 0 ? `<button class="btn btn--text" data-action="more">See more (${remaining})</button>` : ''}
+            ${expanded ? `<button class="btn btn--text" data-action="less">See less</button>` : ''}
           </div>
         ` : ''}
       `}
@@ -52,8 +59,42 @@ export function renderTodos(todos, visibleCount = PAGE_SIZE, now = new Date()) {
 export function mountTodos(slot, initial, actions = null) {
   let items = [...initial];
   let visibleCount = PAGE_SIZE;
+  let sortable = null;
 
-  const draw = () => { slot.innerHTML = renderTodos(items, visibleCount, new Date()); };
+  const draw = () => {
+    if (sortable) { sortable.destroy(); sortable = null; }
+    slot.innerHTML = renderTodos(items, visibleCount, new Date());
+    const list = slot.querySelector('.todos__list');
+    if (list) sortable = wireSortable(list);
+  };
+
+  // Long-press a row's drag handle, drop into a new position, persist to bridge.
+  // Touch-only delay disambiguates drag from a quick tap-to-toggle.
+  function wireSortable(list) {
+    return Sortable.create(list, {
+      handle: '.drag-handle',
+      animation: 150,
+      delay: 200,
+      delayOnTouchOnly: true,
+      onEnd(evt) {
+        if (evt.oldIndex === evt.newIndex) return;
+        const before = items.slice();
+        const moved = items[evt.oldIndex];
+        const next = items.slice();
+        next.splice(evt.oldIndex, 1);
+        next.splice(evt.newIndex, 0, moved);
+        const previous = evt.newIndex > 0 ? next[evt.newIndex - 1] : null;
+        items = next;
+        // Visual order updated by Sortable; we only re-draw on failure.
+        if (actions?.move && moved?.id) {
+          actions.move(moved.id, previous?.id ?? null).catch(() => {
+            items = before;
+            draw();
+          });
+        }
+      },
+    });
+  }
 
   slot.addEventListener('click', (e) => {
     const target = e.target.closest('[data-action]');
@@ -63,6 +104,11 @@ export function mountTodos(slot, initial, actions = null) {
 
     if (action === 'more') {
       visibleCount += PAGE_SIZE;
+      draw();
+      return;
+    }
+    if (action === 'less') {
+      visibleCount = PAGE_SIZE;
       draw();
       return;
     }

@@ -81,6 +81,15 @@ export async function strikeGrocery(text) {
   return request('/api/tasks/groceries/strike', { method: 'POST', body: JSON.stringify({ text }) });
 }
 
+// Move {id} to be immediately after {previousId}. Pass previousId=null to move
+// to the top of the list. Persists ordering in Google Tasks.
+export async function moveTodo(id, previousId) {
+  return request('/api/tasks/todos/move', { method: 'POST', body: JSON.stringify({ id, previousId }) });
+}
+export async function moveGrocery(id, previousId) {
+  return request('/api/tasks/groceries/move', { method: 'POST', body: JSON.stringify({ id, previousId }) });
+}
+
 // Same {initial, live} contract as getWeather / getAiMessage.
 export function getTodos() { return getList('todos', fetchTodos); }
 export function getGroceries() { return getList('groceries', fetchGroceries); }

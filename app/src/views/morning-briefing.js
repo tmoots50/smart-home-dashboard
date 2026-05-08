@@ -18,8 +18,8 @@ import { getMockBibleVerse } from '../lib/bible-mock.js';
 import { getPhotos } from '../lib/photos.js';
 import {
   getTodos, getGroceries,
-  appendTodo, strikeTodo,
-  appendGrocery, strikeGrocery,
+  appendTodo, strikeTodo, moveTodo,
+  appendGrocery, strikeGrocery, moveGrocery,
   isConfigured as tasksConfigured,
 } from '../lib/tasks.js';
 
@@ -107,8 +107,8 @@ export function renderMorningBriefing(root) {
   mountAiMessage(root.querySelector('[data-slot="aimessage"]'), aimessage);
   mountCalendar(root.querySelector('[data-slot="calendar"]'));
 
-  const todoActions = tasksConfigured ? { append: appendTodo, strike: strikeTodo } : null;
-  const groceryActions = tasksConfigured ? { append: appendGrocery, strike: strikeGrocery } : null;
+  const todoActions = tasksConfigured ? { append: appendTodo, strike: strikeTodo, move: moveTodo } : null;
+  const groceryActions = tasksConfigured ? { append: appendGrocery, strike: strikeGrocery, move: moveGrocery } : null;
   const todosCtl = mountTodos(root.querySelector('[data-slot="todos"]'), todos.initial, todoActions);
   const groceriesCtl = mountGroceries(root.querySelector('[data-slot="groceries"]'), groceries.initial, groceryActions);
   todos.live.then(items => { if (items) todosCtl.setItems(items); });
