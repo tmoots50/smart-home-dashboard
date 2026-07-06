@@ -191,6 +191,197 @@ html.kiosk, html.kiosk body { overflow: hidden; }
 }
 .photo-bg__img--current { opacity: 0.22; }
 
+/* ───── home control overlay ─────
+   Opened from the action-bar home button. Full-screen scrim + centered panel of
+   Mushroom-style tiles: the Aqara lock (PIN-gated unlock) + smart-plug toggles.
+   Touch targets ≥60px for wet-handed wall taps. */
+.home-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: home-fade 0.18s ease-out;
+}
+@keyframes home-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.home-panel {
+  width: min(94vw, 30rem);
+  max-height: 92vh;
+  overflow-y: auto;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  animation: home-rise 0.2s ease-out;
+}
+@keyframes home-rise { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.home__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-2);
+}
+.home__title {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+.home__close {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.home__close:hover { color: var(--color-fg); border-color: var(--color-accent); }
+
+/* base tile */
+.home-tile {
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: var(--space-3) var(--space-4);
+}
+.home-tile__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-muted) 14%, transparent);
+  color: var(--color-muted);
+  flex-shrink: 0;
+}
+.home-tile__name { font-size: 1.05rem; font-weight: 600; }
+.home-tile__state { display: block; font-size: 0.8rem; color: var(--color-muted); margin-top: 2px; }
+.home-tile__battery--low { color: #d08770; }
+
+/* lock tile — the hero */
+.home-tile--lock {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-4);
+}
+.home-tile--lock .home-tile__lead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.home-tile--lock.is-unlocked .home-tile__icon { background: color-mix(in srgb, var(--color-accent) 20%, transparent); color: var(--color-accent); }
+.home-tile--lock.is-jammed .home-tile__icon { background: rgba(208, 129, 112, 0.22); color: #d08770; }
+.home-tile__control { flex-shrink: 0; }
+
+.home-btn {
+  min-height: 3.4rem;
+  padding: 0 var(--space-4);
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-fg);
+}
+.home-btn:disabled { opacity: 0.5; cursor: default; }
+.home-btn--unlock { background: var(--color-accent); border-color: var(--color-accent); color: #1a1a1a; }
+.home-btn--lock { color: var(--color-muted); }
+.home-btn--lock:hover { color: var(--color-fg); border-color: var(--color-accent); }
+
+/* plug tiles */
+.home__plugs {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-2);
+}
+.home-tile--plug {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 4rem;
+  text-align: left;
+  cursor: pointer;
+  color: var(--color-fg);
+  font-family: var(--font-body);
+}
+.home-tile--plug .home-tile__name { flex: 1; }
+.home-tile--plug.is-on { border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border)); }
+.home-tile--plug.is-on .home-tile__icon { background: color-mix(in srgb, var(--color-accent) 20%, transparent); color: var(--color-accent); }
+
+/* switch */
+.home-tile__switch {
+  width: 3.25rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  background: var(--color-border);
+  flex-shrink: 0;
+  padding: 3px;
+  transition: background 0.18s;
+}
+.home-tile--plug.is-on .home-tile__switch { background: var(--color-accent); }
+.home-tile__knob {
+  display: block;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: #fff;
+  transform: translateX(0);
+  transition: transform 0.18s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.home-tile--plug.is-on .home-tile__knob { transform: translateX(1.35rem); }
+
+/* PIN pad */
+.pinpad { width: 100%; display: flex; flex-direction: column; align-items: center; gap: var(--space-3); }
+.pinpad__prompt { font-size: 0.9rem; color: var(--color-muted); }
+.pinpad.has-error .pinpad__prompt { color: #d08770; }
+.pinpad__dots { display: flex; gap: var(--space-2); }
+.pinpad__dot {
+  width: 0.75rem; height: 0.75rem; border-radius: 999px;
+  border: 1.5px solid var(--color-muted);
+}
+.pinpad__dot.is-filled { background: var(--color-accent); border-color: var(--color-accent); }
+.pinpad__keys {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  width: 100%;
+}
+.pinpad__key {
+  min-height: 3.75rem;
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-size: 1.4rem;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+.pinpad__key:active { background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+.pinpad__key--text { font-size: 0.95rem; color: var(--color-muted); }
+.pinpad__submit { width: 100%; margin-top: var(--space-1); }
+
 /* ───── clock ───── */
 .clock { font-family: var(--font-display); }
 .clock__time {

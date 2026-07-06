@@ -6,7 +6,11 @@ This file is for AI coding assistants (Claude Code, Cursor) working in this repo
 Active. Started 2026-04-20. Target: in-use on the wall before paternity leave ends (~2026-06-07).
 
 ## Smart-home reality check
-Tim's current setup: a few Alexas and a couple of smart plugs. **No Home Assistant, no Hue, no Sonos, no cameras.** When research or inspo references HA-shaped widgets (Mushroom cards, Lovelace, light-scene tiles), treat them as *visual* and *concept* references only — don't propose wiring v1 to a Home Assistant instance that doesn't exist. Build for the household we have, not the one a typical r/homeassistant poster has.
+**Updated 2026-07-06 — scope expanded.** Tim now has an **Aqara U100 smart lock + smart plugs**, in both Aqara Home (Matter-capable hub) and Apple HomeKit, and has decided to stand up **Home Assistant on the Pi** as the control backend. The dashboard has a **Home overlay** (`widgets/home.js`, opened from the action-bar ⌂ button) + `/api/home*` CF Functions that proxy HA. See [`docs/home-assistant.md`](./docs/home-assistant.md) for the architecture, security model, and build order.
+
+Current status: the Home UI is built **mock-first** and runs in local-mock mode until `VITE_HOME_LIVE=1` + the HA env vars are set (HA standup is a separate hands-on session — Pi must be powered on and reachable). Everything else about the household is still light (a few Alexas). Don't over-scale smart-home ambitions beyond the lock + a handful of allowlisted plugs.
+
+*(Historical note: this section previously said "no Home Assistant — don't wire to it." That was true through mid-2026 and is why older inspo in `_context/ui-inspo.md` still carries HA caveats.)*
 
 ## Where things live
 - [`spec.md`](./spec.md) — what we're building, why, and acceptance criteria. Source of truth.
