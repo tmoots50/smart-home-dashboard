@@ -16,7 +16,16 @@
 //   5. Script exchanges the code for a refresh token, prints all the env
 //      var values you need for Cloudflare Pages
 //
-// Refresh tokens last forever (until revoked). One mint per setup.
+// Refresh tokens last indefinitely (until revoked) ONLY if the OAuth consent
+// screen is published to "In production". If it's left in "Testing" status,
+// Google expires the refresh token after 7 DAYS and every Google-backed widget
+// silently falls back to mock. Publish the app first — see docs/google-setup.md
+// Step 2.6. One mint per setup (per re-mint after expiry/revocation).
+//
+// NOTE: this script uses the out-of-band (OOB) redirect. Google has been
+// deprecating OOB; if the consent URL errors with "invalid_request" or the
+// exchange fails, switch REDIRECT to a loopback flow (http://localhost:PORT
+// with a tiny local listener) — the OAuth client must then list that redirect.
 
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';

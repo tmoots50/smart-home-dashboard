@@ -33,7 +33,14 @@ This is a **one-time setup**. After it's done, deploys are just `git push`.
    - `https://www.googleapis.com/auth/drive.readonly`
    - `https://www.googleapis.com/auth/tasks`
    - `https://www.googleapis.com/auth/calendar.readonly`
-5. **Test users**, add: your Google account email (and Caroline's, if she should also be able to grant). Test mode is fine — no public verification needed for personal use.
+5. **Test users**, add: your Google account email (and Caroline's, if she should also be able to grant).
+6. **⚠️ Publish the app.** On the OAuth consent screen (a.k.a. "Google Auth Platform → Audience"), set **Publishing status → In production** (click **Publish app** and accept the confirmation). Do **not** leave it in **Testing**.
+
+   > **Why this matters — the single most important step in this doc.** In **Testing** status Google expires the refresh token after **7 days**. Everything works for a week, then `getAccessToken()` starts returning `invalid_grant` and the dashboard silently falls back to mock data (calendar, todos, groceries, and photos all die at once, since they share one token). This bit us for ~7 weeks in May–June 2026. **In production** status, the refresh token does not expire on the 7-day clock.
+   >
+   > For a single-user personal app using only *sensitive* (not *restricted*) scopes — `drive.readonly`, `tasks`, `calendar.readonly` — publishing does **not** require Google's verification review. You'll see a one-time "Google hasn't verified this app" screen during consent; click **Advanced → Go to Smart Home Dashboard (unsafe)** to proceed. That's expected for an unverified personal app and is fine here.
+   >
+   > If the token ever dies again with `invalid_grant`, confirm publishing status is still **In production**, then re-mint (Step 4) and update `GOOGLE_REFRESH_TOKEN`.
 
 ## 3. Create OAuth client credentials
 

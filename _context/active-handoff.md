@@ -1,3 +1,31 @@
+# ⚠️ OPEN 2026-07-02 — Google data layer down (expired refresh token)
+
+Live check of the deployed dashboard: 5 of 6 `/api/*` endpoints return 500.
+- `/api/calendar`, `/api/tasks/todos`, `/api/tasks/groceries`, `/api/photos` →
+  `google token refresh 400: invalid_grant / Bad Request`. Shared root cause:
+  the Google OAuth **refresh token is dead**. The OAuth consent screen was left
+  in **Testing** status, whose refresh tokens expire after **7 days** — so the
+  Google data layer has been silently serving mock since ~mid-May.
+- `/api/mabel` → `HUCKLEBERRY_DASHBOARD_TOKEN not set` (separate issue: env var
+  never set on CF prod).
+- `/api/headlines` → 200 (no Google dependency; the only healthy one).
+
+Auth passes (500 not 401) → `DASHBOARD_TOKEN` is present server-side; this is
+NOT a repeat of the 2026-05-06 env-var drop below.
+
+**Fix (Tim-in-loop):** (1) publish OAuth app to Production [permanent fix — stops
+the 7-day expiry]; (2) revoke old grant at myaccount.google.com/permissions;
+(3) re-run `scripts/mint-google-token.mjs` (needs GOOGLE_CLIENT_ID/SECRET, still
+valid — pull from CF env or .envrc.local); (4) set new `GOOGLE_REFRESH_TOKEN` on
+CF Pages (Production scope); (5) redeploy; (6) verify endpoints 200.
+Durable prevention already landed: `docs/google-setup.md` Step 2.6 + comment in
+`mint-google-token.mjs` now require publishing the app.
+
+Also note: `.envrc.local` is MISSING on Tim's Mac as of this session — recreate
+it (CF API token + Google client id/secret) before running the CF/env scripts.
+
+---
+
 # CF Pages env-var blocker — resolved 2026-05-06
 
 The 500 `DASHBOARD_TOKEN unset` error is fixed. End-to-end Functions auth path
