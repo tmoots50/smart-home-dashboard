@@ -7,7 +7,7 @@ const NOW = new Date('2026-04-30T08:00:00');
 describe('renderTodos', () => {
   it('renders one row per todo with assignee', () => {
     const todos = getMockTodos();
-    const html = renderTodos(todos, NOW);
+    const html = renderTodos(todos, 99, NOW);
     for (const t of todos) {
       expect(html).toContain(t.text);
       expect(html).toContain(t.owner);
@@ -21,7 +21,7 @@ describe('renderTodos', () => {
       { text: 'c', owner: 'Tim', due: '2026-04-29', done: false },
       { text: 'd', owner: 'Tim', due: '2026-05-04', done: false },
     ];
-    const html = renderTodos(items, NOW);
+    const html = renderTodos(items, 99, NOW);
     expect(html).toContain('Today');
     expect(html).toContain('Tomorrow');
     expect(html).toContain('Overdue');
@@ -33,30 +33,30 @@ describe('renderTodos', () => {
       { text: 'a', owner: 'Tim', due: '2026-04-30', done: false },
       { text: 'c', owner: 'Tim', due: '2026-04-29', done: false },
     ];
-    const html = renderTodos(items, NOW);
+    const html = renderTodos(items, 99, NOW);
     expect(html).toContain('todos__due--today');
     expect(html).toContain('todos__due--overdue');
   });
 
   it('marks done items', () => {
-    const html = renderTodos([{ text: 'x', owner: 'Tim', due: '2026-04-30', done: true }], NOW);
+    const html = renderTodos([{ text: 'x', owner: 'Tim', due: '2026-04-30', done: true }], 99, NOW);
     expect(html).toContain('todos__check--done');
     expect(html).toContain('todos__text--done');
   });
 
   it('shows empty state', () => {
-    expect(renderTodos([], NOW)).toContain('Nothing on the list');
+    expect(renderTodos([], 99, NOW)).toContain('Nothing on the list');
   });
 
   it('renders add / edit / delete buttons', () => {
-    const html = renderTodos(getMockTodos(), NOW);
+    const html = renderTodos(getMockTodos(), 99, NOW);
     expect(html).toContain('data-action="add"');
     expect(html).toContain('data-action="edit"');
     expect(html).toContain('data-action="delete"');
   });
 
   it('escapes HTML', () => {
-    const html = renderTodos([{ text: '<b>x</b>', owner: 'X', due: '2026-04-30', done: false }], NOW);
+    const html = renderTodos([{ text: '<b>x</b>', owner: 'X', due: '2026-04-30', done: false }], 99, NOW);
     expect(html).not.toContain('<b>x</b>');
   });
 });
