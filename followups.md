@@ -15,6 +15,14 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 ## Feature backlog — high priority
 *(should ship in v1 or shortly after — these are blockers for the wife-test pass)*
 
+- **🔴 Restore the Google data layer (re-mint token + publish OAuth app).** *Found 2026-07-02.* Calendar + todos + groceries + photos have all been silently serving **mock** since ~mid-May — the Google OAuth refresh token expired because the consent screen was left in **Testing** status (7-day token life). All four `/api/*` endpoints return `google token refresh 400: invalid_grant`; only `/api/headlines` (no Google auth) works. **Fix (Tim-in-loop, ~15 min):**
+  1. Google Cloud Console → OAuth consent screen (a.k.a. Google Auth Platform → Audience) → **Publish app** (Testing → In production). *This is the permanent fix — stops the 7-day expiry.*
+  2. Revoke old grant at [myaccount.google.com/permissions](https://myaccount.google.com/permissions) (forces a fresh refresh token).
+  3. `GOOGLE_CLIENT_ID=… GOOGLE_CLIENT_SECRET=… node scripts/mint-google-token.mjs` (now uses a loopback redirect — browser opens, code returns automatically). Client id/secret are still valid; pull from CF env or a `.envrc.local` backup.
+  4. Set the new `GOOGLE_REFRESH_TOKEN` on CF Pages — **Production scope**, encrypted → Retry deployment.
+  5. Verify: `curl -H "authorization: Bearer 63d5c473…bdb12bc7" https://smart-home-dashboard-de0.pages.dev/api/calendar` returns `sections`, not `invalid_grant`. (Bundle token is public.)
+  Prevention already landed: `docs/google-setup.md` §2.6 + `mint-google-token.mjs` require publishing.
+
 - **Apple Notes (iNote) HTTP bridge for todos + groceries.** The dashboard needs to read/write the shared "TODOs" and "Groceries" Apple Notes that already work in the openclaw-setup family-copilot pipeline. Architecture: a tiny HTTP service on the Old Mac wraps the existing `~/.openclaw/bin/mfb-inote-{show,append,strike}` AppleScript helpers and exposes `GET /todos`, `GET /groceries`, `POST /todos { text }`, `POST /todos/strike { text }`. Dashboard fetches over Tailscale (`http://oldmac.tailnet:PORT/...`). Uses the same allowlist + single-match safety rails the helpers already enforce. Critical: the Old Mac must be unlocked and Notes.app warm — see `openclaw-setup/CLAUDE.md` "Apple Notes quirks". Open question: auth (Tailscale ACL only, or shared bearer token).
 
 - **Reflow for portrait 1080×1920.** The dashboard is currently designed and judged in landscape, but the cocopar runs portrait. Precondition for most other UI fixes — type sizes, gutters, density are all provisional until reflow. *Source: `_audits/2026-04-29-ui-audit.md`.*
@@ -31,6 +39,9 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 
 ## Ideas / parking lot
 *(uncategorized; weighed cost vs. benefit when something else triggers re-evaluation)*
+
+- **Data-health visibility (silent-mock-fallback detector).** The whole Google data layer died for ~7 weeks and nobody noticed, because every widget fails soft to mock and there's no signal that it's faking. The fail-soft is correct for *transient* outages but hides *permanent* ones. Options: (a) a tiny `/api/health` endpoint that pings each backend + a discreet dot on the dashboard when something's stale/degraded; (b) widgets tag mock-sourced data and render a subtle "· offline" marker; (c) a scheduled cron (CF or laptop) that curls the endpoints daily and pings Tim on failure. (c) is lowest-effort, highest-signal — catches it without touching the wife-visible UI. Born from the 2026-07-02 calendar outage.
+- **Smart-home network/energy layer (Pi home server).** Once the Pi is up (see `docs/pi-home-server.md`): AdGuard/Pi-hole for DNS filtering — **blocked on verifying the Xfinity gateway allows a DHCP DNS override** (locked ISP gateways often don't; fallback is per-device DNS or bridge-mode + own router). Per-device bandwidth graphs are **not achievable** beside a closed gateway (needs inline / port-mirror / SNMP) — substitute Pi-hole per-device DNS stats + WAN speed tracking. HA Energy dashboard is viable **only if the Aqara plug models report wattage** (verify). Biggest future unlock for real network control: ISP gateway → bridge mode + own router (UniFi etc.).
 
 - **Commute card → Maps overlay.** When commute returns to the dashboard, tapping it should open a Maps view with alternate routes. Use case: explore Maps app integration; Caroline can see if the recommended route still wins. (Currently no commute card in the live view since weather replaced it in the time card.)
 - **Calendar / Todo "See more" overlays.** Buttons exist (stubs alert "coming soon"). Real version: full-month calendar overlay; full editable todo list with view/edit/delete. Likely a single overlay component reused.
@@ -51,11 +62,20 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 ## Active limitations
 *(known gaps we're living with for now — explicit accept-it-for-now decisions)*
 
+- **Google data layer serving mock (expired token).** Calendar/todos/groceries/photos are on mock until the re-mint above is done. Tracked as high-priority; listed here too so it's not mistaken for "working."
+- **`.envrc.local` missing on Tim's Mac (2026-07-06).** Holds CF API token + Google client id/secret. Must be recreated before any `scripts/*` that hit CF or Google can run (mint, set-cf-env-var, discover-google-ids, copy-cf-env-preview-to-prod).
+- **`/api/mabel` down — `HUCKLEBERRY_DASHBOARD_TOKEN` not set on CF prod.** Separate from the OAuth issue (Huckleberry MCP integration). Mabel widget shows mock. Fix: set that env var on CF Pages (Production).
+- **Home overlay in local-mock mode.** `widgets/home.js` is live on the dashboard but runs on local mock (toggles stick locally, unlock takes any 4+ digit PIN) until `VITE_HOME_LIVE=1` + the HA env vars are set. Real control needs the Pi standup (`docs/pi-home-server.md`).
+
 - **Pi's LAN IP is not reservation-locked.** Currently `10.0.0.110` via DHCP lease; could rotate after a router reboot or lease expiry. Decided 2026-05-01 to skip the Xfinity DHCP reservation flow because Tailscale already provides a permanent stable address (`dashboard` / `100.123.125.112`) that works inside and outside the LAN. Revisit if: (a) we add another LAN device that needs to hit the Pi by hardcoded IP, (b) Tailscale ever has an outage that costs us real time, or (c) DHCP rotation actually shifts the IP and breaks something. Xfinity reservation requires enabling Admin Tool access in the Xfinity app first, then `http://10.0.0.1` → Connected Devices → Edit → Reserved IP.
 
 ## Recently resolved
 *(last ~10 items, prune older)*
 
+- **Home Assistant control overlay built (mock-first).** *Resolved 2026-07-06.* Action-bar ⌂ button opens a Home overlay (Aqara U100 lock + smart-plug tiles, PIN-gated unlock). `widgets/home.js` + `lib/home*.js` + `/api/home*` CF Functions (PIN verify + KV lockout). Design + security in `docs/home-assistant.md`; Pi-server architecture in `docs/pi-home-server.md`. Shipped in local-mock mode; live wiring pending Pi standup.
+- **OAuth 7-day-expiry root cause found + prevention landed.** *Resolved 2026-07-02.* Diagnosed the `invalid_grant` outage; fixed the setup doc (`google-setup.md` §2.6 requires publishing) so it can't recur. The actual token re-mint is still pending (high-priority above).
+- **`mint-google-token.mjs` OOB → loopback flow.** *Resolved 2026-07-06.* Google shut down the out-of-band redirect; rewrote to a loopback-IP redirect (local server on `127.0.0.1:<port>`, code returns automatically, no copy/paste). Desktop OAuth clients allow any loopback port with no console change.
+- **Stale `todos.test.js` fixed.** *Resolved 2026-07-06.* Tests passed `now` in the old 2nd-arg position after a `visibleCount` param was inserted; date-relative assertions ran against the real system date. Passing `renderTodos(items, 99, NOW)`. Suite fully green (143/143).
 - **Pivot to Google Tasks + Google Photos via CF Pages Functions.** *Resolved 2026-05-06.* Tim ruled out any Old Mac dependency for new features; Apple Notes and Apple Photos are inaccessible from non-Apple infra. Switched: shared lists move to Google Tasks (Caroline migrates from Apple Notes), photos move to Google Photos shared album. Three new Functions (`/api/photos`, `/api/tasks/[list]`, `/api/tasks/[list]/strike`) hold the Google OAuth refresh token server-side; dashboard talks to them with a shared bearer token. Setup runbook in `docs/google-setup.md`.
 - **iNote bridge moved to openclaw-setup.** *Resolved 2026-05-06.* The Apple Notes bridge built earlier today moved to `openclaw-setup/bridges/inote/` since this dashboard no longer needs it. Code preserved as a generic capability for any future consumer of the `mfb-inote-*` helpers.
 - **Daily message wired via JSON + CF Pages.** *Resolved 2026-05-06.* `app/public/messages.json` keyed by date; `lib/aimessage.js` picks today (or most-recent past) on each load. Publishing = edit + push.

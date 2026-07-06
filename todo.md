@@ -57,8 +57,10 @@ Ordered task list for v1. Check off as we go. Reorder freely — `spec.md` is th
 ## Phase 5 — Calendar widget
 - [x] `lib/calendar-mock.js` — today + next 3 events fixture
 - [x] `widgets/calendar.js` against the mock
-- [ ] Decide: Google Calendar embed vs Calendar API (lean: embed for v1)
-- [ ] Wire real source
+- [x] Decide: Google Calendar embed vs Calendar API — chose **Calendar API** (`/api/calendar` CF Function, OAuth refresh token, `?_lists=1` discovery, `nextEventId`)
+- [x] Wire real source — backend built (`functions/api/calendar.js` + `_lib/calendar-api.js`)
+- [ ] ⚠️ **OPERATIONALLY DOWN (2026-07-02)** — Google OAuth refresh token expired (app left in Testing → 7-day expiry). Calendar + tasks + photos all serving mock since ~mid-May. Fix runbook in [`followups.md`](./followups.md) (high-priority) + `docs/google-setup.md` §2.6. Verify: `curl -H "authorization: Bearer <bundle-token>" https://smart-home-dashboard-de0.pages.dev/api/calendar` should return `sections`, not `invalid_grant`.
+- [ ] iCloud "Caroline & Tim" shared calendar as a 3rd section (deferred — see `followups.md`)
 
 ## Phase 6 — Photo widget
 - [x] `lib/photos-mock.js` — local fixture images _(SVG gradients, no binary fixtures)_
@@ -108,6 +110,20 @@ Ordered task list for v1. Check off as we go. Reorder freely — `spec.md` is th
 - [ ] README rewrite: punchy intro, what it is, what I learned, how to rebuild
 - [ ] Architecture diagram (`docs/architecture.md`)
 - [ ] Pi install runbook (`docs/install.md`) — buildable by a stranger
+
+## Phase 13 — Smart home / Home Assistant *(started 2026-07-06)*
+Scope expanded: Aqara U100 lock + smart plugs (in Aqara Home + Apple HomeKit). Design + security model in [`docs/home-assistant.md`](./docs/home-assistant.md); Pi-as-home-server architecture in [`docs/pi-home-server.md`](./docs/pi-home-server.md).
+- [x] Design docs + decision log entries (Matter multi-admin, HA Container not HAOS, PIN-gated unlock)
+- [x] Mock-first Home overlay — `lib/home-mock.js`, `lib/home.js`, `widgets/home.js` (lock tile + PIN pad + plug tiles), CSS, tests
+- [x] Action-bar ⌂ button opens the overlay
+- [x] CF Functions `/api/home`, `/api/home/plug`, `/api/home/lock` (PIN verify + KV lockout; 501 until HA configured)
+- [x] Shipped to pages.dev in local-mock mode
+- [ ] **Pi standup** (blocked on Pi powered-on + reachable): Docker + Compose on Pi OS → HA + `matter-server` containers → onboard HA
+- [ ] Commission Aqara devices via Matter; verify Apple Home still controls them (multi-admin); verify plug **wattage reporting** (gates Energy dashboard)
+- [ ] `cloudflared` container → private HA hostname; set `HA_BASE_URL`/`HA_TOKEN`/`HA_ENTITIES_JSON`/`HOME_UNLOCK_PIN_HASH` + KV binding on CF
+- [ ] Flip `VITE_HOME_LIVE=1`; verify lock/unlock + plug toggle + bad-PIN lockout end-to-end on the tablet
+- [ ] Network layer: AdGuard/Pi-hole (⚠️ first verify Xfinity gateway allows DHCP DNS override), then monitoring containers (uptime-kuma, speedtest-tracker)
+- [ ] HA Energy dashboard once plug wattage confirmed
 
 ---
 
