@@ -12,6 +12,21 @@ The full decision history of how we got here is in [`spec.md`](../spec.md). This
 
 ---
 
+## 2026-07-06 — Smart-home scope expansion: HA on the Pi + Home overlay
+**Decision:** the dashboard grows a smart-home control surface. Tim now has an Aqara U100 lock + smart plugs in both Aqara Home (Matter-capable hub) and Apple HomeKit. Home Assistant becomes the control backend; the dashboard gets a Home overlay (`widgets/home.js`, action-bar ⌂ button) + `/api/home*` CF Functions that proxy HA. Devices reach HA via **Matter multi-admin** so Apple Home keeps working. Lock unlock is PIN-gated server-side with KV lockout; HA token stays server-side; HA reached via Cloudflare Tunnel. Built mock-first; live behind `VITE_HOME_LIVE`.
+**Why:** the earlier "no HA, don't wire to it" reality-check assumed a device-less household; that changed. Matter multi-admin is the clean path that avoids un-pairing devices from Apple Home. Mock-first keeps the design loop fast (UX built + shippable before the Pi exists). Full design + security model in [`../docs/home-assistant.md`](../docs/home-assistant.md).
+**Reversibility:** moderate. Dashboard code is cheap to revert; the Pi/HA standup is the bigger lift.
+
+## 2026-07-06 — Pi install: HA Container (Docker Compose), NOT HAOS
+**Decision:** reversed the same-day HAOS choice. The Pi 5 becomes a multi-service **home-services host** running Docker Compose on the existing Raspberry Pi OS: HA + Matter Server + cloudflared + DNS filtering (Pi-hole/AdGuard) + monitoring, all as containers. The Pi sits **beside** the network, never inline — explicitly not the router/gateway. See [`../docs/pi-home-server.md`](../docs/pi-home-server.md).
+**Why:** Tim wants the Pi as the central home-tech server (automation + DNS + monitoring + energy), not an HA appliance. HAOS wants to own the whole box, which blocks the other services. Container stack is the standard multi-service pattern. Rejected making the Pi the inline router: it would be a single point of failure for all home internet — unacceptable with a newborn + high reliability bar. Networking hardware is ISP-gateway-only (closed), so the Pi's network role is DNS filtering + observability, not WiFi/QoS optimization (which stays with the gateway/APs). Tradeoff accepted: lose HAOS's turnkey add-on/backup story; mitigate with a committed compose file + scheduled backups.
+**Reversibility:** moderate. Compose stack is reproducible; switching to HAOS later is a reflash.
+
+## 2026-07-06 — Google OAuth app must be Published, not Testing
+**Decision:** the dashboard's Google OAuth consent screen must be in **Production** publishing status, not Testing.
+**Why:** Testing-status apps expire refresh tokens after 7 days. The dashboard's token died in mid-May and calendar/tasks/photos silently served mock for ~7 weeks before this was caught (2026-07-02, via live endpoint check). `docs/google-setup.md` + `scripts/mint-google-token.mjs` corrected to require publishing. Root cause was a wrong instruction in the original setup doc ("Test mode is fine").
+**Reversibility:** cheap (a console toggle), but the lesson is durable.
+
 ## 2026-04-29 — Mock data before real APIs for every widget
 **Decision:** every widget gets a mock-data adapter in `app/src/lib/` before any real API is wired.
 **Why:** keeps the visual design loop fast; lets aesthetics iterate without blocking on auth flows; turns "wire the real source" into a small, isolated swap rather than a coupled refactor.

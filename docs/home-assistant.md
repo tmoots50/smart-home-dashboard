@@ -18,7 +18,7 @@ smart lock and smart plugs.
 |---|---|---|
 | Hub Matter support | **Yes, Matter-capable** | Aqara devices shared into HA over **Matter multi-admin** → Apple Home keeps working, HA is a *second* admin. Local control. No un-pairing from Apple Home. |
 | Lock control level | **Full lock + unlock, PIN-gated** | Unlock is a real threat surface. Needs defense-in-depth (below). |
-| HA install | **Home Assistant OS** on the Pi 5 | Wipe Pi OS → HAOS. Gain the add-on store (Matter Server, Cloudflare Tunnel add-ons). Pi becomes HA-focused; other shims run as add-ons/containers. |
+| HA install | **HA Container via Docker Compose** on Raspberry Pi OS *(revised 2026-07-06 — was HAOS)* | The Pi is now a multi-service home server (HA + DNS filtering + monitoring + energy), so an appliance OS is the wrong shape. HA runs as one container; Matter Server + cloudflared run as sibling containers instead of HAOS add-ons. See [`pi-home-server.md`](./pi-home-server.md) for the full box architecture. |
 
 ---
 
@@ -99,13 +99,16 @@ PIN** — locking your own door is not a threat.
 - [ ] Deploy → Tim reacts to the UX on the real tablet ("show me, then I'll know").
 
 ### Blocked on Tim + Pi online (physical / hands-on session)
+> Full box build order (Docker + the wider service stack) lives in
+> [`pi-home-server.md`](./pi-home-server.md). The HA-specific slice:
 - [ ] Power the Pi on; confirm reachable (Tailscale up here or on the Pi).
-- [ ] Flash Pi 5 → **Home Assistant OS**; complete onboarding.
-- [ ] Install **Matter Server** add-on. In the Aqara app, share the hub/devices to Matter;
-      add the Matter code(s) to HA. Confirm the U100 + plugs appear as HA entities.
-      Verify Apple Home still controls them (multi-admin sanity check).
-- [ ] Install **Cloudflare Tunnel** add-on (or `cloudflared`); expose HA at a private
-      hostname. Optionally add Cloudflare Access service token.
+- [ ] Install **Docker + Compose** on the existing Raspberry Pi OS; bring up the
+      `homeassistant` + `matter-server` containers; complete HA onboarding.
+- [ ] In the Aqara app, share the hub/devices to Matter; commission the Matter code(s)
+      into HA. Confirm the U100 + plugs appear as HA entities. Verify Apple Home still
+      controls them (multi-admin sanity check).
+- [ ] Run a **`cloudflared`** container; expose HA at a private hostname. Optionally add
+      a Cloudflare Access service token.
 - [ ] Create a dedicated HA long-lived token for the dashboard.
 - [ ] Set CF env: `HA_BASE_URL`, `HA_TOKEN`, `HOME_UNLOCK_PIN_HASH`, KV binding for lockout.
 - [ ] Flip `/api/home*` Functions from mock → live. Verify end-to-end on the tablet.
