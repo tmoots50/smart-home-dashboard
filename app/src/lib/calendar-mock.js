@@ -1,4 +1,5 @@
-// Mock calendar. Three sections: Family, Tim (Work), Caroline (Work).
+// Mock calendar. Three sections whose labels match the widget's COLUMNS
+// (Tim / Family / Caroline) so the fallback view previews the real layout.
 // Widget highlights the single soonest upcoming event globally.
 
 export function getMockCalendar(now = new Date()) {
@@ -12,6 +13,13 @@ export function getMockCalendar(now = new Date()) {
 
   const sections = [
     {
+      label: 'Tim',
+      events: [
+        { id: 'tim-1', startsAt: at(14, 15), title: 'Job-search standup', sub: '30 min · Zoom' },
+        { id: 'tim-2', startsAt: at(16, 0),  title: 'Recruiter call — Tessa', sub: 'Phone' },
+      ],
+    },
+    {
       label: 'Family',
       events: [
         { id: 'fam-1', startsAt: at(8, 30), title: 'Pediatrician — Mabel 1mo', sub: 'Northside Pediatrics' },
@@ -19,14 +27,7 @@ export function getMockCalendar(now = new Date()) {
       ],
     },
     {
-      label: 'Tim (Work)',
-      events: [
-        { id: 'tim-1', startsAt: at(14, 15), title: 'Job-search standup', sub: '30 min · Zoom' },
-        { id: 'tim-2', startsAt: at(16, 0),  title: 'Recruiter call — Tessa', sub: 'Phone' },
-      ],
-    },
-    {
-      label: 'Caroline (Work)',
+      label: 'Caroline',
       events: [
         { id: 'car-1', startsAt: at(9, 0),   title: 'Product sync', sub: 'Carter’s HQ' },
         { id: 'car-2', startsAt: at(11, 0),  title: 'Coffee with Sara', sub: 'Octane Coffee' },

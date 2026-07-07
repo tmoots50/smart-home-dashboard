@@ -1,4 +1,26 @@
-# ⚠️ OPEN 2026-07-02 — Google data layer down (expired refresh token)
+# ✅ RESOLVED 2026-07-07 — Google data layer restored
+
+The whole Google data layer is live again. Live-checked all endpoints after the
+fix: `/api/calendar` (2 sections), `/api/tasks/todos` (20 items),
+`/api/tasks/groceries` (3 items), `/api/photos` (55 photos), `/api/headlines`
+(3) — all 200 with real data, no more `invalid_grant`.
+
+**What fixed it (this session):** (1) Tim published the OAuth app to Production
+(permanent fix — kills the 7-day expiry); (2) recreated `.envrc.local`
+(CF token + Google client id/secret); (3) re-minted `GOOGLE_REFRESH_TOKEN` via
+`scripts/mint-google-token.mjs`; (4) pushed the new token + `GOOGLE_CALENDARS_JSON`
+(`[{Family},{Tim}]`) to CF via `scripts/set-cf-env-var.mjs`; (5) triggered a
+prod redeploy via the CF API; (6) verified. The refresh token is shared across
+Calendar/Tasks/Drive scopes, so re-minting it revived calendar, todos, groceries,
+and photos in one shot. `GOOGLE_CALENDARS_JSON` was also set for the first time
+(Family + Tim primary; Caroline's calendar isn't shared to Tim's Google account).
+
+**If it ever dies again:** confirm the OAuth app is still "In production", then
+re-mint (Step 4 of `docs/google-setup.md`) and re-push `GOOGLE_REFRESH_TOKEN`.
+
+---
+
+## (historical) ⚠️ 2026-07-02 — Google data layer down (expired refresh token)
 
 Live check of the deployed dashboard (2026-07-02): the Google-backed `/api/*`
 endpoints return 500.

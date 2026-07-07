@@ -83,17 +83,17 @@ export function renderMorningBriefing(root) {
         </div>
       </section>
 
-      <div class="briefing__columns">
-        <div class="briefing__col">
-          <div class="card" data-slot="calendar"></div>
-          <div class="card">${renderCountdown(countdowns)}</div>
-          <div class="card" data-slot="headlines"></div>
-        </div>
-        <div class="briefing__col">
-          <div class="card" data-slot="todos"></div>
-          <div class="card" data-slot="groceries"></div>
-        </div>
-      </div>
+      <section class="briefing__duo">
+        <div class="card">${renderCountdown(countdowns)}</div>
+        <div class="card" data-slot="headlines"></div>
+      </section>
+
+      <section class="card" data-slot="calendar"></section>
+
+      <section class="briefing__duo">
+        <div class="card" data-slot="todos"></div>
+        <div class="card" data-slot="groceries"></div>
+      </section>
     </main>
   `;
 

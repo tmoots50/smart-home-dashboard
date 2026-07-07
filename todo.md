@@ -59,15 +59,15 @@ Ordered task list for v1. Check off as we go. Reorder freely — `spec.md` is th
 - [x] `widgets/calendar.js` against the mock
 - [x] Decide: Google Calendar embed vs Calendar API — chose **Calendar API** (`/api/calendar` CF Function, OAuth refresh token, `?_lists=1` discovery, `nextEventId`)
 - [x] Wire real source — backend built (`functions/api/calendar.js` + `_lib/calendar-api.js`)
-- [ ] ⚠️ **OPERATIONALLY DOWN (2026-07-02)** — Google OAuth refresh token expired (app left in Testing → 7-day expiry). Calendar + tasks + photos all serving mock since ~mid-May. Fix runbook in [`followups.md`](./followups.md) (high-priority) + `docs/google-setup.md` §2.6. Verify: `curl -H "authorization: Bearer <bundle-token>" https://smart-home-dashboard-de0.pages.dev/api/calendar` should return `sections`, not `invalid_grant`.
-- [ ] iCloud "Caroline & Tim" shared calendar as a 3rd section (deferred — see `followups.md`)
+- [x] ✅ **LIVE (2026-07-07)** — OAuth app published to Production, refresh token re-minted, `GOOGLE_CALENDARS_JSON` set (Family + Tim primary). `/api/calendar` returns real `sections`; the whole Google data layer (calendar/tasks/photos) came back with the shared-token re-mint. See `_context/active-handoff.md`.
+- [ ] iCloud "Caroline & Tim" shared calendar as a 3rd section (deferred — Caroline's Google calendar isn't shared to Tim's account; see `followups.md`)
 
 ## Phase 6 — Photo widget
 - [x] `lib/photos-mock.js` — local fixture images _(SVG gradients, no binary fixtures)_
 - [x] `widgets/photo.js` against the mock (slow crossfade rotation)
 - [x] Wire to Google Photos shared album via `/api/photos` CF Pages Function _(2026-05-06)_
 - [x] 60s rotation, random sample of up to 30 photos, 1h edge cache _(2026-05-06)_
-- [ ] Tim: complete one-time Google OAuth setup per [`docs/google-setup.md`](./docs/google-setup.md), set CF Pages env vars
+- [x] Tim: complete one-time Google OAuth setup + CF Pages env vars _(2026-07-07 — `/api/photos` returns 55 real photos)_
 
 ## Phase 7 — Daily message widget
 - [x] `widgets/aimessage.js` — renders msg with source + time-ago badge
@@ -81,8 +81,8 @@ Ordered task list for v1. Check off as we go. Reorder freely — `spec.md` is th
 - [x] `widgets/{todos,groceries}.js` against mocks
 - [x] Build CF Pages Functions: `/api/tasks/[list]` (GET/POST), `/api/tasks/[list]/strike` (POST), discovery endpoint `/api/tasks/_lists` _(2026-05-06)_
 - [x] Wire dashboard via `lib/tasks.js` — same {initial, live} + actions contract as iNote had _(2026-05-06)_
-- [ ] Tim: complete one-time Google OAuth setup per [`docs/google-setup.md`](./docs/google-setup.md)
-- [ ] Tim: create "Todos" + "Groceries" task lists in Google Tasks; capture IDs into CF env vars
+- [x] Tim: complete one-time Google OAuth setup _(2026-07-07)_
+- [x] Tim: create "Todos" + "Groceries" task lists + capture IDs into CF env vars _(2026-07-07 — `/api/tasks/todos` 20 items, `/api/tasks/groceries` 3 items)_
 - [ ] Caroline migration: she installs Google Tasks app, learns the new add/check flow
 
 ## Phase 8b — iNote bridge (deferred, code lives in openclaw-setup)
