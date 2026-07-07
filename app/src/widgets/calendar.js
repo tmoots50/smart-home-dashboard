@@ -4,9 +4,15 @@ const TIME_FMT = new Intl.DateTimeFormat(undefined, {
   hour: 'numeric',
   minute: '2-digit',
 });
-const WINDOW_HOURS = 24;
-const WINDOW_MS = WINDOW_HOURS * 3_600_000;
 const REFRESH_MS = 5 * 60 * 1000; // re-fetch every 5min — events can be added during the day
+
+// End of `now`'s local calendar day. The columns show today's remaining events
+// only — nothing rolls over into tomorrow.
+function endOfToday(now) {
+  const d = new Date(now);
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
 
 // Column order + labels for the family calendar. Each column pulls its events
 // from the data section whose `label` matches. A column with no matching
@@ -15,7 +21,7 @@ const REFRESH_MS = 5 * 60 * 1000; // re-fetch every 5min — events can be added
 const COLUMNS = ['Tim', 'Family', 'Caroline'];
 
 export function renderCalendar(data, now = new Date()) {
-  const cutoff = new Date(now.getTime() + WINDOW_MS);
+  const cutoff = endOfToday(now);
   const byLabel = new Map((data.sections ?? []).map(s => [s.label, s]));
 
   const columns = COLUMNS.map(label => {

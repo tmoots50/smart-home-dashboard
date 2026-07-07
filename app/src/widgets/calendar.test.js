@@ -39,22 +39,22 @@ describe('renderCalendar', () => {
     expect(unlinked.length).toBe(2);
   });
 
-  it('only renders events within the next 24 hours', () => {
+  it('only renders events for the rest of today, not tomorrow', () => {
     const NOW = new Date('2026-04-29T08:00:00');
-    const inWindow = new Date(NOW.getTime() + 23 * 3_600_000).toISOString();
-    const outOfWindow = new Date(NOW.getTime() + 25 * 3_600_000).toISOString();
+    const laterToday = new Date('2026-04-29T20:00:00').toISOString();
+    const tomorrow = new Date('2026-04-30T09:00:00').toISOString();
     const html = renderCalendar({
       sections: [{
         label: 'Tim',
         events: [
-          { id: 'a', startsAt: inWindow, title: 'Just inside window', sub: '' },
-          { id: 'b', startsAt: outOfWindow, title: 'Just outside window', sub: '' },
+          { id: 'a', startsAt: laterToday, title: 'Later today', sub: '' },
+          { id: 'b', startsAt: tomorrow, title: 'Tomorrow morning', sub: '' },
         ],
       }],
       nextEventId: 'a',
     }, NOW);
-    expect(html).toContain('Just inside window');
-    expect(html).not.toContain('Just outside window');
+    expect(html).toContain('Later today');
+    expect(html).not.toContain('Tomorrow morning');
   });
 
   it('marks the next-up event with the highlight class', () => {
