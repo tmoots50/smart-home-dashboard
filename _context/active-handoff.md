@@ -1,14 +1,16 @@
 # ⚠️ OPEN 2026-07-02 — Google data layer down (expired refresh token)
 
-Live check of the deployed dashboard: 5 of 6 `/api/*` endpoints return 500.
+Live check of the deployed dashboard (2026-07-02): the Google-backed `/api/*`
+endpoints return 500.
 - `/api/calendar`, `/api/tasks/todos`, `/api/tasks/groceries`, `/api/photos` →
   `google token refresh 400: invalid_grant / Bad Request`. Shared root cause:
   the Google OAuth **refresh token is dead**. The OAuth consent screen was left
   in **Testing** status, whose refresh tokens expire after **7 days** — so the
   Google data layer has been silently serving mock since ~mid-May.
-- `/api/mabel` → `HUCKLEBERRY_DASHBOARD_TOKEN not set` (separate issue: env var
-  never set on CF prod).
 - `/api/headlines` → 200 (no Google dependency; the only healthy one).
+
+*(`/api/mabel` was retired 2026-07-07 when Huckleberry was removed from scope —
+see decision log. It was never live in prod anyway.)*
 
 Auth passes (500 not 401) → `DASHBOARD_TOKEN` is present server-side; this is
 NOT a repeat of the 2026-05-06 env-var drop below.

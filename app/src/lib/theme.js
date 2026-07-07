@@ -13,10 +13,6 @@ export const color = {
   surface: '#16161a',
   border: '#26262b',
   'event-feed': '#d49b5e',
-  'event-nurse': '#c97a8a',
-  'event-pee': '#6e8aa3',
-  'event-poop': '#8a6e4f',
-  'event-diaper': '#6e8aa3',
 };
 
 export const font = {

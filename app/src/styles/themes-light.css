@@ -12,10 +12,6 @@
   --color-border: #f0e6d8;
 
   --color-event-feed: #f4a261;
-  --color-event-nurse: #e76f51;
-  --color-event-pee: #6cb4cf;
-  --color-event-poop: #b5876a;
-  --color-event-diaper: #6cb4cf;
 
   --font-display: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif;
 
@@ -58,8 +54,7 @@
 
 [data-theme="light"] .clock__time,
 [data-theme="light"] .weather__temp,
-[data-theme="light"] .traffic__duration,
-[data-theme="light"] .mabel__since-value {
+[data-theme="light"] .traffic__duration {
   font-weight: 600;
 }
 
@@ -85,7 +80,6 @@
 /* Emoji prefixes — same as fun. */
 [data-theme="light"] .traffic .card__title::before  { content: '🚗 '; }
 [data-theme="light"] .weather .card__title::before  { content: '☀️ '; }
-[data-theme="light"] .mabel .card__title::before    { content: '👶 '; }
 [data-theme="light"] .calendar .card__title::before { content: '📅 '; }
 [data-theme="light"] .countdown .card__title::before{ content: '🎉 '; }
 [data-theme="light"] .todos .card__title::before    { content: '✅ '; }
@@ -97,8 +91,6 @@
 [data-theme="light"] .calendar__section:nth-of-type(3) .calendar__section-label::before { content: '💼 '; }
 
 [data-theme="light"] .bible__text::before { content: '✨ '; }
-
-[data-theme="light"] .mabel__dot { width: 10px; height: 10px; }
 
 /* ───── Light-variant exclusives ─────
    Phone button hidden, money button revealed. */

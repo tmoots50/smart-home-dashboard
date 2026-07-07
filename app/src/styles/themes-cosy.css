@@ -13,10 +13,6 @@
   --color-border: #2c2620;
 
   --color-event-feed: #d49b5e;
-  --color-event-nurse: #d68a8a;
-  --color-event-pee: #7a9bb5;
-  --color-event-poop: #a08066;
-  --color-event-diaper: #7a9bb5;
 
   --font-display: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif;
 }
@@ -33,8 +29,7 @@
 
 [data-theme="cosy"] .clock__time,
 [data-theme="cosy"] .weather__temp,
-[data-theme="cosy"] .traffic__duration,
-[data-theme="cosy"] .mabel__since-value {
+[data-theme="cosy"] .traffic__duration {
   font-weight: 600;
 }
 
@@ -60,7 +55,6 @@
 /* Emoji prefixes — same set as fun. */
 [data-theme="cosy"] .traffic .card__title::before  { content: '🚗 '; }
 [data-theme="cosy"] .weather .card__title::before  { content: '☀️ '; }
-[data-theme="cosy"] .mabel .card__title::before    { content: '👶 '; }
 [data-theme="cosy"] .calendar .card__title::before { content: '📅 '; }
 [data-theme="cosy"] .countdown .card__title::before{ content: '🎉 '; }
 [data-theme="cosy"] .todos .card__title::before    { content: '✅ '; }
@@ -72,5 +66,3 @@
 [data-theme="cosy"] .calendar__section:nth-of-type(3) .calendar__section-label::before { content: '💼 '; }
 
 [data-theme="cosy"] .bible__text::before { content: '✨ '; }
-
-[data-theme="cosy"] .mabel__dot { width: 10px; height: 10px; }

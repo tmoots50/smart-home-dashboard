@@ -6,7 +6,6 @@ import { mountCalendar } from '../widgets/calendar.js';
 import { renderCountdown } from '../widgets/countdown.js';
 import { mountTodos } from '../widgets/todos.js';
 import { mountGroceries } from '../widgets/groceries.js';
-import { mountMabel } from '../widgets/mabel.js';
 import { renderBible } from '../widgets/bible.js';
 import { mountCardPhoto } from '../widgets/card-photo.js';
 import { openHomeOverlay } from '../widgets/home.js';
@@ -15,7 +14,6 @@ import { getHome, actions as homeActions } from '../lib/home.js';
 
 import { getAiMessage } from '../lib/aimessage.js';
 import { getMockCountdowns } from '../lib/countdown-mock.js';
-import { getMabel, fetchMabel, isConfigured as mabelConfigured } from '../lib/mabel.js';
 import { getMockBibleVerse } from '../lib/bible-mock.js';
 import { getPhotos } from '../lib/photos.js';
 import {
@@ -57,7 +55,6 @@ export function renderMorningBriefing(root) {
   const countdowns = getMockCountdowns();
   const todos = getTodos();
   const groceries = getGroceries();
-  const mabel = getMabel();
   const verse = getMockBibleVerse();
   const photos = getPhotos();
   const aimessage = getAiMessage();
@@ -82,8 +79,6 @@ export function renderMorningBriefing(root) {
           </div>
         </div>
         <div class="card card--photo-fill">
-          <div data-slot="mabel"></div>
-          <hr class="card__divider"/>
           <div class="card__photo" data-slot="photo"></div>
         </div>
       </section>
@@ -115,13 +110,6 @@ export function renderMorningBriefing(root) {
   todos.live.then(items => { if (items) todosCtl.setItems(items); });
   groceries.live.then(items => { if (items) groceriesCtl.setItems(items); });
 
-  const mabelCtl = mountMabel(root.querySelector('[data-slot="mabel"]'), mabel.initial);
-  mabel.live.then(d => mabelCtl.setData(d));
-  if (mabelConfigured) {
-    setInterval(() => {
-      fetchMabel().then(d => mabelCtl.setData(d)).catch(() => {});
-    }, 5 * 60 * 1000);
-  }
   mountCardPhoto(root.querySelector('[data-slot="photo"]'), photos);
 
   root.addEventListener('click', (e) => {

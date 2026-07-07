@@ -12,6 +12,11 @@ The full decision history of how we got here is in [`spec.md`](../spec.md). This
 
 ---
 
+## 2026-07-07 — Huckleberry / baby-tracking (Mabel widget) removed from scope
+**Decision:** the dashboard drops the Huckleberry integration entirely. Deleted the Mabel widget (`widgets/mabel.js`), its lib + mock (`lib/mabel.js`, `lib/mabel-mock.js`), the `/api/mabel` CF Function that proxied `huckleberry-mcp.fly.dev`, the widget's CSS, and the baby-specific `--color-event-{nurse,pee,poop,diaper}` tokens. The top-right card is now photo-only (the photo fills the space the feed/diaper stats used to occupy). `--color-event-feed` stays — the traffic widget still references it. The separate `huckleberry-mcp` project is untouched; this only severs the dashboard's dependency on it.
+**Why:** the baby-tracking surface was never operationally live on the wall (`/api/mabel` needed `HUCKLEBERRY_DASHBOARD_TOKEN`, never set on CF prod — it served mock the whole time) and Tim decided it doesn't earn its place on the family dashboard. Removing it now, before the calendar-UI pass, keeps the layout Tim iterates against clean. His daughter's name still appears in normal family content (photo captions, a sample calendar event) — that's not Huckleberry, so it stays.
+**Reversibility:** cheap — it's one commit; `git revert` restores the widget wholesale.
+
 ## 2026-07-06 — Smart-home scope expansion: HA on the Pi + Home overlay
 **Decision:** the dashboard grows a smart-home control surface. Tim now has an Aqara U100 lock + smart plugs in both Aqara Home (Matter-capable hub) and Apple HomeKit. Home Assistant becomes the control backend; the dashboard gets a Home overlay (`widgets/home.js`, action-bar ⌂ button) + `/api/home*` CF Functions that proxy HA. Devices reach HA via **Matter multi-admin** so Apple Home keeps working. Lock unlock is PIN-gated server-side with KV lockout; HA token stays server-side; HA reached via Cloudflare Tunnel. Built mock-first; live behind `VITE_HOME_LIVE`.
 **Why:** the earlier "no HA, don't wire to it" reality-check assumed a device-less household; that changed. Matter multi-admin is the clean path that avoids un-pairing devices from Apple Home. Mock-first keeps the design loop fast (UX built + shippable before the Pi exists). Full design + security model in [`../docs/home-assistant.md`](../docs/home-assistant.md).
