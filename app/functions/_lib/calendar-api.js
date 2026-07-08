@@ -50,8 +50,10 @@ export function normalize(events) {
     .map(e => ({
       id: e.id,
       startsAt: e.start.dateTime,
+      endsAt: e.end?.dateTime || '',
       title: e.summary || '(no title)',
       sub: e.location || '',
+      description: e.description || '',
     }));
 }
 
@@ -71,6 +73,7 @@ export function normalizeUpcoming(events, calendarLabel) {
         calendar: calendarLabel,
         title: e.summary || '(no title)',
         sub: e.location || '',
+        description: e.description || '',
         startsAt,
         endsAt: e.end?.dateTime || e.end?.date || '',
         allDay,

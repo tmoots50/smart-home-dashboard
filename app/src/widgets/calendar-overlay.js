@@ -4,7 +4,10 @@
 // phone calendar apps (or Hermes over Telegram), not tablet forms.
 //
 // Same overlay conventions as widgets/home.js: scrim + panel, close via the
-// ✕ button, a scrim tap, or Escape.
+// ✕ button, a scrim tap, or Escape. Tapping any event row opens the
+// event-detail panel for description/location drill-down.
+
+import { openEventDetail } from './event-detail.js';
 
 const CLOSE_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 
@@ -35,7 +38,11 @@ export function openCalendarOverlay(source, { days = 7 } = {}) {
 
   host.addEventListener('click', (e) => {
     if (e.target.closest('[data-action="close"]')) return close();
-    if (e.target === host) close(); // scrim tap
+    if (e.target === host) return close(); // scrim tap
+    const row = e.target.closest('[data-event]');
+    if (row) {
+      try { openEventDetail(JSON.parse(row.dataset.event)); } catch {}
+    }
   });
 
   document.addEventListener('keydown', onKey);
@@ -68,8 +75,10 @@ function renderDay(group) {
     <section class="cal-day">
       <h3 class="cal-day__label">${escapeHtml(group.label)}</h3>
       <ul class="cal-day__list">
-        ${group.events.map(ev => `
-          <li class="cal-event">
+        ${group.events.map(ev => {
+          const evtJson = escapeHtml(JSON.stringify(ev));
+          return `
+          <li class="cal-event" data-event="${evtJson}" role="button" tabindex="0">
             <span class="cal-event__time${ev.allDay ? ' cal-event__time--allday' : ''}">
               ${ev.allDay ? 'All day' : TIME_FMT.format(new Date(ev.startsAt))}
             </span>
@@ -78,8 +87,8 @@ function renderDay(group) {
               ${ev.sub ? `<span class="cal-event__sub">${escapeHtml(ev.sub)}</span>` : ''}
             </span>
             <span class="cal-chip cal-chip--${slug(ev.calendar)}">${escapeHtml(ev.calendar || '')}</span>
-          </li>
-        `).join('')}
+          </li>`;
+        }).join('')}
       </ul>
     </section>
   `;

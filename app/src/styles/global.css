@@ -319,9 +319,47 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   white-space: nowrap;
 }
 .cal-chip--tim { color: var(--color-accent); }
-.cal-chip--family { color: var(--color-event-feed); }
-.cal-chip--caroline { color: #a3b8c8; }
+.cal-chip--family { color: #6dac8e; }
+.cal-chip--caroline { color: #6e8faf; }
 .cal-overlay__empty { text-align: center; padding: var(--space-4) 0; }
+/* Tappable rows in the overlay */
+.cal-event[data-event] { cursor: pointer; }
+.cal-event[data-event]:hover .cal-event__title { color: var(--color-accent); }
+
+/* ───── event detail panel ─────
+   Read-only drill-down shown when tapping any calendar event row.
+   Positioned over the current view (dashboard or 7-day overlay). */
+.overlay--event-detail { z-index: 60; } /* above the 7-day overlay (z-index 50) */
+.event-detail {
+  width: min(92vw, 28rem);
+}
+.event-detail__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+.event-detail__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.event-detail__icon {
+  flex-shrink: 0;
+  color: var(--color-muted);
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+}
+.event-detail__icon--chip { margin-top: 0; }
+.event-detail__text {
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.event-detail__description {
+  color: var(--color-muted);
+  white-space: pre-wrap;
+}
 
 /* ───── home control overlay ─────
    Opened from the action-bar home button. Full-screen scrim + centered panel of
@@ -683,7 +721,8 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   color: var(--color-accent);
   margin: 0 0 var(--space-3) 0;
   padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 2px solid currentColor;
+  opacity: 0.85;
 }
 .calendar__empty {
   margin: 0;
@@ -707,6 +746,13 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   padding-left: var(--space-3);
   margin-left: calc(-1 * var(--space-3));
 }
+/* Per-calendar column label colors — hue-distinct so Tim/Family/Caroline are legible at arm's length */
+.calendar__column--tim      .calendar__column-label { color: var(--color-accent); }  /* coral */
+.calendar__column--family   .calendar__column-label { color: #6dac8e; }              /* sage green */
+.calendar__column--caroline .calendar__column-label { color: #6e8faf; }              /* medium blue */
+/* Tappable event rows */
+.calendar__event[data-event] { cursor: pointer; }
+.calendar__event[data-event]:hover .calendar__title { color: var(--color-accent); }
 .calendar__time {
   font-family: var(--font-display);
   color: var(--color-fg);

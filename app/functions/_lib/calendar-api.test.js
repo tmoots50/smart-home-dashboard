@@ -6,6 +6,7 @@ const timed = {
   id: 'e1',
   summary: 'Dentist',
   location: 'Midtown Dental',
+  description: 'Bring insurance card.',
   start: { dateTime: '2026-07-10T14:00:00-04:00' },
   end: { dateTime: '2026-07-10T15:00:00-04:00' },
 };
@@ -26,10 +27,16 @@ describe('normalizeUpcoming', () => {
       calendar: 'Family',
       title: 'Anniversary trip',
       sub: '',
+      description: '',
       startsAt: '2026-09-10',
       endsAt: '2026-09-14',
       allDay: true,
     });
+  });
+
+  it('passes description through to the normalized shape', () => {
+    const up = normalizeUpcoming([timed], 'Tim');
+    expect(up[0].description).toBe('Bring insurance card.');
   });
 
   it('tags every event with its calendar label', () => {
@@ -37,6 +44,7 @@ describe('normalizeUpcoming', () => {
     expect(up[0].calendar).toBe('Tim');
     expect(up[0].allDay).toBe(false);
     expect(up[0].startsAt).toBe('2026-07-10T14:00:00-04:00');
+    expect(up[0].endsAt).toBe('2026-07-10T15:00:00-04:00');
   });
 
   it('drops events with no start at all', () => {
@@ -46,6 +54,19 @@ describe('normalizeUpcoming', () => {
   it('defaults a missing summary', () => {
     const up = normalizeUpcoming([{ ...timed, summary: undefined }], 'Tim');
     expect(up[0].title).toBe('(no title)');
+  });
+});
+
+describe('normalize', () => {
+  it('passes description and endsAt through for timed events', () => {
+    const [ev] = normalize([timed]);
+    expect(ev.description).toBe('Bring insurance card.');
+    expect(ev.endsAt).toBe('2026-07-10T15:00:00-04:00');
+  });
+
+  it('defaults description to empty string when missing', () => {
+    const [ev] = normalize([{ ...timed, description: undefined }]);
+    expect(ev.description).toBe('');
   });
 });
 

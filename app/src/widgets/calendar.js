@@ -1,4 +1,5 @@
 import { getCalendar, fetchCalendar } from '../lib/calendar.js';
+import { openEventDetail } from './event-detail.js';
 
 const TIME_FMT = new Intl.DateTimeFormat(undefined, {
   hour: 'numeric',
@@ -46,9 +47,13 @@ export function renderCalendar(data, now = new Date()) {
   `;
 }
 
+function colSlug(label) {
+  return String(label).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+}
+
 function renderColumn(column, nextEventId) {
   return `
-    <div class="calendar__column">
+    <div class="calendar__column calendar__column--${colSlug(column.label)}">
       <h3 class="calendar__column-label">${escapeHtml(column.label)}</h3>
       ${columnBody(column, nextEventId)}
     </div>
@@ -67,8 +72,9 @@ function columnBody(column, nextEventId) {
       ${column.events.map(event => {
         const isNext = event.id === nextEventId;
         const cls = `calendar__event${isNext ? ' calendar__event--next' : ''}`;
+        const evtJson = escapeHtml(JSON.stringify({ ...event, calendar: column.label }));
         return `
-          <li class="${cls}">
+          <li class="${cls}" data-event="${evtJson}" role="button" tabindex="0">
             <span class="calendar__time">${TIME_FMT.format(new Date(event.startsAt))}</span>
             <span>
               <div class="calendar__title">${escapeHtml(event.title)}</div>
@@ -88,6 +94,13 @@ export function mountCalendar(el) {
   const { initial, live } = getCalendar();
   el.innerHTML = renderCalendar(initial);
   live.then(data => { if (data) el.innerHTML = renderCalendar(data); });
+
+  // Event delegation — survives innerHTML refreshes on the container.
+  el.addEventListener('click', (e) => {
+    const row = e.target.closest('[data-event]');
+    if (!row) return;
+    try { openEventDetail(JSON.parse(row.dataset.event)); } catch {}
+  });
 
   const id = setInterval(() => {
     fetchCalendar()
