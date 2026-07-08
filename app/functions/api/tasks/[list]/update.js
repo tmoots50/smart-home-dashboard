@@ -1,16 +1,12 @@
-// POST /api/tasks/{list}/strike  body { id } or { text }
-//   → { ok: true }                    task marked complete
-//   → 404 { error: 'no match' }       unknown id / no incomplete task matches
-//   → 409 { error, candidates: [] }   text matched several (caller disambiguates)
+// POST /api/tasks/{list}/update  body { id, text } → { ok: true }
 //
-// `id` (the Google Tasks id the dashboard already holds) is exact and
-// preferred. `text` is the Hermes/voice path: case-insensitive substring
-// match against INCOMPLETE tasks only (so a re-strike of an already-done item
-// is a 404 rather than silently re-marking).
+// Renames a task in place — backs the dashboard's inline edit. Id-only on
+// purpose: unlike strike there's no fuzzy-text path, because renaming the
+// wrong row is worse than failing.
 
 import { getAccessToken } from '../../../_lib/google-auth.js';
 import { checkAuth, corsHeaders, json } from '../../../_lib/auth.js';
-import { listIdFor, listTasks, completeTask, findStrikeTarget } from '../../../_lib/tasks-api.js';
+import { listIdFor, updateTaskTitle } from '../../../_lib/tasks-api.js';
 
 export async function onRequest(context) {
   const { request, env, params } = context;
@@ -34,7 +30,7 @@ export async function onRequest(context) {
   const body = await request.json().catch(() => ({}));
   const id = (body.id || '').toString().trim();
   const text = (body.text || '').toString().trim();
-  if (!id && !text) return json({ error: 'id or text required' }, { status: 400 }, cors);
+  if (!id || !text) return json({ error: 'id and text required' }, { status: 400 }, cors);
 
   let accessToken;
   try {
@@ -44,15 +40,7 @@ export async function onRequest(context) {
   }
 
   try {
-    if (id) {
-      await completeTask(accessToken, listId, id);
-      return json({ ok: true }, {}, cors);
-    }
-    const items = await listTasks(accessToken, listId);
-    const target = findStrikeTarget(items, text);
-    if (target.kind === 'zero') return json({ error: 'no match' }, { status: 404 }, cors);
-    if (target.kind === 'multi') return json({ error: 'ambiguous match', candidates: target.candidates }, { status: 409 }, cors);
-    await completeTask(accessToken, listId, target.id);
+    await updateTaskTitle(accessToken, listId, id, text);
     return json({ ok: true }, {}, cors);
   } catch (err) {
     const status = err.status === 404 ? 404 : 502;

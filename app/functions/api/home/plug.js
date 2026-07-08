@@ -28,12 +28,14 @@ export async function onRequest(context) {
   const id = (body.id || '').toString();
   const on = Boolean(body.on);
 
-  if (!allowedPlug(env, id)) {
+  if (!(await allowedPlug(env, id))) {
     return json({ error: 'unknown or non-allowlisted plug' }, { status: 403 }, cors);
   }
 
   try {
-    await callService(env, 'switch', on ? 'turn_on' : 'turn_off', id);
+    // Service domain must match the entity's domain (switch.* vs light.*).
+    const domain = id.split('.')[0];
+    await callService(env, domain, on ? 'turn_on' : 'turn_off', id);
     return json({ ok: true, id, on }, {}, cors);
   } catch (err) {
     return json({ error: err.message }, { status: 502 }, cors);

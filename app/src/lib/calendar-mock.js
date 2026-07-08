@@ -2,6 +2,32 @@
 // (Tim / Family / Caroline) so the fallback view previews the real layout.
 // Widget highlights the single soonest upcoming event globally.
 
+// Mock for the expanded 7-day overlay (matches /api/calendar/upcoming shape).
+// Mix of timed + all-day events across all three calendars.
+export function getMockUpcoming(now = new Date()) {
+  const day = (offset) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() + offset);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+  const at = (offset, h, m) => {
+    const d = day(offset);
+    d.setHours(h, m, 0, 0);
+    return d.toISOString();
+  };
+  const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  return [
+    { id: 'u1', calendar: 'Family', title: 'Pediatrician — Mabel 2mo', sub: 'Northside Pediatrics', startsAt: at(0, 15, 30), endsAt: at(0, 16, 15), allDay: false },
+    { id: 'u2', calendar: 'Tim', title: 'Recruiter call — Tessa', sub: 'Phone', startsAt: at(1, 10, 0), endsAt: at(1, 10, 30), allDay: false },
+    { id: 'u3', calendar: 'Family', title: 'Grandma visiting', sub: '', startsAt: ymd(day(2)), endsAt: ymd(day(4)), allDay: true },
+    { id: 'u4', calendar: 'Caroline', title: 'Back-to-office day', sub: 'Carter’s HQ', startsAt: at(3, 9, 0), endsAt: at(3, 17, 0), allDay: false },
+    { id: 'u5', calendar: 'Family', title: 'Swim lesson — intro', sub: 'Piedmont Aquatic', startsAt: at(5, 11, 0), endsAt: at(5, 11, 45), allDay: false },
+    { id: 'u6', calendar: 'Tim', title: 'Dentist', sub: 'Midtown Dental', startsAt: at(6, 14, 0), endsAt: at(6, 15, 0), allDay: false },
+  ];
+}
+
 export function getMockCalendar(now = new Date()) {
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);

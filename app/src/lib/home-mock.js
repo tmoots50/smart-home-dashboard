@@ -16,9 +16,9 @@ export function getMockHome() {
       battery: 87,
     },
     plugs: [
-      { id: 'switch.living_room_lamp', name: 'Living Room Lamp', on: true },
-      { id: 'switch.bedroom_fan',      name: 'Bedroom Fan',      on: false },
-      { id: 'switch.coffee_maker',     name: 'Coffee Maker',     on: false },
+      { id: 'switch.living_room_lamp',      name: 'Living Room Lamp',      on: true },
+      { id: 'switch.nursery_sound_machine', name: 'Nursery Sound Machine', on: false },
+      { id: 'switch.coffee_maker',          name: 'Coffee Maker',          on: false },
     ],
   };
 }

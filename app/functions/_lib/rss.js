@@ -95,6 +95,34 @@ export function selectHeadlines(groups, max) {
   return picked.sort(byDateDesc);
 }
 
+// Build a diverse candidate pool for a downstream taste-picker (Hermes), NOT a
+// display list. Round-robins across sources — freshest-first within each — so a
+// prolific feed (e.g. a deals feed with 50 items) can't crowd the others out of
+// the pool. Deduped by url, capped at `max`. Recency is deliberately not the
+// global sort key: the picker applies taste, so it just needs a balanced menu.
+export function selectPool(groups, max) {
+  const queues = groups
+    .map(g => [...(g.items || [])].filter(i => i.publishedAt).sort(byDateDesc))
+    .filter(q => q.length);
+  const picked = [];
+  const seen = new Set();
+  let draining = true;
+  while (draining && picked.length < max) {
+    draining = false;
+    for (const q of queues) {
+      if (!q.length) continue;
+      draining = true; // still items left somewhere
+      const item = q.shift();
+      const key = item.url || item.title;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      picked.push(item);
+      if (picked.length >= max) break;
+    }
+  }
+  return picked;
+}
+
 function byDateDesc(a, b) {
   return +new Date(b.publishedAt) - +new Date(a.publishedAt);
 }

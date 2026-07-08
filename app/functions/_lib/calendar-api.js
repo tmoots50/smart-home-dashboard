@@ -22,14 +22,14 @@ export function parseCalendars(env) {
 
 // Fetch events for a single calendar in [timeMin, timeMax].
 // `singleEvents=true` expands recurring events into instances.
-export async function listEvents(accessToken, calendarId, timeMin, timeMax) {
+export async function listEvents(accessToken, calendarId, timeMin, timeMax, { maxResults = 50 } = {}) {
   const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`);
   url.search = new URLSearchParams({
     timeMin,
     timeMax,
     singleEvents: 'true',
     orderBy: 'startTime',
-    maxResults: '50',
+    maxResults: String(maxResults),
   }).toString();
 
   const res = await fetch(url, { headers: { authorization: `Bearer ${accessToken}` } });
@@ -53,6 +53,30 @@ export function normalize(events) {
       title: e.summary || '(no title)',
       sub: e.location || '',
     }));
+}
+
+// Map events for the wide "upcoming" window (expanded calendar overlay + the
+// Hermes curation job). Unlike normalize(), ALL-DAY events are kept — they're
+// exactly the birthdays/trips/flights a long-horizon view exists for.
+// Note: Google gives all-day events an EXCLUSIVE end.date (a one-day event on
+// Jul 9 ends Jul 10); consumers that render ranges must subtract a day.
+export function normalizeUpcoming(events, calendarLabel) {
+  return events
+    .map(e => {
+      const allDay = !e.start?.dateTime;
+      const startsAt = e.start?.dateTime || e.start?.date;
+      if (!startsAt) return null;
+      return {
+        id: e.id,
+        calendar: calendarLabel,
+        title: e.summary || '(no title)',
+        sub: e.location || '',
+        startsAt,
+        endsAt: e.end?.dateTime || e.end?.date || '',
+        allDay,
+      };
+    })
+    .filter(Boolean);
 }
 
 // Pick the soonest upcoming event across all sections — widget highlights it.

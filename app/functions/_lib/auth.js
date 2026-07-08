@@ -9,6 +9,11 @@
 // makes accidental crawlers / scrapers get a 401 instead of consuming our
 // Google API quota. The Functions also enforce CORS so a malicious page can't
 // read responses with the token.
+//
+// HERMES_TOKEN (optional) is a second accepted bearer for the Hermes agent, so
+// it can be revoked on its own without rotating the tablet's token. Same trust
+// tier as DASHBOARD_TOKEN — anything PIN-gated (door unlock) stays PIN-gated
+// regardless of which token the caller holds.
 
 export function checkAuth(request, env) {
   if (!env.DASHBOARD_TOKEN) {
@@ -21,7 +26,8 @@ export function checkAuth(request, env) {
   // The query-param fallback exists so that <img src> can be authenticated
   // (browsers don't send Authorization on image requests).
   const queryToken = new URL(request.url).searchParams.get('token') || '';
-  const ok = auth === `Bearer ${env.DASHBOARD_TOKEN}` || queryToken === env.DASHBOARD_TOKEN;
+  const tokens = [env.DASHBOARD_TOKEN, env.HERMES_TOKEN].filter(Boolean);
+  const ok = tokens.some(t => auth === `Bearer ${t}` || queryToken === t);
   if (!ok) {
     return new Response(JSON.stringify({ error: 'unauthorized' }), {
       status: 401, headers: { 'content-type': 'application/json' },

@@ -59,7 +59,7 @@
 [data-theme="cosy"] .countdown .card__title::before{ content: '🎉 '; }
 [data-theme="cosy"] .todos .card__title::before    { content: '✅ '; }
 [data-theme="cosy"] .groceries .card__title::before{ content: '🛒 '; }
-[data-theme="cosy"] .headlines .card__title::before{ content: '📰 '; }
+[data-theme="cosy"] .pick .card__title::before{ content: '🎟️ '; }
 
 [data-theme="cosy"] .calendar__section:nth-of-type(1) .calendar__section-label::before { content: '👨‍👩‍👧 '; }
 [data-theme="cosy"] .calendar__section:nth-of-type(2) .calendar__section-label::before { content: '💼 '; }

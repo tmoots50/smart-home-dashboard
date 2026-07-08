@@ -1,17 +1,26 @@
-// GET /api/headlines → { items: [{ source, title, url, publishedAt }] }
+// GET /api/headlines        → { items: [...] }  top MAX_ITEMS, ≥1 per source (display fallback)
+// GET /api/headlines?pool=1 → { items: [...] }  up to POOL_MAX, source-balanced (Hermes candidate menu)
 //
-// Fetches a fixed list of free RSS feeds in parallel, parses each, and returns
-// up to MAX_ITEMS headlines guaranteeing at least one per source. Cached at the
-// CF edge for CACHE_TTL_S so we don't hammer publishers.
+// Fetches a fixed list of free Atlanta RSS feeds in parallel and parses each.
+// Default mode returns a small display list; ?pool=1 returns the full candidate
+// pool for the daily taste-picker (Hermes GETs it, picks one, POSTs to
+// /api/curated). Cached at the CF edge for CACHE_TTL_S so we don't hammer
+// publishers. Each item: { source, title, url, publishedAt }.
 
 import { checkAuth, corsHeaders, json } from '../_lib/auth.js';
-import { parseFeed, selectHeadlines } from '../_lib/rss.js';
+import { parseFeed, selectHeadlines, selectPool } from '../_lib/rss.js';
 
+// All verified fetchable with the UA below (2026-07-07). Discover Atlanta was
+// evaluated and dropped: it 403s every path — homepage included — from server
+// IPs (Cloudflare bot block), so a Worker fetch would fail in production too.
 const FEEDS = [
   { source: 'Eater ATL', url: 'https://atlanta.eater.com/rss/index.xml' },
   { source: 'Atlanta Mag', url: 'https://www.atlantamagazine.com/feed/' },
+  { source: 'On the Cheap', url: 'https://feeds.feedblitz.com/atlonthecheap' },
+  { source: 'Atlanta Parent', url: 'https://www.atlantaparent.com/events/feed/' },
 ];
 const MAX_ITEMS = 3;
+const POOL_MAX = 24;
 const CACHE_TTL_S = 600; // 10 min
 
 export async function onRequest(context) {
@@ -24,8 +33,11 @@ export async function onRequest(context) {
   const authErr = checkAuth(request, env);
   if (authErr) return withCors(authErr, cors);
 
+  const pool = new URL(request.url).searchParams.has('pool');
+
   const cache = caches.default;
-  const cacheKey = new Request(new URL(request.url).origin + '/api/headlines/__cache/v2');
+  const cacheKey = new Request(new URL(request.url).origin
+    + `/api/headlines/__cache/${pool ? 'pool-v1' : 'v2'}`);
   const hit = await cache.match(cacheKey);
   if (hit) return withCors(hit, cors);
 
@@ -49,7 +61,9 @@ export async function onRequest(context) {
       }
     }));
 
-    const items = selectHeadlines(groups, MAX_ITEMS);
+    const items = pool
+      ? selectPool(groups, POOL_MAX)
+      : selectHeadlines(groups, MAX_ITEMS);
     const resp = new Response(JSON.stringify({ items }), {
       headers: {
         'content-type': 'application/json',

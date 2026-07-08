@@ -54,15 +54,28 @@ export async function moveTask(accessToken, listId, taskId, previousId) {
 }
 
 export async function completeTask(accessToken, listId, taskId) {
+  return patchTask(accessToken, listId, taskId, { status: 'completed' });
+}
+
+// Rename a task in place (inline edit on the dashboard).
+export async function updateTaskTitle(accessToken, listId, taskId, title) {
+  return patchTask(accessToken, listId, taskId, { title });
+}
+
+async function patchTask(accessToken, listId, taskId, fields) {
   const res = await fetch(`${BASE}/lists/${encodeURIComponent(listId)}/tasks/${encodeURIComponent(taskId)}`, {
     method: 'PATCH',
     headers: {
       authorization: `Bearer ${accessToken}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ status: 'completed' }),
+    body: JSON.stringify(fields),
   });
-  if (!res.ok) throw new Error(`tasks patch ${res.status}: ${await res.text().catch(() => '')}`);
+  if (!res.ok) {
+    const err = new Error(`tasks patch ${res.status}: ${await res.text().catch(() => '')}`);
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 

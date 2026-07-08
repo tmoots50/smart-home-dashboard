@@ -7,29 +7,43 @@
 //   VITE_DASHBOARD_TOKEN  shared bearer token (read + plug toggles)
 //   VITE_HOME_LIVE        '1' once HA is stood up and /api/home* are live
 //
-// Until VITE_HOME_LIVE is set, `actions` is null and the overlay runs on local
-// mock state (toggles stick locally, unlock accepts any PIN) — a full UX demo
-// before the Pi/HA exist. Flip VITE_HOME_LIVE=1 + set the CF env vars to go live.
+// Until VITE_HOME_LIVE is set the widgets run against a PERSISTED mock: toggle
+// and lock state stick in localStorage (a demo lamp that resets itself reads as
+// broken), and unlock accepts any PIN of valid length. `actions` is therefore
+// never null — mock mode just routes them to localStorage instead of the API.
+//
+// The device registry ("add smart stuff I buy") is real even before HA lives:
+// with a token, adds go to the HOME_DEVICES KV via /api/home/devices, so staged
+// devices survive and appear on every screen at HA go-live. With no token
+// (pure local dev) the registry falls back to localStorage.
 
 import { getMockHome } from './home-mock.js';
 
 const TOKEN = import.meta.env.VITE_DASHBOARD_TOKEN;
 const LIVE = import.meta.env.VITE_HOME_LIVE === '1';
+const LIVE_MODE = Boolean(TOKEN && LIVE);
+
 const CACHE_KEY = 'home:v1';
 const CACHE_TTL_MS = 30 * 1000; // device state goes stale fast; short TTL
+const MOCK_STATE_KEY = 'home:mock-state:v1';
+const LOCAL_DEVICES_KEY = 'home:devices:v1';
+const PIN_MIN = 4;
+
+function readJson(key) {
+  try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
+}
+function writeJson(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
 
 function readCache() {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
-    const { at, data } = JSON.parse(raw);
-    if (Date.now() - at > CACHE_TTL_MS) return null;
-    return data;
-  } catch { return null; }
+  const raw = readJson(CACHE_KEY);
+  if (!raw) return null;
+  if (Date.now() - raw.at > CACHE_TTL_MS) return null;
+  return raw.data;
 }
 function writeCache(data) {
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), data })); }
-  catch {}
+  writeJson(CACHE_KEY, { at: Date.now(), data });
 }
 
 async function request(path, opts = {}) {
@@ -72,16 +86,101 @@ export async function setLock(action, pin) {
   return request('/api/home/lock', { method: 'POST', body: JSON.stringify(body) });
 }
 
-// Same {initial, live} contract as getTodos / getCalendar.
-export function getHome() {
-  const cached = readCache();
-  const initial = cached ?? getMockHome();
-  const live = (TOKEN && LIVE)
-    ? fetchHome().catch(() => initial)
-    : Promise.resolve(initial);
-  return { initial, live };
+// ───── mock layer (persisted demo state until HA is live) ─────
+
+function mockState() {
+  return readJson(MOCK_STATE_KEY) ?? { lock: null, plugs: {} };
 }
 
-// null until HA is live — the overlay treats null actions as local-mock mode.
-export const actions = (TOKEN && LIVE) ? { setPlug, setLock } : null;
-export const isConfigured = Boolean(TOKEN && LIVE);
+function localDevices() {
+  const arr = readJson(LOCAL_DEVICES_KEY);
+  return Array.isArray(arr) ? arr : [];
+}
+
+// Base mock + persisted toggles + registered devices, in one frame.
+function mockHome(registry = localDevices()) {
+  const base = getMockHome();
+  const state = mockState();
+  return {
+    lock: { ...base.lock, state: state.lock ?? base.lock.state },
+    plugs: [
+      ...base.plugs.map(p => ({ ...p, on: state.plugs[p.id] ?? p.on, custom: false })),
+      ...registry
+        .filter(d => !base.plugs.some(p => p.id === d.id))
+        .map(d => ({ ...d, on: state.plugs[d.id] ?? false, custom: true })),
+    ],
+  };
+}
+
+const mockActions = {
+  async setPlug(id, on) {
+    const state = mockState();
+    writeJson(MOCK_STATE_KEY, { ...state, plugs: { ...state.plugs, [id]: on } });
+    return { ok: true, id, on };
+  },
+  async setLock(action, pin) {
+    if (action === 'unlock' && String(pin ?? '').length < PIN_MIN) {
+      const err = new Error('mock: bad pin');
+      err.reason = 'invalid pin';
+      throw err;
+    }
+    writeJson(MOCK_STATE_KEY, { ...mockState(), lock: action === 'unlock' ? 'unlocked' : 'locked' });
+    return { state: action === 'unlock' ? 'unlocked' : 'locked' };
+  },
+};
+
+// Pull the shared KV registry into the mock frame (pre-HA, with a token the
+// registry already lives server-side so every screen sees the same devices).
+async function mockLive(initial) {
+  if (!TOKEN) return initial;
+  try {
+    const { devices } = await request('/api/home/devices');
+    writeJson(LOCAL_DEVICES_KEY, devices);
+    return mockHome(devices);
+  } catch {
+    return initial;
+  }
+}
+
+// ───── public surface ─────
+
+// Same {initial, live} contract as getTodos / getCalendar.
+export function getHome() {
+  if (LIVE_MODE) {
+    const cached = readCache();
+    const initial = cached ?? mockHome();
+    return { initial, live: fetchHome().catch(() => initial) };
+  }
+  const initial = mockHome();
+  return { initial, live: mockLive(initial) };
+}
+
+// Never null — mock mode routes to persisted local state (see header).
+export const actions = LIVE_MODE ? { setPlug, setLock } : mockActions;
+
+// Registry mutations. With a token they hit the shared KV registry; otherwise
+// they stay in this browser's localStorage.
+export const deviceActions = {
+  async add(device) {
+    if (TOKEN) {
+      const { devices } = await request('/api/home/devices', { method: 'POST', body: JSON.stringify(device) });
+      writeJson(LOCAL_DEVICES_KEY, devices);
+      return devices;
+    }
+    const devices = [...localDevices(), device];
+    writeJson(LOCAL_DEVICES_KEY, devices);
+    return devices;
+  },
+  async remove(id) {
+    if (TOKEN) {
+      const { devices } = await request('/api/home/devices', { method: 'DELETE', body: JSON.stringify({ id }) });
+      writeJson(LOCAL_DEVICES_KEY, devices);
+      return devices;
+    }
+    const devices = localDevices().filter(d => d.id !== id);
+    writeJson(LOCAL_DEVICES_KEY, devices);
+    return devices;
+  },
+};
+
+export const isConfigured = LIVE_MODE;

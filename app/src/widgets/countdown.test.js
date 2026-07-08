@@ -4,6 +4,22 @@ import { getMockCountdowns } from '../lib/countdown-mock.js';
 
 const NOW = new Date('2026-04-29T08:00:00');
 
+describe('curated note line', () => {
+  it('renders the Hermes action note when present', () => {
+    const html = renderCountdown(
+      [{ name: 'Mom’s birthday', date: '2026-05-19', sub: 'Atlanta', note: 'Get a card this week' }],
+      NOW,
+    );
+    expect(html).toContain('countdown__note');
+    expect(html).toContain('Get a card this week');
+  });
+
+  it('omits the note line when absent', () => {
+    const html = renderCountdown([{ name: 'X', date: '2026-05-19', sub: '' }], NOW);
+    expect(html).not.toContain('countdown__note');
+  });
+});
+
 describe('renderCountdown', () => {
   it('renders up to 3 upcoming events', () => {
     const html = renderCountdown(getMockCountdowns(), NOW);

@@ -74,11 +74,26 @@ export async function appendTodo(text) {
 export async function appendGrocery(text) {
   return request('/api/tasks/groceries', { method: 'POST', body: JSON.stringify({ text }) });
 }
-export async function strikeTodo(text) {
-  return request('/api/tasks/todos/strike', { method: 'POST', body: JSON.stringify({ text }) });
+// `ref` is { id, text } (id preferred server-side; text is the fallback for
+// rows added optimistically that don't have their Google id yet) — or a bare
+// string for text-only callers.
+export async function strikeTodo(ref) {
+  return request('/api/tasks/todos/strike', { method: 'POST', body: JSON.stringify(strikeBody(ref)) });
 }
-export async function strikeGrocery(text) {
-  return request('/api/tasks/groceries/strike', { method: 'POST', body: JSON.stringify({ text }) });
+export async function strikeGrocery(ref) {
+  return request('/api/tasks/groceries/strike', { method: 'POST', body: JSON.stringify(strikeBody(ref)) });
+}
+function strikeBody(ref) {
+  if (typeof ref === 'string') return { text: ref };
+  return { ...(ref.id ? { id: ref.id } : {}), text: ref.text };
+}
+
+// Rename in place — backs the inline edit. Requires the Google task id.
+export async function updateTodo(id, text) {
+  return request('/api/tasks/todos/update', { method: 'POST', body: JSON.stringify({ id, text }) });
+}
+export async function updateGrocery(id, text) {
+  return request('/api/tasks/groceries/update', { method: 'POST', body: JSON.stringify({ id, text }) });
 }
 
 // Move {id} to be immediately after {previousId}. Pass previousId=null to move

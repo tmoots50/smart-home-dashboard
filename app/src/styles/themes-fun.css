@@ -84,7 +84,7 @@
 [data-theme="fun"] .countdown .card__title::before{ content: '🎉 '; }
 [data-theme="fun"] .todos .card__title::before    { content: '✅ '; }
 [data-theme="fun"] .groceries .card__title::before{ content: '🛒 '; }
-[data-theme="fun"] .headlines .card__title::before{ content: '📰 '; }
+[data-theme="fun"] .pick .card__title::before{ content: '🎟️ '; }
 
 /* Emoji prefixes on calendar section labels. */
 [data-theme="fun"] .calendar__section:nth-of-type(1) .calendar__section-label::before { content: '👨‍👩‍👧 '; }

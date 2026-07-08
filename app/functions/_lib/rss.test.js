@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decodeEntities, parseFeed, selectHeadlines } from './rss.js';
+import { decodeEntities, parseFeed, selectHeadlines, selectPool } from './rss.js';
 
 describe('decodeEntities', () => {
   it('strips CDATA wrappers', () => {
@@ -115,5 +115,49 @@ describe('selectHeadlines', () => {
 
   it('returns [] when every source is empty', () => {
     expect(selectHeadlines([{ source: 'A', items: [] }], 3)).toEqual([]);
+  });
+});
+
+describe('selectPool', () => {
+  const item = (source, title, daysAgo, url) => ({
+    source, title, url: url ?? `https://x/${title}`,
+    publishedAt: new Date(Date.now() - daysAgo * 86400_000).toISOString(),
+  });
+
+  it('round-robins so a prolific feed cannot crowd others out', () => {
+    const groups = [
+      { source: 'Cheap', items: Array.from({ length: 10 }, (_, i) => item('Cheap', `c${i}`, i)) },
+      { source: 'Mag', items: [item('Mag', 'm0', 0), item('Mag', 'm1', 1)] },
+    ];
+    const pool = selectPool(groups, 6);
+    // both sources represented near the top despite Cheap having 5x the items
+    expect(pool.slice(0, 2).map(i => i.source)).toEqual(['Cheap', 'Mag']);
+    expect(pool.filter(i => i.source === 'Mag')).toHaveLength(2);
+  });
+
+  it('takes the freshest first within each source', () => {
+    const groups = [
+      { source: 'A', items: [item('A', 'old', 5), item('A', 'new', 0)] },
+    ];
+    expect(selectPool(groups, 2).map(i => i.title)).toEqual(['new', 'old']);
+  });
+
+  it('dedupes by url', () => {
+    const groups = [
+      { source: 'A', items: [item('A', 't1', 0, 'https://dup')] },
+      { source: 'B', items: [item('B', 't2', 0, 'https://dup')] },
+    ];
+    expect(selectPool(groups, 5)).toHaveLength(1);
+  });
+
+  it('caps at max and drains without infinite-looping on all-dup input', () => {
+    const groups = [
+      { source: 'A', items: [item('A', 't', 0, 'https://same'), item('A', 't', 1, 'https://same')] },
+    ];
+    expect(selectPool(groups, 10)).toHaveLength(1);
+  });
+
+  it('returns [] when every source is empty', () => {
+    expect(selectPool([{ source: 'A', items: [] }], 5)).toEqual([]);
   });
 });

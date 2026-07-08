@@ -9,13 +9,22 @@
 //   HOME_UNLOCK_PIN_HASH "<saltHex>:<sha256Hex>"  where hash = SHA-256(saltHex + pin)
 //   HOME_LOCKOUT         (optional) KV namespace binding for unlock rate-limiting
 //
-// SAFETY: only entities named in HA_ENTITIES_JSON are ever read or actuated. A
+// SAFETY: only entities named in HA_ENTITIES_JSON — plus dashboard-registered
+// devices in the HOME_DEVICES KV registry — are ever read or actuated. A
 // control request for any other entity id is rejected — the allowlist is the
 // guard against a caller reaching arbitrary HA entities (path-traversal is the
 // classic foot-gun for a proxy like this).
+//
+// The KV registry ("add a device from the wall") is deliberately weaker than
+// the env allowlist and deliberately CONSTRAINED: only switch./light. entity
+// ids are accepted (see validateDevice), so the registry can grow low-
+// consequence toggles but can never add a lock, cover, or alarm. Anything
+// sensitive still requires an env change + its own second factor.
 
 const MAX_FAILS = 5;
 const LOCKOUT_WINDOW_S = 15 * 60;
+const DEVICES_KEY = 'devices';
+const DEVICES_MAX = 12;
 
 export function haConfigured(env) {
   return Boolean(env.HA_BASE_URL && env.HA_TOKEN && env.HA_ENTITIES_JSON);
@@ -33,9 +42,69 @@ export function parseEntities(env) {
   }
 }
 
-// Is `id` an allowlisted plug? Returns the plug config or null.
-export function allowedPlug(env, id) {
-  return parseEntities(env).plugs.find(p => p.id === id) || null;
+// Is `id` an allowlisted plug (env allowlist or KV registry)?
+// Returns the plug config or null.
+export async function allowedPlug(env, id) {
+  const envPlug = parseEntities(env).plugs.find(p => p.id === id);
+  if (envPlug) return envPlug;
+  const registry = await listDevices(env);
+  return registry.find(p => p.id === id) || null;
+}
+
+// ───── dashboard-registered device registry (KV) ─────
+
+// Pure validation for a registry entry. Only toggleable, low-consequence
+// domains — the registry must never be a path to actuating a lock.
+export function validateDevice(raw) {
+  const id = (raw?.id || '').toString().trim();
+  const name = (raw?.name || '').toString().trim();
+  if (!/^(switch|light)\.[a-z0-9_]+$/.test(id)) {
+    return { ok: false, error: 'id must be a switch.* or light.* entity id' };
+  }
+  if (!name || name.length > 40) {
+    return { ok: false, error: 'name required (max 40 chars)' };
+  }
+  return { ok: true, value: { id, name } };
+}
+
+export async function listDevices(env) {
+  const kv = env.HOME_DEVICES;
+  if (!kv) return [];
+  try {
+    const raw = await kv.get(DEVICES_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function addDevice(env, device) {
+  const kv = env.HOME_DEVICES;
+  if (!kv) throw Object.assign(new Error('HOME_DEVICES KV unbound'), { status: 501 });
+  const devices = await listDevices(env);
+  if (devices.length >= DEVICES_MAX) {
+    throw Object.assign(new Error(`registry full (max ${DEVICES_MAX})`), { status: 409 });
+  }
+  const envIds = new Set(parseEntities(env).plugs.map(p => p.id));
+  if (envIds.has(device.id) || devices.some(d => d.id === device.id)) {
+    throw Object.assign(new Error('device already registered'), { status: 409 });
+  }
+  const next = [...devices, device];
+  await kv.put(DEVICES_KEY, JSON.stringify(next));
+  return next;
+}
+
+export async function removeDevice(env, id) {
+  const kv = env.HOME_DEVICES;
+  if (!kv) throw Object.assign(new Error('HOME_DEVICES KV unbound'), { status: 501 });
+  const devices = await listDevices(env);
+  const next = devices.filter(d => d.id !== id);
+  if (next.length === devices.length) {
+    throw Object.assign(new Error('not registered (env-configured devices are removed via HA_ENTITIES_JSON)'), { status: 404 });
+  }
+  await kv.put(DEVICES_KEY, JSON.stringify(next));
+  return next;
 }
 
 export function isLockEntity(env, id) {
@@ -65,12 +134,19 @@ export async function getState(env, entityId) {
   return res.json();
 }
 
-// Read the whole allowlisted surface into the dashboard's shape.
+// Read the whole allowlisted surface (env allowlist + KV registry) into the
+// dashboard's shape. Registry devices carry custom:true so the UI can offer
+// remove on them (env-configured ones can't be removed from the wall).
 export async function readHome(env) {
   const { lock, plugs } = parseEntities(env);
+  const registry = await listDevices(env);
+  const all = [
+    ...plugs.map(p => ({ ...p, custom: false })),
+    ...registry.filter(d => !plugs.some(p => p.id === d.id)).map(d => ({ ...d, custom: true })),
+  ];
   const [lockState, ...plugStates] = await Promise.all([
     lock ? getState(env, lock.id) : Promise.resolve(null),
-    ...plugs.map(p => getState(env, p.id)),
+    ...all.map(p => getState(env, p.id).catch(() => null)), // one dead device ≠ dead card
   ]);
   return {
     lock: lock && lockState ? {
@@ -79,10 +155,11 @@ export async function readHome(env) {
       state: lockState.state, // 'locked' | 'unlocked' | 'jammed' | 'unknown'
       battery: batteryOf(lockState),
     } : null,
-    plugs: plugs.map((p, i) => ({
+    plugs: all.map((p, i) => ({
       id: p.id,
       name: p.name,
       on: plugStates[i]?.state === 'on',
+      custom: p.custom,
     })),
   };
 }

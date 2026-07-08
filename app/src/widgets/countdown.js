@@ -1,5 +1,8 @@
+import { getComingUp, fetchComingUp } from '../lib/curated.js';
+
 const MAX_ITEMS = 3;
 const DAY_MS = 86_400_000;
+const REFRESH_MS = 30 * 60 * 1000; // pick up the morning curation without a reload
 
 export function renderCountdown(items, now = new Date()) {
   const today = startOfDay(now);
@@ -30,11 +33,29 @@ export function renderCountdown(items, now = new Date()) {
             </div>
             <div class="countdown__name">${escapeHtml(it.name)}</div>
             ${it.sub ? `<div class="countdown__sub">${escapeHtml(it.sub)}</div>` : ''}
+            ${it.note ? `<div class="countdown__note">${escapeHtml(it.note)}</div>` : ''}
           </li>
         `).join('')}
       </ul>
     </div>
   `;
+}
+
+// Mounts with Hermes-curated events (falls back to cache/mock — see
+// lib/curated.js). Re-reads through the day so the 6:30a curation shows up
+// on the wall without a reload. Returns a teardown function.
+export function mountComingUp(el) {
+  const { initial, live } = getComingUp();
+  el.innerHTML = renderCountdown(initial);
+  live.then(items => { if (items) el.innerHTML = renderCountdown(items); });
+
+  const id = setInterval(() => {
+    fetchComingUp()
+      .then(items => { el.innerHTML = renderCountdown(items); })
+      .catch(() => { /* keep last good frame */ });
+  }, REFRESH_MS);
+
+  return () => clearInterval(id);
 }
 
 function startOfDay(d) {

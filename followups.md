@@ -37,6 +37,12 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 
 - **Time-of-day-driven views.** A "leaving the house" morning fold (weather + next event + transit alert + diaper-bag check) collapses 30s of phone-checking into one glance. The killer feature an off-the-shelf product can't ship — and the natural payoff for the Claude / OpenClaw integration already in `spec.md`. *Source: `_audits/2026-04-29-ui-audit.md`.*
 
+- **Atlanta Pick — finish the Hermes side + prune dead code.** *Dashboard side built 2026-07-07* (the old 3-headline card is now a single Hermes-picked Atlanta thing-to-do, rotated daily; see `docs/hermes-integration-plan.md` §5, Phase 4). Remaining:
+  1. **Tim (CF Pages UI):** create + bind a `CURATED` KV namespace (same as `HOME_LOCKOUT`; no `wrangler.toml`). Until then `/api/curated` returns 500 and the card falls back to newest raw RSS → mock.
+  2. **Host session (`/connect-old-mac`):** wire `hermes-setup` — `DASHBOARD_BASE_URL`+`DASHBOARD_TOKEN` in `~/.hermes/.env`, allowlist `dash-curated*`, restart gateway, cron ~6:30a. Skill + `bin/dash-curated` already drafted in `deploy/`.
+  3. **Seed** `reference/household/entertainment-taste.md` in the vault (else picks are generic).
+  4. **Prune:** `widgets/headlines.js` `renderHeadlines`/`mountHeadlines` are now unused (only `fetchHeadlines` remains, as the fallback). Safe to delete the widget + its test once the pick card is proven live; keep `/api/headlines` (the pool source + fallback).
+
 ## Ideas / parking lot
 *(uncategorized; weighed cost vs. benefit when something else triggers re-evaluation)*
 

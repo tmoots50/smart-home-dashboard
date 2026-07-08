@@ -79,13 +79,13 @@ describe('openHomeOverlay (live mode, with actions)', () => {
   it('rolls back a plug toggle if the backend rejects', async () => {
     const actions = { setPlug: vi.fn().mockRejectedValue(new Error('boom')), setLock: vi.fn() };
     openHomeOverlay(source(), actions);
-    const fan = document.querySelector('[data-id="switch.bedroom_fan"]'); // starts off
+    const fan = document.querySelector('[data-id="switch.nursery_sound_machine"]'); // starts off
     expect(fan.className).toContain('is-off');
     click(fan);
     // optimistic → on, then rejection reverts → off
     await Promise.resolve(); await Promise.resolve();
-    expect(actions.setPlug).toHaveBeenCalledWith('switch.bedroom_fan', true);
-    expect(document.querySelector('[data-id="switch.bedroom_fan"]').className).toContain('is-off');
+    expect(actions.setPlug).toHaveBeenCalledWith('switch.nursery_sound_machine', true);
+    expect(document.querySelector('[data-id="switch.nursery_sound_machine"]').className).toContain('is-off');
   });
 
   it('sends the PIN to setLock on unlock', async () => {

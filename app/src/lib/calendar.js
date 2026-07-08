@@ -5,7 +5,7 @@
 // when the endpoint returns no sections — so the dashboard never has a blank
 // calendar card during dev / outages.
 
-import { getMockCalendar } from './calendar-mock.js';
+import { getMockCalendar, getMockUpcoming } from './calendar-mock.js';
 
 const TOKEN = import.meta.env.VITE_DASHBOARD_TOKEN;
 const CACHE_KEY = 'calendar:v1';
@@ -44,6 +44,39 @@ export function getCalendar() {
   const initial = cached ?? getMockCalendar();
   const live = TOKEN
     ? fetchCalendar().catch(() => initial)
+    : Promise.resolve(initial);
+  return { initial, live };
+}
+
+// ── expanded overlay: wide window, all calendars, all-day included ──
+
+const UPCOMING_TTL_MS = 5 * 60 * 1000;
+const upcomingKey = (days) => `calendar:upcoming:${days}:v1`;
+
+export async function fetchUpcoming(days = 7) {
+  const res = await fetch(`/api/calendar/upcoming?days=${days}`, {
+    headers: { authorization: `Bearer ${TOKEN}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`calendar upcoming: ${res.status}`);
+  const data = await res.json();
+  const events = data.events || [];
+  try { localStorage.setItem(upcomingKey(days), JSON.stringify({ at: Date.now(), data: events })); } catch {}
+  return events;
+}
+
+export function getUpcoming(days = 7) {
+  let cached = null;
+  try {
+    const raw = localStorage.getItem(upcomingKey(days));
+    if (raw) {
+      const { at, data } = JSON.parse(raw);
+      if (Date.now() - at <= UPCOMING_TTL_MS) cached = data;
+    }
+  } catch { /* fall through to mock */ }
+  const initial = cached ?? getMockUpcoming();
+  const live = TOKEN
+    ? fetchUpcoming(days).catch(() => initial)
     : Promise.resolve(initial);
   return { initial, live };
 }
