@@ -12,5 +12,8 @@ export default defineConfig({
   },
   test: {
     environment: 'happy-dom',
+    // Unit tests only. Vitest's default include also matches *.spec.js, which
+    // would pull the Playwright QA suite (tests/qa/) into the unit runner.
+    include: ['**/*.test.js'],
   },
 });

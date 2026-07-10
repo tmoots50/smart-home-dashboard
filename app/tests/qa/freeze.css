@@ -1,0 +1,12 @@
+/* Injected by freezeMotion() as soon as a harness page opens — BEFORE any
+   geometry measurement or screenshot. CSS animations run on the compositor
+   clock (page.clock can't freeze them), and entrance animations like
+   .overlay's home-rise apply transforms that scale getBoundingClientRect
+   results mid-flight — a 44px row measures ~43px for the first 200ms.
+   Geometry is only meaningful at rest. Never loaded by the app itself. */
+*, *::before, *::after {
+  animation: none !important;
+  transition: none !important;
+  caret-color: transparent !important;
+  scroll-behavior: auto !important;
+}

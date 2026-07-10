@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- QA harness page: renders ONE widget in ONE fixture state, in isolation,
+     for the Playwright QA suite (tests/qa/) and for eyeballing states during
+     development: /harness.html?widget=calendar-overlay&state=overflow
+
+     DEV-ONLY. vite.config.js is single-entry (index.html), so `vite build`
+     never bundles this file and it never deploys to Pages. If the build ever
+     goes multi-entry (rollupOptions.input), keep this file OUT of the input —
+     it renders mock data only, but it has no business on the wall. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>QA Harness</title>
+    <link rel="stylesheet" href="/src/styles/tokens.css" />
+    <link rel="stylesheet" href="/src/styles/global.css" />
+    <link rel="stylesheet" href="/src/styles/themes-fun.css" />
+    <link rel="stylesheet" href="/src/styles/themes-light.css" />
+    <link rel="stylesheet" href="/src/styles/themes-cosy.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/harness/harness.js"></script>
+  </body>
+</html>

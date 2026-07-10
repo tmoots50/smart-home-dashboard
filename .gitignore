@@ -33,3 +33,8 @@ app/.env.local
 
 # Wrangler dev secrets
 app/.dev.vars
+
+# QA harness output (screenshots for review, playwright traces) — never committed
+app/tests/qa/artifacts/
+app/test-results/
+app/playwright-report/

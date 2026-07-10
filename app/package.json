@@ -7,9 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --host --port 4173",
-    "test": "vitest"
+    "test": "vitest",
+    "qa": "playwright test",
+    "qa:gate": "QA_GATE=1 playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "happy-dom": "^20.9.0",
     "vite": "^7.3.2",
     "vitest": "^4.1.5"
