@@ -1,5 +1,5 @@
 // Mock upcoming family events. Real source: family calendar filtered by tag.
-// Widget shows max 3 nearest upcoming events.
+// Widget shows max 10 nearest upcoming events.
 
 export function getMockCountdowns() {
   return [

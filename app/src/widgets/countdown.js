@@ -1,6 +1,6 @@
 import { getComingUp, fetchComingUp } from '../lib/curated.js';
 
-const MAX_ITEMS = 3;
+const MAX_ITEMS = 10;
 const DAY_MS = 86_400_000;
 const REFRESH_MS = 30 * 60 * 1000; // pick up the morning curation without a reload
 

@@ -21,10 +21,10 @@ describe('curated note line', () => {
 });
 
 describe('renderCountdown', () => {
-  it('renders up to 3 upcoming events', () => {
+  it('renders up to 10 upcoming events', () => {
     const html = renderCountdown(getMockCountdowns(), NOW);
     const items = html.match(/class="countdown__item"/g) || [];
-    expect(items.length).toBeLessThanOrEqual(3);
+    expect(items.length).toBeLessThanOrEqual(10);
     expect(items.length).toBeGreaterThan(0);
   });
 
