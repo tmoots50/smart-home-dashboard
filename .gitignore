@@ -38,3 +38,4 @@ app/.dev.vars
 app/tests/qa/artifacts/
 app/test-results/
 app/playwright-report/
+app/tests/qa/artifacts-before/

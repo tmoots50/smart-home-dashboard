@@ -49,6 +49,7 @@ That one command stages all changes, commits with the given message, and pushes 
 - **Conventional commits.** `feat:`, `fix:`, `chore:`, `docs:`. Trunk-based — straight to `main`.
 - **Node 22 LTS** on both laptop and Pi.
 - **Widgets are dumb, views compose.** Widgets render data they're given; views fetch and arrange.
+- **QA harness for every applicable feature.** Any new widget — and any UX-touching change to an existing one — gets the harness trio *as part of the feature work, not after*: `<widget>.fixtures.js` (states: empty/typical/overflow + edge cases), a `WIDGETS` entry in `app/src/harness/harness.js`, and `app/tests/qa/<widget>.spec.js` (geometry + touch interactions at exact device viewports). "Applicable" = anything with states or touch interaction; pure-display one-liners can skip with a note. `scripts/ship.sh` runs the gate automatically; `/qa-harness <widget>` runs the design-improvement loop before a feature is called done. See [`docs/qa-harness.md`](./docs/qa-harness.md).
 
 ## How to help me
 
