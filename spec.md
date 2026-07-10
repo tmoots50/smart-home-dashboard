@@ -116,13 +116,14 @@ Wall mount (0.55") + Pi in CanaKit Turbine Black case + NVMe HAT + cocopar monit
 
 What we actually have today, so the dashboard's smart-home ambitions are grounded in reality:
 
-- **3× Amazon Alexa devices** — distributed around the house
-- **~6× smart plugs** — used for lamps and small appliances
-- **Dishwasher** — has a Bluetooth setting, integration unexplored
-- **Washer / dryer** — may support smart-home connection, unverified
-- **Other appliances** — possibly compatible, unverified
+- **Aqara U100 smart lock** — Bluetooth + Apple Home (Home Key/NFC); *not* reliably on Alexa. No hub, so no remote/third-party control path today.
+- **Smart plugs — Gosund (Wi-Fi/Tuya) + Linkind** — used for lamps and small appliances.
+- **Pura smart diffuser** — Wi-Fi, vendor-cloud only.
+- **3× Amazon Alexa devices** — the current (thin, cloud-only) control layer; the intent is to **replace Alexa for voice** with a local HA Assist pipeline on the Pi.
+- **No smart-home hub** — no Apple Home hub, no Aqara hub. This is the crux: "on Alexa" gives Home Assistant *zero* control paths, so getting devices into HA requires new bridging hardware (an Aqara Matter hub for the lock, a Zigbee coordinator for Linkind + future sensors).
+- **Dishwasher / washer / dryer** — Bluetooth or smart-home settings, integration unexplored/unverified.
 
-The footprint is light. Any Home Assistant work we do is about **future-proofing and a clean integration surface**, not controlling a deep existing smart-home stack. The dashboard surfacing "your laundry is done" or "the dishwasher cycle finished" is realistic in the near term; surfacing dozens of automations is not, because we don't have dozens of automations.
+The footprint is light. **Home Assistant becomes the hub we don't have** — the one place every device is represented — after which the wall tablet, voice, phone, and Apple Home are all just clients of HA. See [`docs/home-assistant.md`](./docs/home-assistant.md) for the full architecture, security model, and build order. The dashboard surfacing "your laundry is done" is realistic in the near term; surfacing dozens of automations is not, because we don't have dozens yet.
 
 This also affects the build order: there's no pressure to integrate Home Assistant in v1. The morning briefing (calendar, todos, photos, message) doesn't depend on smart-home state at all, so HA can wait until we have a concrete reason to add it.
 

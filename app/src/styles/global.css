@@ -98,6 +98,11 @@ html.kiosk, html.kiosk body { overscroll-behavior-y: none; }
   text-transform: uppercase;
   padding: 0;
   cursor: pointer;
+  /* Kiosk touch floor: 44px hit area without changing the visual size —
+     the text stays small, the tappable box doesn't (QA gate enforces ≥44). */
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
 }
 .btn--text:hover { color: var(--color-fg); }
 
@@ -293,6 +298,9 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   align-items: baseline;
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--color-border);
+  /* Rows are tap targets (open event detail) — hold the 44px touch floor. */
+  min-height: 2.75rem;
+  align-content: center;
 }
 .cal-event:last-child { border-bottom: none; }
 .cal-event__time {
@@ -306,6 +314,21 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-muted);
+}
+/* By-person sections + Coming-up list: rows carry an inline day column
+   ([day] [time] [main] [chip?]). A missing chip just leaves the auto track
+   empty. Person labels reuse the day-label treatment but take the same
+   per-person hues as the Family Calendar card columns. */
+.cal-person + .cal-person,
+.cal-coming { margin-top: var(--space-3); }
+.cal-person--tim      .cal-person__label { color: var(--color-accent); }  /* coral */
+.cal-person--family   .cal-person__label { color: #6dac8e; }              /* sage green */
+.cal-person--caroline .cal-person__label { color: #6e8faf; }              /* medium blue */
+.cal-event--dated { grid-template-columns: 6.5rem 5rem 1fr auto; }
+.cal-event__day {
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
 }
 .cal-event__main { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .cal-event__title { font-size: 1rem; }
@@ -739,6 +762,9 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   gap: var(--space-3);
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--color-border);
+  /* Rows are tap targets (open event detail) — hold the 44px touch floor. */
+  min-height: 2.75rem;
+  align-content: center;
 }
 .calendar__event:last-child { border-bottom: none; }
 .calendar__event--next {
@@ -1054,7 +1080,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   gap: var(--space-3);
   padding-top: var(--space-3);
 }
-.list-more .btn--text { min-height: 2.5rem; }
+.list-more .btn--text { min-height: 2.75rem; } /* 44px touch floor (QA gate) */
 
 /* ───── toast (bottom-center, single slot) ───── */
 .toast {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { renderCalendarOverlay, groupByDay, openCalendarOverlay } from './calendar-overlay.js';
+import { renderCalendarOverlay, groupByDay, groupByPerson, splitByHorizon, openCalendarOverlay } from './calendar-overlay.js';
 import { getMockUpcoming } from '../lib/calendar-mock.js';
 
 const NOW = new Date('2026-07-08T08:00:00'); // local
@@ -44,18 +44,77 @@ describe('groupByDay', () => {
   });
 });
 
+describe('groupByPerson', () => {
+  it('buckets by calendar label in household order (Tim, Family, Caroline)', () => {
+    const groups = groupByPerson([
+      ev({ id: 'c', calendar: 'Caroline', startsAt: '2026-07-09T09:00:00' }),
+      ev({ id: 't', calendar: 'Tim', startsAt: '2026-07-10T09:00:00' }),
+      ev({ id: 'f', calendar: 'Family', startsAt: '2026-07-08T09:00:00' }),
+    ], 7, NOW);
+    expect(groups.map(g => g.person)).toEqual(['Tim', 'Family', 'Caroline']);
+  });
+
+  it('sorts each person chronologically, all-day leading its day', () => {
+    const groups = groupByPerson([
+      ev({ id: 'later', startsAt: '2026-07-09T15:00:00' }),
+      ev({ id: 'allday', allDay: true, startsAt: '2026-07-09' }),
+      ev({ id: 'sooner', startsAt: '2026-07-08T09:00:00' }),
+    ], 7, NOW);
+    expect(groups[0].events.map(e => e.id)).toEqual(['sooner', 'allday', 'later']);
+  });
+
+  it('drops events past the horizon and unknown labels sort last', () => {
+    const groups = groupByPerson([
+      ev({ id: 'far', startsAt: '2026-08-20T10:00:00' }),
+      ev({ id: 'z', calendar: 'Zoe', startsAt: '2026-07-09T09:00:00' }),
+      ev({ id: 't', calendar: 'Tim', startsAt: '2026-07-09T10:00:00' }),
+    ], 7, NOW);
+    expect(groups.map(g => g.person)).toEqual(['Tim', 'Zoe']);
+  });
+});
+
+describe('splitByHorizon', () => {
+  it('splits at the horizon, later sorted soonest-first', () => {
+    const { within, later } = splitByHorizon([
+      ev({ id: 'far2', startsAt: '2026-09-01T10:00:00' }),
+      ev({ id: 'near', startsAt: '2026-07-09T10:00:00' }),
+      ev({ id: 'far1', startsAt: '2026-08-01T10:00:00' }),
+    ], 7, NOW);
+    expect(within.map(e => e.id)).toEqual(['near']);
+    expect(later.map(e => e.id)).toEqual(['far1', 'far2']);
+  });
+});
+
 describe('renderCalendarOverlay', () => {
-  it('renders day groups with events, chips, and All day rows', () => {
+  it('groups by person by default: person labels, day column, no chips', () => {
     const html = renderCalendarOverlay(getMockUpcoming(NOW), { days: 7, now: NOW });
+    expect(html).toContain('cal-person--family');
+    expect(html).toContain('cal-event__day');
+    expect(html).toContain('Pediatrician — Mabel 2mo');
+    expect(html).not.toContain('cal-chip--family'); // section header names the person
+  });
+
+  it('groupBy day keeps the original day-bucketed view with chips', () => {
+    const html = renderCalendarOverlay(getMockUpcoming(NOW), { days: 7, now: NOW, groupBy: 'day' });
     expect(html).toContain('Today');
     expect(html).toContain('All day');
     expect(html).toContain('cal-chip--family');
-    expect(html).toContain('Pediatrician — Mabel 2mo');
   });
 
   it('renders an empty state', () => {
     const html = renderCalendarOverlay([], { days: 7, now: NOW });
     expect(html).toContain('Nothing scheduled');
+    expect(html).not.toContain('Coming up');
+  });
+
+  it('fills an empty week with Coming up, capped at 12', () => {
+    const later = Array.from({ length: 15 }, (_, i) =>
+      ev({ id: `l${i}`, title: `Later ${i}`, startsAt: `2026-07-${20 + (i % 9)}T10:00:00` }));
+    const html = renderCalendarOverlay(later, { days: 7, now: NOW });
+    expect(html).toContain('Nothing scheduled');
+    expect(html).toContain('Coming up');
+    expect(html.match(/cal-event--dated/g)).toHaveLength(12);
+    expect(html).toContain('cal-chip--family'); // chip matters when sections don't name the person
   });
 
   it('escapes HTML in titles', () => {

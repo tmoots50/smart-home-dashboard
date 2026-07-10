@@ -1,131 +1,177 @@
 # Home Assistant integration — design doc
 
-**Status:** design / sign-off. Started 2026-07-06.
-**Goal:** a "Home" control surface on the dashboard to view + control the Aqara U100
-smart lock and smart plugs.
+**Status:** design / sign-off. Rev 2, 2026-07-10 (supersedes the 2026-07-06 rev).
+**Goal:** make Home Assistant the household's control brain, and give the wall
+dashboard two ways into it — curated PIN-gated tiles for daily actions, and a
+"Full Home" button that opens the real HA UI. Voice (replacing Alexa) is the
+same dependency wearing a different hat.
 
-> **Scope change vs. the old reality check.** `CLAUDE.md` and `_context/ui-inspo.md`
-> previously said "no Home Assistant — don't wire widgets to it." That is now
-> **superseded**: Tim has an Aqara U100 lock + smart plugs in Aqara Home **and**
-> Apple HomeKit, and has decided to stand up HA on the Pi as the control backend.
-> Those docs are being updated to match.
+> **What rev 1 got wrong.** The 2026-07-06 "decisions locked" table assumed Tim
+> already owned a **Matter-capable Aqara hub** with devices in Aqara Home + Apple
+> Home. Ground truth (2026-07-10): **no hub**, the U100 is Bluetooth/Apple-Home
+> only (not reliably on Alexa), the plugs are **Gosund (Wi-Fi/Tuya) + Linkind**,
+> and everything "smart" is really just remoted through Alexa's cloud. The UI and
+> security layers rev 1 built are fine; only the "how devices reach HA" layer was
+> founded on a hub that doesn't exist. This rev fixes that and adds voice.
 
 ---
 
-## Decisions (locked 2026-07-06)
+## The thesis: HA is the hub we don't have
+
+Every device is currently islanded in a vendor cloud. "On Alexa" is a voice remote,
+not control we own — Alexa takes commands in but exposes nothing out. The whole
+design is: **represent every device once, inside HA**, and then the wall tablet,
+voice, the phone, and Apple Home all become *clients* of HA. We stop renting control
+from Amazon and own it locally.
+
+Corollary that drives sequencing: **HA can only control or voice-command devices
+that are in HA.** Voice-replacing-Alexa and dashboard-control are one dependency
+(get devices into HA), not two projects.
+
+## Decisions (locked 2026-07-10)
 
 | Question | Answer | Consequence |
 |---|---|---|
-| Hub Matter support | **Yes, Matter-capable** | Aqara devices shared into HA over **Matter multi-admin** → Apple Home keeps working, HA is a *second* admin. Local control. No un-pairing from Apple Home. |
-| Lock control level | **Full lock + unlock, PIN-gated** | Unlock is a real threat surface. Needs defense-in-depth (below). |
-| HA install | **HA Container via Docker Compose** on Raspberry Pi OS *(revised 2026-07-06 — was HAOS)* | The Pi is now a multi-service home server (HA + DNS filtering + monitoring + energy), so an appliance OS is the wrong shape. HA runs as one container; Matter Server + cloudflared run as sibling containers instead of HAOS add-ons. See [`pi-home-server.md`](./pi-home-server.md) for the full box architecture. |
-
----
+| Do we own a hub? | **No.** Buy one. | The U100 has no hubless local path — an Aqara Matter-capable hub is required. |
+| Lock → HA path | **Aqara Matter hub → Matter multi-admin → HA** | Apple Home Key keeps working; HA is a second admin. Local control. |
+| Zigbee plugs / future sensors | **Zigbee coordinator (ZBT-1) on the Pi** | Linkind + cheap Aqara sensors + the PIR wake/sleep followup, all hubless. |
+| Wi-Fi/Tuya plugs (Gosund) | **LocalTuya (HACS)**, cloud fallback | Local control, no flashing. |
+| Remote reach + voice | **DIY: Cloudflare Tunnel + local Whisper/Piper** | $0/mo, most private, ~2s voice latency, more containers. Nabu Casa is a later drop-in. |
+| Lock in the Full HA view? | **Yes, allowed** | Convenience over kiosk-physical-access purity — see residual risk. |
 
 ## Architecture
 
 ```
-Aqara U100 + smart plugs
-  └─ Aqara hub (Matter bridge; multi-admin: Apple Home AND Home Assistant)
-       └─ Home Assistant OS on Raspberry Pi 5
-            • Matter integration (via Matter Server add-on)
-            • dedicated long-lived access token for the dashboard
-            • Cloudflare Tunnel add-on → private hostname reachable from CF edge
-       └─ Cloudflare Pages Functions (server-side; hold HA token + PIN hash)
-            GET  /api/home           → { lock: {state, battery}, plugs: [{id,name,on}] }
-            POST /api/home/plug      → { id, on }        (read-token auth)
-            POST /api/home/lock      → { action, pin? }  (unlock requires PIN)
-       └─ Dashboard "Home" overlay (tablet, Fully Kiosk)
-            • opened from the action-bar button (repurpose the stubbed `lights` btn)
-            • Mushroom-style tiles: front-door lock + plug toggles
-            • PIN pad appears only for unlock
+LAYER 1 — RADIOS / BRIDGES
+   Aqara U100 lock ── Aqara Matter hub ──┐
+   Linkind plugs ──── Zigbee dongle ──────┤
+   Gosund plugs ───── Wi-Fi / LocalTuya ──┤
+   Pura diffuser ──── vendor cloud (HACS) ┘
+                                          │
+LAYER 2 — HOME ASSISTANT (single source of truth)
+   Matter Server · ZHA/Zigbee2MQTT · LocalTuya · Assist voice pipeline
+                                          │
+LAYER 3 — CONTROL SURFACES (clients of HA)
+   • Wall tablet: curated PIN-gated tiles      (BUILT: widgets/home.js)
+   • Wall tablet: "Full Home" → real HA UI     (new)
+   • Voice (Assist) — replaces Alexa           (new)
+   • Phone (HA app) · Apple Home (parallel, via Matter multi-admin)
+                                          │
+LAYER 4 — REACH / SECURITY
+   • Cloudflare Tunnel + Access · Tailscale for admin
+   • token + PIN + KV lockout for curated actions  (BUILT: functions/_lib/ha.js)
 ```
 
-### Why a CF Function proxy and not direct tablet→HA calls
-The tablet is on the LAN and *could* hit HA directly, but:
-1. The dashboard is served over **HTTPS from pages.dev**; a direct call to
-   `http://homeassistant.local:8123` is blocked as mixed content.
-2. Any token the tablet holds is in the **public client bundle** — unacceptable for a
-   token that can unlock a deadbolt.
+## Per-device control paths
 
-Routing control through CF Functions keeps the **HA token server-side only**, lets us
-enforce the PIN + rate-limit centrally, and reaches HA privately via Cloudflare Tunnel
-(no ports opened, HA never on the raw public internet).
+| Device | HA path | New hardware |
+|---|---|---|
+| **Aqara U100 lock** | Aqara Matter hub → Matter multi-admin → HA. Apple Home Key unaffected. | **Aqara Matter hub** — required |
+| **Linkind plugs** | Pair to the Zigbee coordinator (ZHA/Zigbee2MQTT), local. If they prove Wi-Fi/Tuya, treat as Gosund. | **ZBT-1 dongle** |
+| **Gosund plugs** | LocalTuya (HACS), local. Fallback: official Tuya cloud integration. | none |
+| **Pura diffuser** | Community `pura` HACS integration (cloud). Low priority. | none |
 
----
+The ZBT-1 is bought **regardless** of Linkind's radio: it's what lets us pair cheap
+Aqara motion/contact sensors with no hub — the committed "PIR wake/sleep the tablet"
+followup needs exactly that — plus any future Zigbee/Thread device.
+
+## Control surfaces
+
+### Curated tiles (BUILT — flip mock→live)
+Lock/unlock (PIN-gated) + allowlisted plug toggles. tablet → CF Function → tunnel →
+HA, HA token server-side only. Low-consequence toggles can be added from the wall via
+the KV device registry (`functions/_lib/ha.js`); anything sensitive requires an env
+allowlist change — a deliberate speed-bump.
+
+### "Full Home" view (new)
+The Home button also offers a "Full Home" button that opens the real HA Lovelace UI in
+the tablet webview.
+- **Reachability:** tablet is HTTPS (pages.dev), so `http://homeassistant.local` is a
+  mixed-content block. Serve the HA UI over the **same Cloudflare Tunnel hostname**
+  (HTTPS), behind **Cloudflare Access**. Log in once on the kiosk; persist the session.
+- **Landing page:** build a simplified, touch-friendly Lovelace view — don't drop onto
+  the admin-dense default.
+- **Lock included** (per 2026-07-10 decision) — see residual risk below.
+
+## Voice — replacing Alexa (new phase)
+
+HA **Assist** + a local **Wyoming** pipeline: openWakeWord (wake word) → faster-whisper
+(STT, `base`/`small` on the Pi 5) → HA intent engine → Piper (TTS), all as containers on
+the Pi. Assist acts on HA entities, so it inherits Layer 1 for free — no Alexa-specific
+wiring.
+- **Mic:** start with a USB mic; upgrade to the **HA Voice Preview Edition puck** for real
+  far-field pickup. One puck ≈ one Alexa location; scale per-room over time.
+- **Latency:** expect ~2s on local Whisper — not Alexa-instant. Accepted for privacy +
+  $0. Nabu Casa Cloud (~$6.50/mo) is the drop-in if it grates.
 
 ## Security model (the deadbolt is the whole ballgame)
 
 The read token (`VITE_DASHBOARD_TOKEN`) ships in the public bundle — assume it is known.
 So the security of **unlock** must not depend on it. Layers:
 
-1. **Two-tier auth.**
-   - Read + plug-toggle endpoints: authorized by the bundle read token (public, low stakes — worst case someone toggles a lamp on the tailnet-reachable... no, on the public endpoint. Plugs are low-consequence; acceptable).
-   - **Unlock**: requires a **PIN** in the request body, verified server-side against
-     `HOME_UNLOCK_PIN_HASH` (salted SHA-256, constant-time compare). The PIN is the real
-     secret and is **never** in the bundle.
-2. **HA token server-side only** — in CF env, never shipped to the browser. Even with the
-   public read token, an attacker cannot call HA directly.
-3. **Rate-limit / lockout (mandatory, not optional).** A 6-digit PIN on a public endpoint
-   is brute-forceable without it. Back a failed-attempt counter with **CF KV**: lock out
-   after 5 fails for 15 min, per-IP and global. Log every attempt.
-4. **Private reachability.** HA is exposed to CF only through Cloudflare Tunnel; optionally
-   put **Cloudflare Access (service token)** in front so the hostname leaking isn't enough.
+1. **Two-tier auth.** Read + plug-toggle: authorized by the bundle read token (low stakes).
+   **Unlock:** requires a **PIN** in the request body, verified server-side against
+   `HOME_UNLOCK_PIN_HASH` (salted SHA-256, constant-time compare). The PIN is never in the
+   bundle.
+2. **HA token server-side only** — CF env, never shipped to the browser.
+3. **Rate-limit / lockout (mandatory).** CF KV-backed failed-attempt counter: lock out after
+   5 fails for 15 min, per-IP and global. Log every attempt.
+4. **Private reachability.** HA reaches CF only through Cloudflare Tunnel; Cloudflare Access
+   in front so a leaked hostname isn't enough.
 5. **Audit.** Every lock/unlock (success + fail) logged with timestamp + outcome.
-6. **Revocable.** The dashboard uses a dedicated HA long-lived token — revoke it in HA to
-   kill dashboard control instantly without touching Apple Home.
+6. **Revocable.** Dedicated HA long-lived token — revoke it to kill dashboard control
+   instantly without touching Apple Home.
 
-**Residual risk (accept explicitly):** a 6-digit PIN + KV lockout is "home-grade," not
-"bank-grade." Good enough for a family front door where the physical fallback is a key and
-the Apple Home path is unchanged. If we ever want stronger, add Cloudflare Access on the
-control endpoints or a TOTP second factor. **Lock (not unlock) is always allowed without a
-PIN** — locking your own door is not a threat.
+**Residual risk (accepted explicitly):**
+- A 6-digit PIN + KV lockout is "home-grade," not "bank-grade." The physical fallback is a
+  key and Apple Home is unchanged. Lock (not unlock) is always allowed without a PIN.
+- **Lock in the Full HA view:** someone with physical access to the kiosk can unlock via the
+  full HA UI without the PIN. Accepted — the PIN's job is stopping *remote/programmatic*
+  unlock; the Full HA view sits behind Cloudflare Access + a persisted session, so no stranger
+  reaches it remotely. Being physically at the wall panel already implies being inside. The
+  kiosk holds a persisted HA session; if the tablet is pulled off the wall, revoke the session.
 
----
+## Bill of materials
+
+> **Directional, not prescriptive.** The specific models below are stand-ins for a
+> *capability*. Substitute freely — any hardware that satisfies the same requirement works,
+> and Tim may well land on different gear. The requirements, not the SKUs, are what's locked:
+> - **A hub that bridges the U100 into HA over Matter** (without breaking Apple Home Key).
+> - **A Zigbee coordinator** the Pi can host (bonus: also speaks Thread).
+> - **A far-field mic** for room voice.
+
+| Requirement | Example model | Cost | Verdict |
+|---|---|---|---|
+| Matter hub bridging the U100 | Aqara M3 (or M2 budget) | ~$60–130 | **Required.** Verify the chosen model bridges the U100 over Matter before buying. |
+| Zigbee (+ Thread) coordinator | HA Connect ZBT-1 | ~$30 | **Recommended** — Linkind + sensors + PIR wake/sleep. |
+| Far-field room mic | HA Voice Preview Edition puck | ~$59 | **Optional now**, per-room later. |
+| Software | Matter Server, ZHA, LocalTuya, Wyoming/Assist, `pura` | $0 | containers / HACS |
+
+Floor to control lock + local plugs: **~$90** (hub + dongle). With good voice: ~$150.
 
 ## Build order
 
-### Buildable NOW (no Pi / no HA needed — mock-first, per house rules)
-- [ ] `lib/home-mock.js` — fixture: 1 lock (locked, 87% battery) + 3 named plugs.
-- [ ] `widgets/home.js` — the overlay: lock tile (state + battery + lock/unlock), plug
-      toggle tiles, PIN pad shown only on unlock. Mushroom-card aesthetic.
-- [ ] Co-located tests (`widgets/home.test.js`): render states, PIN-pad gating, optimistic
-      toggle + rollback on failure.
-- [ ] Wire the action-bar `lights` button → open the Home overlay (replace the stub alert).
-- [ ] `lib/home.js` — CF Function client, same `{initial, live}` + actions contract as
-      `tasks.js`. Fails soft to mock when unconfigured.
-- [ ] CF Functions `/api/home`, `/api/home/plug`, `/api/home/lock` — return mock/501 until
-      `HA_BASE_URL` + `HA_TOKEN` env are set, so they're deployable before HA exists.
-- [ ] Deploy → Tim reacts to the UX on the real tablet ("show me, then I'll know").
+**Order now (long pole):** a Matter hub + a Zigbee/Thread coordinator (models above are
+directional — buy whatever meets the two requirements).
 
-### Blocked on Tim + Pi online (physical / hands-on session)
-> Full box build order (Docker + the wider service stack) lives in
-> [`pi-home-server.md`](./pi-home-server.md). The HA-specific slice:
-- [ ] Power the Pi on; confirm reachable (Tailscale up here or on the Pi).
-- [ ] Install **Docker + Compose** on the existing Raspberry Pi OS; bring up the
-      `homeassistant` + `matter-server` containers; complete HA onboarding.
-- [ ] In the Aqara app, share the hub/devices to Matter; commission the Matter code(s)
-      into HA. Confirm the U100 + plugs appear as HA entities. Verify Apple Home still
-      controls them (multi-admin sanity check).
-- [ ] Run a **`cloudflared`** container; expose HA at a private hostname. Optionally add
-      a Cloudflare Access service token.
-- [ ] Create a dedicated HA long-lived token for the dashboard.
-- [ ] Set CF env: `HA_BASE_URL`, `HA_TOKEN`, `HOME_UNLOCK_PIN_HASH`, KV binding for lockout.
-- [ ] Flip `/api/home*` Functions from mock → live. Verify end-to-end on the tablet.
-- [ ] Confirm lock/unlock + plug toggle work from the wall; verify lockout after bad PINs.
+**Buildable without the Pi (done / mock-first):** curated overlay, `lib/home*.js`,
+`/api/home*` Functions, KV registry — all shipped in local-mock mode.
 
----
+**Pi standup session (Pi powered on + reachable):**
+1. Docker + Compose on Raspberry Pi OS; HA + matter-server containers up; onboard HA.
+2. Commission the U100 into the Aqara hub → share to Matter → into HA. Verify Apple Home
+   still controls it (multi-admin sanity check).
+3. Pair Linkind to the coordinator (ZHA/Zigbee2MQTT); add Gosund via LocalTuya. Confirm which
+   plugs report wattage (gates the Energy dashboard).
+4. `cloudflared` tunnel → private HA hostname; add Cloudflare Access.
+5. Set CF env (`HA_BASE_URL`, `HA_TOKEN`, `HA_ENTITIES_JSON`, `HOME_UNLOCK_PIN_HASH`, KV);
+   flip `VITE_HOME_LIVE=1`. Curated tiles go live.
+6. Add the "Full Home" button + a touch-friendly Lovelace view (lock included).
+7. **Voice phase:** Assist + Wyoming containers; USB mic first, then a far-field puck per room.
 
-## Open items / notes
-- **Entity IDs**: the Matter integration names entities like `lock.front_door` and
-  `switch.<plug>`; the exact IDs come from HA after pairing. `/api/home` maps them to the
-  stable shape the widget expects, configured via an `HA_ENTITIES_JSON` env var (same
-  pattern as `GOOGLE_CALENDARS_JSON`).
-- **Plug consequence check**: confirm which plugs are safe to toggle from a wall tap (a lamp
-  is fine; a plug feeding a router or a sump pump is not). Allowlist only the safe ones in
-  `HA_ENTITIES_JSON`.
-- **Nabu Casa alternative**: HA Cloud ($6.50/mo) is an easier remote path than Cloudflare
-  Tunnel and funds the project. Tunnel chosen for $0 + it keeps everything on Cloudflare,
-  but revisit if the tunnel is fiddly.
-- **Old reality-check docs** to update once this is approved: `CLAUDE.md` "Smart-home reality
-  check", `_context/ui-inspo.md` HA notes, and the `spec.md` smart-home inventory.
+## Open items
+- Confirm Linkind radio (Zigbee vs Wi-Fi/Tuya) at pairing time — changes nothing in the plan,
+  only which integration adopts them.
+- Verify the specific hub model bridges the U100 lock over Matter (the one spec that matters).
+- Confirm Gosund/Linkind wattage reporting → gates the HA Energy dashboard.
+- Full box architecture (DNS filtering, monitoring, backups) lives in `pi-home-server.md`.
