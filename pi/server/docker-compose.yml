@@ -1,0 +1,34 @@
+# Home server stack — Home Assistant + Matter + Cloudflare tunnel.
+# Lives at ~/server on the Pi. See docs/home-assistant.md (Build order, Phase A).
+#
+# Deploy from the laptop:
+#   rsync -av pi/server/ pi@dashboard.local:~/server/
+#   ssh pi@dashboard.local '~/server/install.sh'
+#
+# Secrets: .env on the Pi only (gitignored) — see .env.example.
+
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    network_mode: host          # mDNS/SSDP discovery + the Matter stack need the host network
+    volumes:
+      - ./homeassistant:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro  # Bluetooth adapters (future) — harmless if absent
+    restart: unless-stopped
+
+  matter-server:
+    image: ghcr.io/home-assistant-libs/python-matter-server:stable
+    container_name: matter-server
+    network_mode: host          # Matter commissioning needs host networking + working IPv6
+    volumes:
+      - ./matter:/data
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    network_mode: host          # proxies HA at localhost:8123
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
+    restart: unless-stopped

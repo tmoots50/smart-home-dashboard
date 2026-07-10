@@ -1,0 +1,14 @@
+# Seed config — HA fills in the rest on first boot.
+default_config:
+
+http:
+  # cloudflared runs on the host and proxies from localhost. Without this
+  # block HA rejects (400) or IP-bans the tunnel's forwarded requests.
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 127.0.0.1
+    - ::1
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
