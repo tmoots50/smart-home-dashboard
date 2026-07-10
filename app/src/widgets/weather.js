@@ -16,14 +16,26 @@ export function renderWeather(data) {
             </div>
           </div>
         </div>
-        <div class="weather__forecast">
-          ${data.forecast.map(day => `
-            <div class="weather__day">
-              <div class="weather__day-label">${escapeHtml(day.label)}</div>
-              <div class="weather__day-temp">${day.tempF}°</div>
-              ${day.emoji ? `<div class="weather__day-emoji" aria-hidden="true">${day.emoji}</div>` : ''}
-            </div>
-          `).join('')}
+        <div class="weather__outlook">
+          <div class="weather__hourly" aria-label="Hourly forecast">
+            ${(data.hourly ?? []).map(hour => `
+              <div class="weather__hour">
+                <div class="weather__hour-label">${escapeHtml(hour.label)}</div>
+                <div class="weather__hour-emoji" aria-hidden="true">${hour.emoji ?? ''}</div>
+                <div class="weather__hour-temp">${hour.tempF}°</div>
+                ${hour.precipitation >= 20 ? `<div class="weather__rain">${hour.precipitation}%</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
+          <div class="weather__forecast" aria-label="Daily forecast">
+            ${data.forecast.map(day => `
+              <div class="weather__day">
+                <div class="weather__day-label">${escapeHtml(day.label)}</div>
+                <div class="weather__day-temp">${day.tempF}°</div>
+                ${day.emoji ? `<div class="weather__day-emoji" aria-hidden="true">${day.emoji}</div>` : ''}
+              </div>
+            `).join('')}
+          </div>
         </div>
       </div>
     </div>

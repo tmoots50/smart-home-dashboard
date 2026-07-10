@@ -63,7 +63,7 @@
   color: var(--color-fg);
 }
 [data-theme="fun"] .card.card--slim {
-  background: linear-gradient(90deg, rgba(255, 122, 89, 0.06), rgba(255, 122, 89, 0.02));
+  background: var(--color-surface);
 }
 
 /* Done checkmarks pop in coral. */

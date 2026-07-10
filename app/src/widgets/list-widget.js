@@ -247,15 +247,19 @@ export function createListWidget(cfg) {
         if (state.editingIdx !== null || state.adding) return; // don't fight the composer
         const it = items[idx];
         if (!it) return;
-        if (it.done) {
-          if (actions) return; // committed strikes have no unstrike path
-          items = items.map((x, i) => (i === idx ? { ...x, done: false } : x));
-          draw();
+        const toggled = { ...it, done: !it.done };
+        items = items.map((x, i) => (i === idx ? toggled : x));
+        draw();
+        if (actions?.setDone && it.id) {
+          actions.setDone(it.id, toggled.done).catch(() => {
+            items = items.map(x => (x === toggled ? it : x));
+            draw();
+            showToast("Couldn't sync — restored", { duration: 3500 });
+          });
           return;
         }
-        const struck = { ...it, done: true };
-        items = items.map((x, i) => (i === idx ? struck : x));
-        draw();
+        if (it.done) return;
+        const struck = toggled;
         scheduleCommit({
           message: `Done: "${truncate(it.text)}"`,
           revert: () => { items = items.map(x => (x === struck ? { ...x, done: false } : x)); },

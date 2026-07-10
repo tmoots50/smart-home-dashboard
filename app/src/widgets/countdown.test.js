@@ -4,27 +4,23 @@ import { getMockCountdowns } from '../lib/countdown-mock.js';
 
 const NOW = new Date('2026-04-29T08:00:00');
 
-describe('curated note line', () => {
-  it('renders the Hermes action note when present', () => {
+describe('calendar details', () => {
+  it('renders location but omits the old reminder note', () => {
     const html = renderCountdown(
       [{ name: 'Mom’s birthday', date: '2026-05-19', sub: 'Atlanta', note: 'Get a card this week' }],
       NOW,
     );
-    expect(html).toContain('countdown__note');
-    expect(html).toContain('Get a card this week');
-  });
-
-  it('omits the note line when absent', () => {
-    const html = renderCountdown([{ name: 'X', date: '2026-05-19', sub: '' }], NOW);
+    expect(html).toContain('Atlanta');
     expect(html).not.toContain('countdown__note');
+    expect(html).not.toContain('Get a card this week');
   });
 });
 
 describe('renderCountdown', () => {
-  it('renders up to 3 upcoming events', () => {
+  it('renders up to 10 upcoming events', () => {
     const html = renderCountdown(getMockCountdowns(), NOW);
     const items = html.match(/class="countdown__item"/g) || [];
-    expect(items.length).toBeLessThanOrEqual(3);
+    expect(items.length).toBeLessThanOrEqual(10);
     expect(items.length).toBeGreaterThan(0);
   });
 
@@ -64,6 +60,15 @@ describe('renderCountdown', () => {
   it('shows empty state with no upcoming events', () => {
     const html = renderCountdown([], NOW);
     expect(html).toContain('Nothing on the horizon');
+  });
+
+  it('only includes Family calendar events', () => {
+    const html = renderCountdown([
+      { id: 'f', calendar: 'Family', title: 'Family event', startsAt: '2026-05-19', sub: 'Park' },
+      { id: 't', calendar: 'Tim', title: 'Tim event', startsAt: '2026-05-19', sub: 'Office' },
+    ], NOW);
+    expect(html).toContain('Family event');
+    expect(html).not.toContain('Tim event');
   });
 
   it('escapes HTML in names', () => {

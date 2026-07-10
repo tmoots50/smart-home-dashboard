@@ -9,10 +9,9 @@ if (params.has('kiosk')) {
   document.documentElement.classList.add('kiosk');
 }
 
-// Time-of-day theme: `light` during the day, `cosy` after sunset (sunrise/sunset
-// come from the weather cache). `?theme=` URL param forces a specific theme for
-// previews. Re-evaluated every 5 minutes so a long-running kiosk crosses sunset
-// cleanly without a reload.
+// Household schedule: `light` from 07:00–22:59, `cosy` from 23:00–06:59.
+// `?theme=` forces a preview. Re-evaluate every five minutes so the always-on
+// kiosk crosses both boundaries without a reload.
 applyTheme();
 setInterval(applyTheme, 5 * 60 * 1000);
 

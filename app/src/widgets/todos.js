@@ -6,7 +6,9 @@ import { createListWidget, escapeHtml } from './list-widget.js';
 
 const DAY_MS = 86_400_000;
 const DATE_FMT = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
-const PAGE_SIZE = 5;
+// The card owns its scrolling area, so render the complete list instead of
+// cutting it off at an arbitrary five rows and leaving unused card space.
+const PAGE_SIZE = Infinity;
 
 const widget = createListWidget({
   name: 'todos',

@@ -45,13 +45,13 @@ describe('groupByDay', () => {
 });
 
 describe('groupByPerson', () => {
-  it('buckets by calendar label in household order (Tim, Family, Caroline)', () => {
+  it('buckets by calendar label in household order (Family, Tim, Caroline)', () => {
     const groups = groupByPerson([
       ev({ id: 'c', calendar: 'Caroline', startsAt: '2026-07-09T09:00:00' }),
       ev({ id: 't', calendar: 'Tim', startsAt: '2026-07-10T09:00:00' }),
       ev({ id: 'f', calendar: 'Family', startsAt: '2026-07-08T09:00:00' }),
     ], 7, NOW);
-    expect(groups.map(g => g.person)).toEqual(['Tim', 'Family', 'Caroline']);
+    expect(groups.map(g => g.person)).toEqual(['Family', 'Tim', 'Caroline']);
   });
 
   it('sorts each person chronologically, all-day leading its day', () => {

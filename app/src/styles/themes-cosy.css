@@ -39,7 +39,7 @@
 }
 
 [data-theme="cosy"] .card.card--slim {
-  background: linear-gradient(90deg, rgba(232, 168, 124, 0.06), rgba(232, 168, 124, 0.02));
+  background: var(--color-surface);
 }
 
 [data-theme="cosy"] .todos__check--done,

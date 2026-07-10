@@ -41,20 +41,20 @@ export async function listEvents(accessToken, calendarId, timeMin, timeMax, { ma
   return data.items || [];
 }
 
-// Map Google Calendar event → dashboard widget shape. All-day events get
-// dropped from the "next 3 hours" view since they don't have a meaningful
-// start *time*. They belong in a separate all-day strip if/when we add one.
+// Map Google Calendar event → default dashboard shape. Keep all-day events:
+// the default card is now a forward-looking agenda, not a short time window.
 export function normalize(events) {
   return events
-    .filter(e => e.start?.dateTime) // skip all-day (start.date instead of start.dateTime)
     .map(e => ({
       id: e.id,
-      startsAt: e.start.dateTime,
-      endsAt: e.end?.dateTime || '',
+      startsAt: e.start?.dateTime || e.start?.date || '',
+      endsAt: e.end?.dateTime || e.end?.date || '',
       title: e.summary || '(no title)',
       sub: e.location || '',
       description: e.description || '',
-    }));
+      allDay: !e.start?.dateTime,
+    }))
+    .filter(e => e.startsAt);
 }
 
 // Map events for the wide "upcoming" window (expanded calendar overlay + the

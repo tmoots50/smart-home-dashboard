@@ -82,6 +82,17 @@ describe('mountTodos', () => {
     expect(slot.querySelector('.todos__check--done')).not.toBeNull();
   });
 
+  it('unchecks a completed live item and persists the reversal', () => {
+    const slot = document.createElement('div');
+    const setDone = vi.fn(() => Promise.resolve());
+    mountTodos(slot, [{ id: 'a', text: 'x', done: true }], {
+      append: vi.fn(), strike: vi.fn(), move: vi.fn(), setDone,
+    });
+    slot.querySelector('[data-action="toggle"]').click();
+    expect(slot.querySelector('.todos__check--done')).toBeNull();
+    expect(setDone).toHaveBeenCalledWith('a', false);
+  });
+
   it('adds via the inline input — no window.prompt', () => {
     const slot = document.createElement('div');
     const append = vi.fn(() => Promise.resolve());

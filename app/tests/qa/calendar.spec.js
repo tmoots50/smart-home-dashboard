@@ -5,6 +5,7 @@ import { test, expect } from '@playwright/test';
 import { FIXED_NOW } from './clock.js';
 import { states } from '../../src/widgets/calendar.fixtures.js';
 import { detectOverflow, auditTapTargets, captureArtifact, collectErrors, freezeMotion } from './measure.js';
+import { expectNestedScrollContained } from './widget-harness.js';
 
 const url = (state) => `/harness.html?widget=calendar&state=${state}`;
 
@@ -57,4 +58,9 @@ test('calendar/typical: detail panel closes via ✕ and via scrim tap', async ({
   // always outside the centered panel.
   await page.locator('.overlay--event-detail').tap({ position: { x: 5, y: 5 } });
   await expect(page.locator('.event-detail')).toHaveCount(0);
+});
+
+test('calendar/overflow: column scrolling stays inside the card', async ({ page }) => {
+  await open(page, 'overflow');
+  await expectNestedScrollContained(page, '.calendar__list');
 });

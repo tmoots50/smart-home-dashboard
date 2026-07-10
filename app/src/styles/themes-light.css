@@ -64,7 +64,7 @@
 }
 
 [data-theme="light"] .card.card--slim {
-  background: linear-gradient(90deg, rgba(255, 122, 89, 0.06), rgba(255, 122, 89, 0.02));
+  background: var(--color-surface);
 }
 
 [data-theme="light"] .todos__check--done,

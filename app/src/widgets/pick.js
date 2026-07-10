@@ -1,13 +1,24 @@
-// The daily "Atlanta Pick" card: one Hermes-chosen thing to do, rotated each
-// morning, with a one-line "why you'd like it". Evolves the old 3-headline card
-// — a taste pick beats a recency list on a glanceable wall display.
+// Three linked Atlanta picks with one-line context. Re-checks the curated feed
+// every ten minutes so newly published picks reach the wall without a reload.
 
-import { getDailyPick, fetchPick } from '../lib/curated.js';
+import { getPicks, fetchPicks } from '../lib/curated.js';
 
-const REFRESH_MS = 30 * 60 * 1000; // re-read through the day so the morning pick appears without a reload
+const REFRESH_MS = 10 * 60 * 1000;
 
-export function renderPick(pick) {
-  if (!pick?.title) return '';
+export function renderPick(input) {
+  const picks = (Array.isArray(input) ? input : [input]).filter(p => p?.title).slice(0, 3);
+  if (!picks.length) return '';
+  return `
+    <div class="pick">
+      <h2 class="card__title">Atlanta Picks</h2>
+      <div class="pick__list">
+        ${picks.map(renderPickItem).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderPickItem(pick) {
   const source = pick.source
     ? `<span class="pick__source">${escapeHtml(pick.source)}</span>`
     : '';
@@ -22,23 +33,22 @@ export function renderPick(pick) {
     ? `<p class="pick__note">${escapeHtml(pick.note)}</p>`
     : '';
   return `
-    <div class="pick">
-      <h2 class="card__title">Atlanta Pick</h2>
+    <article class="pick__item">
       ${source}
       ${title}
       ${note}
-    </div>
+    </article>
   `;
 }
 
 export function mountPick(el) {
-  const { initial, live } = getDailyPick();
+  const { initial, live } = getPicks();
   el.innerHTML = renderPick(initial);
-  live.then(pick => { if (pick?.title) el.innerHTML = renderPick(pick); });
+  live.then(picks => { if (picks?.length) el.innerHTML = renderPick(picks); });
 
   const id = setInterval(() => {
-    fetchPick()
-      .then(pick => { el.innerHTML = renderPick(pick); })
+    fetchPicks()
+      .then(picks => { el.innerHTML = renderPick(picks); })
       .catch(() => { /* keep last good frame */ });
   }, REFRESH_MS);
 

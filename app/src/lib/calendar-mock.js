@@ -1,5 +1,6 @@
-// Mock calendar. Three sections whose labels match the widget's COLUMNS
-// (Tim / Family / Caroline) so the fallback view previews the real layout.
+// Mock calendar mirrors production reality: Family + Tim are connected;
+// Caroline remains an explicit unlinked placeholder until her work calendar
+// is actually integrated.
 // Widget highlights the single soonest upcoming event globally.
 
 // Mock for the expanded 7-day overlay (matches /api/calendar/upcoming shape).
@@ -50,14 +51,6 @@ export function getMockCalendar(now = new Date()) {
       events: [
         { id: 'fam-1', startsAt: at(8, 30), endsAt: at(9, 15), title: 'Pediatrician — Mabel 1mo', sub: 'Northside Pediatrics', description: 'Check weight, milestones, vaccines.' },
         { id: 'fam-2', startsAt: at(18, 30), endsAt: at(19, 30), title: 'Dinner at home', sub: '', description: '' },
-      ],
-    },
-    {
-      label: 'Caroline',
-      events: [
-        { id: 'car-1', startsAt: at(9, 0),   endsAt: at(9, 30),  title: 'Product sync', sub: "Carter's HQ", description: '' },
-        { id: 'car-2', startsAt: at(11, 0),  endsAt: at(11, 30), title: 'Coffee with Sara', sub: 'Octane Coffee', description: 'Catch-up with Sara from the design team.' },
-        { id: 'car-3', startsAt: at(15, 30), endsAt: at(16, 30), title: 'Strategy review', sub: "Carter's HQ", description: '' },
       ],
     },
   ];

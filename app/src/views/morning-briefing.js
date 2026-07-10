@@ -20,7 +20,7 @@ import { getPhotos } from '../lib/photos.js';
 import {
   getTodos, getGroceries,
   appendTodo, strikeTodo, moveTodo, updateTodo,
-  appendGrocery, strikeGrocery, moveGrocery, updateGrocery,
+  appendGrocery, strikeGrocery, moveGrocery, updateGrocery, setTodoDone, setGroceryDone,
   isConfigured as tasksConfigured,
 } from '../lib/tasks.js';
 import { showToast } from '../widgets/toast.js';
@@ -76,14 +76,14 @@ export function renderMorningBriefing(root) {
         </div>
       </section>
 
-      <section class="briefing__duo">
+      <section class="card" data-slot="calendar"></section>
+
+      <section class="briefing__duo briefing__duo--updates">
         <div class="card" data-slot="coming-up"></div>
         <div class="card" data-slot="headlines"></div>
       </section>
 
-      <section class="card" data-slot="calendar"></section>
-
-      <section class="briefing__duo">
+      <section class="briefing__duo briefing__lists">
         <div class="card" data-slot="todos"></div>
         <div class="briefing__stack">
           <div class="card" data-slot="groceries"></div>
@@ -101,10 +101,10 @@ export function renderMorningBriefing(root) {
   mountComingUp(root.querySelector('[data-slot="coming-up"]'));
 
   const todoActions = tasksConfigured
-    ? { append: appendTodo, strike: strikeTodo, move: moveTodo, update: updateTodo }
+    ? { append: appendTodo, strike: strikeTodo, move: moveTodo, update: updateTodo, setDone: setTodoDone }
     : null;
   const groceryActions = tasksConfigured
-    ? { append: appendGrocery, strike: strikeGrocery, move: moveGrocery, update: updateGrocery }
+    ? { append: appendGrocery, strike: strikeGrocery, move: moveGrocery, update: updateGrocery, setDone: setGroceryDone }
     : null;
   const todosCtl = mountTodos(root.querySelector('[data-slot="todos"]'), todos.initial, todoActions);
   const groceriesCtl = mountGroceries(root.querySelector('[data-slot="groceries"]'), groceries.initial, groceryActions);

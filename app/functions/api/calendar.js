@@ -1,7 +1,8 @@
 // GET /api/calendar          → { sections: [{ label, events: [{id, startsAt, title, sub}] }], nextEventId }
 // GET /api/calendar?_lists=1 → { calendars: [{ id, summary, primary }] } (one-time discovery)
 //
-// Window: now-1h to now+24h. Widget filters to whatever sub-window it cares about.
+// Window: now to 90 days. The default card renders five events per connected
+// calendar (10 total with the currently linked Family + Tim calendars).
 //
 // Configuration via GOOGLE_CALENDARS_JSON env var — see calendar-api.js header.
 
@@ -9,9 +10,9 @@ import { getAccessToken } from '../_lib/google-auth.js';
 import { checkAuth, corsHeaders, json } from '../_lib/auth.js';
 import { parseCalendars, listEvents, normalize, pickNextEventId } from '../_lib/calendar-api.js';
 
-const HOUR_MS = 3_600_000;
-const WINDOW_BACK_MS = 1 * HOUR_MS;
-const WINDOW_FORWARD_MS = 24 * HOUR_MS;
+const DAY_MS = 86_400_000;
+const WINDOW_FORWARD_MS = 90 * DAY_MS;
+const MAX_RESULTS_PER_CALENDAR = 10;
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -50,13 +51,13 @@ export async function onRequest(context) {
   }
 
   const now = new Date();
-  const timeMin = new Date(now.getTime() - WINDOW_BACK_MS).toISOString();
+  const timeMin = now.toISOString();
   const timeMax = new Date(now.getTime() + WINDOW_FORWARD_MS).toISOString();
 
   try {
     const sections = await Promise.all(calendars.map(async (c) => ({
       label: c.label,
-      events: normalize(await listEvents(accessToken, c.id, timeMin, timeMax)),
+      events: normalize(await listEvents(accessToken, c.id, timeMin, timeMax, { maxResults: MAX_RESULTS_PER_CALENDAR })),
     })));
     return json({ sections, nextEventId: pickNextEventId(sections, now) }, {}, cors);
   } catch (err) {

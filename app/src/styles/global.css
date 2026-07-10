@@ -597,8 +597,8 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
-  flex-wrap: wrap; /* narrow card: 5-day forecast drops to its own full row */
 }
+.weather__current { flex: 0 0 auto; }
 .weather__now {
   display: flex;
   align-items: center;
@@ -623,36 +623,47 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   color: var(--color-muted);
   font-size: 0.9rem;
 }
+.weather__outlook { flex: 1 1 0; min-width: 0; }
+.weather__hourly,
 .weather__forecast {
   display: flex;
   justify-content: space-between;
-  /* basis:auto (not 0) so a card too narrow for temp + 5 days wraps the
-     forecast onto its own full-width row instead of painting past the edge */
-  flex: 1 1 auto;
   gap: var(--space-2);
-  margin-top: var(--space-2);
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: none;
 }
+.weather__hourly::-webkit-scrollbar,
+.weather__forecast::-webkit-scrollbar { display: none; }
+.weather__hourly { padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border); }
+.weather__forecast { padding-top: var(--space-2); }
+.weather__hour,
 .weather__day {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-1);
+  min-width: 2.65rem;
 }
+.weather__hour-label,
 .weather__day-label {
   color: var(--color-muted);
   font-size: 0.75rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
+.weather__hour-temp,
 .weather__day-temp {
   font-family: var(--font-display);
   font-size: 1.05rem;
 }
+.weather__hour-emoji,
 .weather__day-emoji {
   font-size: 1.1rem;
   line-height: 1;
   margin-top: 2px;
 }
+.weather__rain { color: #6e9fc4; font-size: 0.65rem; line-height: 1; }
 
 /* ───── traffic ───── */
 .traffic__row {
@@ -681,15 +692,41 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 }
 
 /* ───── countdown ───── */
-.countdown__list { list-style: none; padding: 0; margin: 0; }
+.briefing__duo--updates { height: 18rem; min-height: 0; }
+.briefing__duo--updates > .card { height: 100%; min-height: 0; overflow: hidden; }
+.countdown { height: 100%; display: flex; flex-direction: column; }
+.countdown__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: none;
+}
+.countdown__list::-webkit-scrollbar { display: none; }
 .countdown__item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: var(--space-3) 0;
+  display: grid;
+  grid-template-columns: 2.75rem 1fr;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-1) 0;
   border-bottom: 1px solid var(--color-border);
+  min-height: 3.75rem;
+  transition: transform 0.15s, opacity 0.15s;
 }
 .countdown__item:last-child { border-bottom: none; }
+.countdown__dismiss {
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 2px solid var(--color-muted);
+  border-radius: 10px;
+  background: transparent;
+  color: transparent;
+  cursor: pointer;
+}
+.countdown__dismiss:active { color: var(--color-bg); background: var(--color-accent); border-color: var(--color-accent); }
+.countdown__body { min-width: 0; }
 .countdown__when {
   display: flex;
   align-items: baseline;
@@ -715,13 +752,6 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .countdown__sub {
   color: var(--color-muted);
   font-size: 0.85rem;
-}
-/* Hermes's action note ("get a card", "book the sitter") — the why-it-matters line. */
-.countdown__note {
-  color: var(--color-accent);
-  font-size: 0.85rem;
-  font-style: italic;
-  margin-top: 2px;
 }
 
 /* ───── calendar (full-width, one column per person) ───── */
@@ -755,10 +785,20 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .calendar__empty--unlinked {
   opacity: 0.6;
 }
-.calendar__list { list-style: none; padding: 0; margin: 0; }
+.calendar__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 19rem; /* roughly five detailed rows; more events scroll here */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: none;
+}
+.calendar__list::-webkit-scrollbar { display: none; }
 .calendar__event {
   display: grid;
-  grid-template-columns: 4.5rem 1fr;
+  grid-template-columns: 6.25rem 1fr;
   gap: var(--space-3);
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--color-border);
@@ -766,6 +806,8 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   min-height: 2.75rem;
   align-content: center;
 }
+.calendar__when { display: flex; flex-direction: column; min-width: 0; }
+.calendar__date { color: var(--color-muted); font-size: 0.72rem; white-space: nowrap; }
 .calendar__event:last-child { border-bottom: none; }
 .calendar__event--next {
   border-left: 3px solid var(--color-accent);
@@ -892,7 +934,8 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   grid-template-columns: auto auto 1fr auto;
   gap: var(--space-2);
   align-items: center;
-  padding: var(--space-2) 0;
+  padding: 0;
+  min-height: 2.75rem;
   border-bottom: 1px solid var(--color-border);
   cursor: pointer;
 }
@@ -954,7 +997,8 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   grid-template-columns: auto auto 1fr auto;
   gap: var(--space-2);
   align-items: center;
-  padding: var(--space-2) 0;
+  padding: 0;
+  min-height: 2.75rem;
   border-bottom: 1px solid var(--color-border);
   cursor: pointer;
 }
@@ -1279,7 +1323,17 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 }
 
 /* ───── daily pick (evolved from the headlines card) ───── */
-.pick { display: flex; flex-direction: column; gap: var(--space-2); }
+.pick { height: 100%; display: flex; flex-direction: column; }
+.pick__list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: none;
+}
+.pick__list::-webkit-scrollbar { display: none; }
+.pick__item { padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); }
+.pick__item:last-child { border-bottom: none; }
 .pick__source {
   color: var(--color-muted);
   font-size: 0.75rem;
@@ -1288,19 +1342,36 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   white-space: nowrap;
 }
 .pick__title {
-  font-size: 1.25rem;
+  font-size: 1rem;
   line-height: 1.3;
   color: var(--color-fg);
   text-decoration: none;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 a.pick__title { color: var(--color-accent, var(--color-fg)); }
+a.pick__title { min-height: 2.75rem; }
 .pick__note {
   margin: 0;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: var(--color-muted);
   line-height: 1.35;
 }
+
+/* List cards render every item and use their allotted space efficiently. */
+.briefing__lists > [data-slot="todos"] { height: 34rem; overflow: hidden; }
+.briefing__lists .todos { height: 100%; display: flex; flex-direction: column; }
+.briefing__lists .groceries { height: 100%; display: flex; flex-direction: column; }
+.briefing__lists .todos__list,
+.briefing__lists .groceries__list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: none;
+}
+.briefing__lists .todos__list::-webkit-scrollbar,
+.briefing__lists .groceries__list::-webkit-scrollbar { display: none; }
+.briefing__lists [data-slot="groceries"] { height: 18rem; overflow: hidden; }

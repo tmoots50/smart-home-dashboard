@@ -7,30 +7,30 @@ const TIME_FMT = new Intl.DateTimeFormat(undefined, {
 });
 const REFRESH_MS = 5 * 60 * 1000; // re-fetch every 5min — events can be added during the day
 
-// End of `now`'s local calendar day. The columns show today's remaining events
-// only — nothing rolls over into tomorrow.
-function endOfToday(now) {
-  const d = new Date(now);
-  d.setHours(23, 59, 59, 999);
-  return d;
-}
+const DAY_FMT = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+const MAX_DEFAULT_EVENTS = 10;
 
 // Column order + labels for the family calendar. Each column pulls its events
 // from the data section whose `label` matches. A column with no matching
 // section (e.g. Caroline until her calendar is wired) renders a placeholder.
 // Change the order/labels here; the widget stays in sync.
-const COLUMNS = ['Tim', 'Family', 'Caroline'];
+const COLUMNS = ['Family', 'Tim', 'Caroline'];
 
 export function renderCalendar(data, now = new Date()) {
-  const cutoff = endOfToday(now);
   const byLabel = new Map((data.sections ?? []).map(s => [s.label, s]));
+  const selectedIds = new Set((data.sections ?? [])
+    .flatMap(section => (section.events ?? []).map(event => ({ event, label: section.label })))
+    .filter(({ event }) => parseLocalish(event.startsAt) >= now)
+    .sort((a, b) => parseLocalish(a.event.startsAt) - parseLocalish(b.event.startsAt))
+    .slice(0, MAX_DEFAULT_EVENTS)
+    .map(({ event, label }) => `${label}:${event.id}`));
 
   const columns = COLUMNS.map(label => {
     const section = byLabel.get(label);
-    const events = (section?.events ?? []).filter(e => {
-      const start = new Date(e.startsAt);
-      return start >= now && start <= cutoff;
-    });
+    const events = (section?.events ?? [])
+      .filter(e => selectedIds.has(`${label}:${e.id}`))
+      .sort((a, b) => parseLocalish(a.startsAt) - parseLocalish(b.startsAt))
+      .slice(0, MAX_DEFAULT_EVENTS);
     return { label, events, connected: !!section };
   });
 
@@ -41,7 +41,7 @@ export function renderCalendar(data, now = new Date()) {
         <button class="btn btn--text" data-overlay="calendar">See more</button>
       </div>
       <div class="calendar__grid">
-        ${columns.map(col => renderColumn(col, data.nextEventId)).join('')}
+        ${columns.map(col => renderColumn(col, data.nextEventId, now)).join('')}
       </div>
     </div>
   `;
@@ -51,16 +51,16 @@ function colSlug(label) {
   return String(label).toLowerCase().replace(/[^a-z0-9]+/g, '-');
 }
 
-function renderColumn(column, nextEventId) {
+function renderColumn(column, nextEventId, now) {
   return `
     <div class="calendar__column calendar__column--${colSlug(column.label)}">
       <h3 class="calendar__column-label">${escapeHtml(column.label)}</h3>
-      ${columnBody(column, nextEventId)}
+      ${columnBody(column, nextEventId, now)}
     </div>
   `;
 }
 
-function columnBody(column, nextEventId) {
+function columnBody(column, nextEventId, now) {
   if (!column.connected) {
     return '<p class="calendar__empty calendar__empty--unlinked muted">Not linked yet</p>';
   }
@@ -75,7 +75,10 @@ function columnBody(column, nextEventId) {
         const evtJson = escapeHtml(JSON.stringify({ ...event, calendar: column.label }));
         return `
           <li class="${cls}" data-event="${evtJson}" role="button" tabindex="0">
-            <span class="calendar__time">${TIME_FMT.format(new Date(event.startsAt))}</span>
+            <span class="calendar__when">
+              <span class="calendar__date">${formatDay(event.startsAt, now)}</span>
+              <span class="calendar__time">${event.allDay ? 'All day' : TIME_FMT.format(parseLocalish(event.startsAt))}</span>
+            </span>
             <span>
               <div class="calendar__title">${escapeHtml(event.title)}</div>
               ${event.sub ? `<div class="calendar__sub">${escapeHtml(event.sub)}</div>` : ''}
@@ -85,6 +88,24 @@ function columnBody(column, nextEventId) {
       }).join('')}
     </ul>
   `;
+}
+
+function formatDay(value, now) {
+  const date = parseLocalish(value);
+  const a = new Date(now); a.setHours(0, 0, 0, 0);
+  const b = new Date(date); b.setHours(0, 0, 0, 0);
+  const days = Math.round((b - a) / 86_400_000);
+  if (days === 0) return 'Today';
+  if (days === 1) return 'Tomorrow';
+  return DAY_FMT.format(date);
+}
+
+function parseLocalish(value) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value ?? '')) {
+    const [y, m, d] = value.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return new Date(value);
 }
 
 // Mounts into a slot. Renders cached/mock data instantly, then fetches live and

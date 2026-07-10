@@ -18,8 +18,8 @@ const allDay = {
 };
 
 describe('normalizeUpcoming', () => {
-  it('keeps all-day events (normalize drops them)', () => {
-    expect(normalize([timed, allDay])).toHaveLength(1);
+  it('keeps all-day events in both default and expanded agendas', () => {
+    expect(normalize([timed, allDay])).toHaveLength(2);
     const up = normalizeUpcoming([timed, allDay], 'Family');
     expect(up).toHaveLength(2);
     expect(up[1]).toEqual({

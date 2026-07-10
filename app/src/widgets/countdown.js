@@ -1,97 +1,125 @@
-import { getComingUp, fetchComingUp } from '../lib/curated.js';
+// Compact, dismissible Family-calendar agenda. The card shows up to ten items
+// in its own scroll region; tapping the check or swiping left dismisses an item
+// on this kiosk without mutating the source Google Calendar event.
 
-const MAX_ITEMS = 3;
+import { getUpcoming, fetchUpcoming } from '../lib/calendar.js';
+
+const MAX_ITEMS = 10;
 const DAY_MS = 86_400_000;
-const REFRESH_MS = 30 * 60 * 1000; // pick up the morning curation without a reload
+const REFRESH_MS = 5 * 60 * 1000;
+const DISMISSED_KEY = 'coming-up:dismissed:v1';
 
-export function renderCountdown(items, now = new Date()) {
+export function renderCountdown(items, now = new Date(), dismissed = new Set()) {
   const today = startOfDay(now);
-  const upcoming = items
-    .map(it => ({ ...it, days: Math.floor((startOfDay(parseLocalDate(it.date)) - today) / DAY_MS) }))
+  const upcoming = (items ?? [])
+    .filter(it => !it.calendar || it.calendar === 'Family')
+    .map(normalizeItem)
+    .filter(it => it.startsAt && !dismissed.has(it.key))
+    .map(it => ({ ...it, days: Math.floor((startOfDay(parseLocalDate(it.startsAt)) - today) / DAY_MS) }))
     .filter(it => it.days >= 0)
-    .sort((a, b) => a.days - b.days)
+    .sort((a, b) => parseLocalDate(a.startsAt) - parseLocalDate(b.startsAt))
     .slice(0, MAX_ITEMS);
 
   if (!upcoming.length) {
     return `
       <div class="countdown">
-        <h2 class="card__title">Coming up</h2>
+        <h2 class="card__title">Coming up · Family</h2>
         <p class="muted">Nothing on the horizon.</p>
-      </div>
-    `;
+      </div>`;
   }
 
   return `
     <div class="countdown">
-      <h2 class="card__title">Coming up</h2>
+      <h2 class="card__title">Coming up · Family</h2>
       <ul class="countdown__list">
         ${upcoming.map(it => `
-          <li class="countdown__item">
-            <div class="countdown__when">
-              <span class="countdown__days">${formatDays(it.days)}</span>
-              <span class="countdown__date">${formatAbsolute(it.date)}</span>
+          <li class="countdown__item" data-event-id="${escapeHtml(it.key)}">
+            <button class="countdown__dismiss" data-action="dismiss" aria-label="Dismiss ${escapeHtml(it.name)}">✓</button>
+            <div class="countdown__body">
+              <div class="countdown__when">
+                <span class="countdown__days">${formatDays(it.days)}</span>
+                <span class="countdown__date">${formatAbsolute(it.startsAt)}</span>
+              </div>
+              <div class="countdown__name">${escapeHtml(it.name)}</div>
+              ${it.sub ? `<div class="countdown__sub">${escapeHtml(it.sub)}</div>` : ''}
             </div>
-            <div class="countdown__name">${escapeHtml(it.name)}</div>
-            ${it.sub ? `<div class="countdown__sub">${escapeHtml(it.sub)}</div>` : ''}
-            ${it.note ? `<div class="countdown__note">${escapeHtml(it.note)}</div>` : ''}
           </li>
         `).join('')}
       </ul>
-    </div>
-  `;
+    </div>`;
 }
 
-// Mounts with Hermes-curated events (falls back to cache/mock — see
-// lib/curated.js). Re-reads through the day so the 6:30a curation shows up
-// on the wall without a reload. Returns a teardown function.
-export function mountComingUp(el) {
-  const { initial, live } = getComingUp();
-  el.innerHTML = renderCountdown(initial);
-  live.then(items => { if (items) el.innerHTML = renderCountdown(items); });
+export function mountComingUp(el, source = getUpcoming(90)) {
+  let items = source.initial ?? [];
+  const dismissed = readDismissed();
+  const draw = () => { el.innerHTML = renderCountdown(items, new Date(), dismissed); };
+  const dismiss = (row) => {
+    const key = row?.dataset.eventId;
+    if (!key) return;
+    dismissed.add(key);
+    writeDismissed(dismissed);
+    draw();
+  };
 
+  let startX = null;
+  el.addEventListener('pointerdown', e => {
+    if (e.target.closest('.countdown__item')) startX = e.clientX;
+  });
+  el.addEventListener('pointerup', e => {
+    const row = e.target.closest('.countdown__item');
+    if (row && startX != null && e.clientX - startX < -60) dismiss(row);
+    startX = null;
+  });
+  el.addEventListener('click', e => {
+    if (e.target.closest('[data-action="dismiss"]')) dismiss(e.target.closest('.countdown__item'));
+  });
+
+  draw();
+  source.live.then(next => { if (next) { items = next; draw(); } });
   const id = setInterval(() => {
-    fetchComingUp()
-      .then(items => { el.innerHTML = renderCountdown(items); })
-      .catch(() => { /* keep last good frame */ });
+    fetchUpcoming(90).then(next => { items = next; draw(); }).catch(() => {});
   }, REFRESH_MS);
-
   return () => clearInterval(id);
 }
 
-function startOfDay(d) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
+function normalizeItem(it) {
+  const startsAt = it.startsAt || it.date;
+  const name = it.title || it.name || '';
+  return { ...it, startsAt, name, key: String(it.id || `${name}|${startsAt}`) };
 }
 
-// Parse YYYY-MM-DD in local time (avoid the UTC default that shifts the day).
+function readDismissed() {
+  try { return new Set(JSON.parse(localStorage.getItem(DISMISSED_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+function writeDismissed(values) {
+  try { localStorage.setItem(DISMISSED_KEY, JSON.stringify([...values].slice(-100))); } catch {}
+}
+
+function startOfDay(d) {
+  const x = new Date(d); x.setHours(0, 0, 0, 0); return x;
+}
 function parseLocalDate(s) {
   if (typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    const [y, m, d] = s.split('-').map(Number);
-    return new Date(y, m - 1, d);
+    const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d);
   }
   return new Date(s);
 }
-
 function formatDays(days) {
   if (days === 0) return 'today';
   if (days === 1) return 'tomorrow';
   return `${days} days`;
 }
-
 function formatAbsolute(dateStr) {
   const d = parseLocalDate(dateStr);
   const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(d);
   const month = new Intl.DateTimeFormat(undefined, { month: 'short' }).format(d);
   return `${weekday}, ${month} ${ordinal(d.getDate())}`;
 }
-
 function ordinal(n) {
-  const s = ['th', 'st', 'nd', 'rd'];
-  const v = n % 100;
+  const s = ['th', 'st', 'nd', 'rd']; const v = n % 100;
   return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
-
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',

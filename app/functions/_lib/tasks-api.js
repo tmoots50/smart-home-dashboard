@@ -54,7 +54,13 @@ export async function moveTask(accessToken, listId, taskId, previousId) {
 }
 
 export async function completeTask(accessToken, listId, taskId) {
-  return patchTask(accessToken, listId, taskId, { status: 'completed' });
+  return setTaskCompleted(accessToken, listId, taskId, true);
+}
+
+export async function setTaskCompleted(accessToken, listId, taskId, done) {
+  return patchTask(accessToken, listId, taskId, done
+    ? { status: 'completed' }
+    : { status: 'needsAction', completed: null });
 }
 
 // Rename a task in place (inline edit on the dashboard).

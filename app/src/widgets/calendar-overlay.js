@@ -26,7 +26,7 @@ const MONTHDAY_FMT = new Intl.DateTimeFormat(undefined, { month: 'short', day: '
 
 // Column order of the Family Calendar card (calendar.js COLUMNS) — person
 // sections keep the same household order; unknown labels sort after, A→Z.
-const PERSON_ORDER = ['Tim', 'Family', 'Caroline'];
+const PERSON_ORDER = ['Family', 'Tim', 'Caroline'];
 
 // Ideal-N for the empty-week "Coming up" list, empirically derived: the QA
 // harness measured 29 event rows fully visible before the canvas fold

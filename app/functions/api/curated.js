@@ -2,7 +2,7 @@
 // POST /api/curated → validate + clamp + store to CURATED KV, return the blob (bearer)
 //
 // One tiny mutable doc = "what the dashboard should show right now". Written once
-// a morning by the Hermes curation job, read by the pick (+ future coming-up)
+// by the Hermes curation job, read by the picks card
 // widget. KV is the right store: a single small value, no history needed. It's
 // eventually-consistent (~≤60s to propagate globally), so the edge cache is kept
 // deliberately short to match — a fresh curation shows within about a minute.

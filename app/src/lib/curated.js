@@ -1,21 +1,21 @@
-// Client for /api/curated. Returns the single daily "Atlanta pick" as
+// Client for /api/curated. Returns up to three current Atlanta picks as
 // {initial, live} — mirrors lib/headlines.js (localStorage cache + token gate)
 // so the card is never blank during dev or a short outage.
 //
 // Fallback chain, most-trustworthy first:
-//   1. curated pick from Hermes  (/api/curated .picks[0])
+//   1. curated picks from Hermes (/api/curated .picks)
 //   2. newest live RSS headline  (/api/headlines) — if Hermes hasn't posted yet
 //   3. mock pick                 — dev / total outage
 // So on a day Hermes is down the card still shows something real and local,
 // just chosen by recency instead of taste.
 
-import { getMockPick } from './pick-mock.js';
+import { getMockPicks } from './pick-mock.js';
 import { fetchHeadlines } from './headlines.js';
 import { getMockCountdowns } from './countdown-mock.js';
 
 const TOKEN = import.meta.env.VITE_DASHBOARD_TOKEN;
-const CACHE_KEY = 'pick:v1';
-const CACHE_TTL_MS = 30 * 60 * 1000;
+const CACHE_KEY = 'picks:v2';
+const CACHE_TTL_MS = 10 * 60 * 1000;
 
 function readCache() {
   try {
@@ -37,37 +37,45 @@ function fromHeadline(h) {
   return { source: h.source, title: h.title, url: h.url || '', note: '' };
 }
 
-export async function fetchPick() {
+export async function fetchPicks() {
   const res = await fetch('/api/curated', {
     headers: { authorization: `Bearer ${TOKEN}` },
     cache: 'no-store',
   });
   if (!res.ok) throw new Error(`curated: ${res.status}`);
   const data = await res.json();
-  const pick = data.picks?.[0];
-  if (!pick?.title) throw new Error('curated: no pick');
-  writeCache(pick);
-  return pick;
+  const picks = (data.picks ?? []).filter(p => p?.title).slice(0, 3);
+  if (!picks.length) throw new Error('curated: no picks');
+  writeCache(picks);
+  return picks;
 }
+
+export async function fetchPick() { return (await fetchPicks())[0]; }
 
 // Try curated → newest RSS headline → the initial frame. Never throws.
 async function resolveLive(initial) {
   try {
-    return await fetchPick();
+    return await fetchPicks();
   } catch {
     try {
       const items = await fetchHeadlines();
-      if (items?.[0]?.title) return fromHeadline(items[0]);
+      const picks = (items ?? []).filter(h => h?.title).slice(0, 3).map(fromHeadline);
+      if (picks.length) return picks;
     } catch { /* fall through to initial */ }
     return initial;
   }
 }
 
-export function getDailyPick() {
+export function getPicks() {
   const cached = readCache();
-  const initial = cached ?? getMockPick();
+  const initial = cached ?? getMockPicks();
   const live = TOKEN ? resolveLive(initial) : Promise.resolve(initial);
   return { initial, live };
+}
+
+export function getDailyPick() {
+  const { initial, live } = getPicks();
+  return { initial: initial[0], live: live.then(picks => picks[0]) };
 }
 
 // ── Coming Up (Feature B): Hermes-curated events with action notes ──

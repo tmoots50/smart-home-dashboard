@@ -56,6 +56,6 @@ export const states = {
 
   // Every column packed — what does the card do when a day is genuinely full?
   overflow: {
-    data: { sections: [packedSection('Tim', 8), packedSection('Family', 8), packedSection('Caroline', 8)], nextEventId: 'tim-0' },
+    data: { sections: [section('Tim', []), packedSection('Family', 12), section('Caroline', [])], nextEventId: 'family-0' },
   },
 };

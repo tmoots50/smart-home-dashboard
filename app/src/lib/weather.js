@@ -3,7 +3,7 @@
 
 import { getMockWeather } from './weather-mock.js';
 
-const CACHE_KEY = 'weather:v2';
+const CACHE_KEY = 'weather:v3';
 const CACHE_TTL_MS = 15 * 60 * 1000;
 
 // WMO weather code → short human label. Source: open-meteo.com/en/docs.
@@ -57,6 +57,8 @@ function writeCache(data) {
 function normalize(api, location) {
   const c = api.current;
   const d = api.daily;
+  const h = api.hourly;
+  const firstHour = Math.max(0, h.time.findIndex(iso => iso >= c.time.slice(0, 13) + ':00'));
   return {
     location,
     current: {
@@ -71,6 +73,13 @@ function normalize(api, location) {
       code: d.weather_code[i + 1],
       emoji: WMO_EMOJI[d.weather_code[i + 1]] ?? '',
     })),
+    hourly: h.time.slice(firstHour, firstHour + 6).map((iso, i) => ({
+      label: i === 0 ? 'Now' : new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).format(new Date(iso)),
+      tempF: Math.round(h.temperature_2m[firstHour + i]),
+      code: h.weather_code[firstHour + i],
+      emoji: WMO_EMOJI[h.weather_code[firstHour + i]] ?? '',
+      precipitation: h.precipitation_probability?.[firstHour + i] ?? 0,
+    })),
     sun: {
       sunrise: d.sunrise?.[0] ?? null,
       sunset: d.sunset?.[0] ?? null,
@@ -84,6 +93,7 @@ export async function fetchWeather({ lat, lon, location }) {
     latitude: lat,
     longitude: lon,
     current: 'temperature_2m,weather_code',
+    hourly: 'temperature_2m,weather_code,precipitation_probability',
     daily: 'temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset',
     temperature_unit: 'fahrenheit',
     timezone: 'auto',

@@ -86,6 +86,6 @@ test('overlay/empty-with-later: Coming up fills the week, capped, rows tappable'
 test('overlay/typical: person sections in household order with day column', async ({ page }) => {
   await open(page, 'typical');
   const labels = await page.locator('.cal-person__label').allTextContents();
-  expect(labels.map(s => s.trim())).toEqual(['Tim', 'Family', 'Caroline']);
+  expect(labels.map(s => s.trim())).toEqual(['Family', 'Tim', 'Caroline']);
   await expect(page.locator('.cal-event__day').first()).toBeVisible();
 });

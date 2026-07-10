@@ -83,6 +83,13 @@ export async function strikeTodo(ref) {
 export async function strikeGrocery(ref) {
   return request('/api/tasks/groceries/strike', { method: 'POST', body: JSON.stringify(strikeBody(ref)) });
 }
+
+export async function setTodoDone(id, done) {
+  return request('/api/tasks/todos/status', { method: 'POST', body: JSON.stringify({ id, done }) });
+}
+export async function setGroceryDone(id, done) {
+  return request('/api/tasks/groceries/status', { method: 'POST', body: JSON.stringify({ id, done }) });
+}
 function strikeBody(ref) {
   if (typeof ref === 'string') return { text: ref };
   return { ...(ref.id ? { id: ref.id } : {}), text: ref.text };
