@@ -1,13 +1,17 @@
-// GET /api/calendar/upcoming[?days=N | ?timeMin=ISO&timeMax=ISO]
+// GET /api/calendar/upcoming[?days=N | ?timeMin=ISO&timeMax=ISO | ?all=1]
 //   → { events: [...] } sorted by start
 //
 // Wide event window across EVERY calendar in GOOGLE_CALENDARS_JSON, including
-// all-day events (birthdays, trips, flights). Three consumers:
+// all-day events (birthdays, trips, flights). Consumers:
 //   - the dashboard's expanded calendar overlay (?days=7)
 //   - the Hermes curation job's Coming-Up selection (default 90)
 //   - the month-calendar overlay (?timeMin/?timeMax — arbitrary months)
+//   - the Hermes calendar helpers' find/delete/update search (?all=1 — the
+//     WHOLE calendar, paginated; see resolveRange). No 90-day horizon there.
 // Ranges resolve via resolveRange (days clamps 1..90; explicit ranges clamp
-// to ≤62-day spans within now ± 366d). Cached at the edge for 5 min.
+// to ≤62-day spans within now ± 366d; ?all=1 is uncapped −1yr…+3yr, paginated).
+// UI/cron windows are edge-cached 5 min; the uncapped agent path is no-store so
+// a just-created/-deleted event is immediately findable.
 //
 // Event shape: { id, calendar, title, sub, startsAt, endsAt, allDay }
 // (startsAt/endsAt are ISO datetimes, or YYYY-MM-DD when allDay; all-day
@@ -47,13 +51,17 @@ export async function onRequest(context) {
   }
 
   const url = new URL(request.url);
-  const { timeMin, timeMax } = resolveRange(url.searchParams, new Date());
+  const { timeMin, timeMax, maxPages } = resolveRange(url.searchParams, new Date());
 
   try {
     const perCalendar = await Promise.all(calendars.map(async (c) =>
-      normalizeUpcoming(await listEvents(accessToken, c.id, timeMin, timeMax, { maxResults: MAX_RESULTS }), c.label)));
+      normalizeUpcoming(await listEvents(accessToken, c.id, timeMin, timeMax, { maxResults: MAX_RESULTS, maxPages }), c.label)));
     const events = perCalendar.flat().sort((a, b) => String(a.startsAt).localeCompare(String(b.startsAt)));
-    return json({ events }, { headers: { 'cache-control': `public, max-age=${CACHE_TTL_S}` } }, cors);
+    // The uncapped agent path (maxPages > 1) must be fresh — it backs mutating
+    // find/delete/update, where a stale 5-min cache would hide a just-created
+    // event or resurrect a just-deleted one. UI/cron windows stay edge-cached.
+    const cacheControl = maxPages > 1 ? 'no-store' : `public, max-age=${CACHE_TTL_S}`;
+    return json({ events }, { headers: { 'cache-control': cacheControl } }, cors);
   } catch (err) {
     return json({ error: err.message }, { status: 502 }, cors);
   }

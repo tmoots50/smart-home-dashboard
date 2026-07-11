@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { normalizeUpcoming, normalize, parseCalendars, repairMojibake, resolveRange, calendarIdFor, createEvent, deleteEvent, updateEvent } from './calendar-api.js';
+import { normalizeUpcoming, normalize, parseCalendars, repairMojibake, resolveRange, calendarIdFor, createEvent, deleteEvent, updateEvent, listEvents } from './calendar-api.js';
 
 const timed = {
   id: 'e1',
@@ -246,9 +246,71 @@ describe('createEvent / deleteEvent / updateEvent', () => {
   });
 });
 
+describe('listEvents pagination', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  const page = (items, nextPageToken) => ({ ok: true, json: async () => ({ items, ...(nextPageToken ? { nextPageToken } : {}) }) });
+
+  it('returns a single page by default (maxPages omitted)', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce(page([{ id: 'a' }, { id: 'b' }], 'TOKEN')); // has a next page, but default stops
+    vi.stubGlobal('fetch', mockFetch);
+    const items = await listEvents('tok', 'calId', 't0', 't1', { maxResults: 250 });
+    expect(items.map(e => e.id)).toEqual(['a', 'b']);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('follows nextPageToken up to maxPages and concatenates', async () => {
+    const mockFetch = vi.fn()
+      .mockResolvedValueOnce(page([{ id: 'a' }], 'P2'))
+      .mockResolvedValueOnce(page([{ id: 'b' }], 'P3'))
+      .mockResolvedValueOnce(page([{ id: 'c' }], null)); // last page, no token
+    vi.stubGlobal('fetch', mockFetch);
+    const items = await listEvents('tok', 'calId', 't0', 't1', { maxResults: 1, maxPages: 12 });
+    expect(items.map(e => e.id)).toEqual(['a', 'b', 'c']);
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    // the 2nd/3rd requests must carry the prior page's token
+    expect(String(mockFetch.mock.calls[1][0])).toContain('pageToken=P2');
+    expect(String(mockFetch.mock.calls[2][0])).toContain('pageToken=P3');
+  });
+
+  it('stops at the maxPages backstop even if more pages remain', async () => {
+    const mockFetch = vi.fn().mockResolvedValue(page([{ id: 'x' }], 'ALWAYS_MORE'));
+    vi.stubGlobal('fetch', mockFetch);
+    const items = await listEvents('tok', 'calId', 't0', 't1', { maxResults: 1, maxPages: 3 });
+    expect(items).toHaveLength(3);
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+  });
+
+  it('throws on HTTP error mid-pagination', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 502, text: async () => 'bad gateway' }));
+    await expect(listEvents('tok', 'calId', 't0', 't1', { maxPages: 5 })).rejects.toThrow('502');
+  });
+});
+
 describe('resolveRange', () => {
   const NOW = new Date('2026-07-10T12:00:00Z');
   const params = (obj) => new URLSearchParams(obj);
+
+  it('?all=1 returns an uncapped −1yr…+3yr window with a page budget (Hermes sees ALL events)', () => {
+    const r = resolveRange(params({ all: '1' }), NOW);
+    const back = (+NOW - +new Date(r.timeMin)) / 86_400_000;
+    const fwd = (+new Date(r.timeMax) - +NOW) / 86_400_000;
+    expect(Math.round(back)).toBe(366);
+    expect(Math.round(fwd)).toBe(1095);
+    expect(r.maxPages).toBeGreaterThan(1);
+  });
+
+  it('?all=1 beats explicit range and days (highest priority)', () => {
+    const r = resolveRange(params({ all: 'true', days: '7', timeMin: '2026-07-01T00:00:00Z', timeMax: '2026-07-05T00:00:00Z' }), NOW);
+    expect((+new Date(r.timeMax) - +new Date(r.timeMin)) / 86_400_000).toBe(366 + 1095);
+  });
+
+  it('non-all ranges carry maxPages: 1 (single-page UI behavior preserved)', () => {
+    expect(resolveRange(params({}), NOW).maxPages).toBe(1);
+    expect(resolveRange(params({ days: '7' }), NOW).maxPages).toBe(1);
+    expect(resolveRange(params({ timeMin: '2026-07-01T00:00:00Z', timeMax: '2026-08-01T00:00:00Z' }), NOW).maxPages).toBe(1);
+  });
 
   it('honors a valid explicit timeMin/timeMax range', () => {
     const r = resolveRange(params({ timeMin: '2026-07-01T00:00:00Z', timeMax: '2026-08-01T00:00:00Z' }), NOW);

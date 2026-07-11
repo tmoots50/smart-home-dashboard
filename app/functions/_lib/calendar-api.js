@@ -32,23 +32,41 @@ export function canonicalCalendarLabel(label) {
 
 // Fetch events for a single calendar in [timeMin, timeMax].
 // `singleEvents=true` expands recurring events into instances.
-export async function listEvents(accessToken, calendarId, timeMin, timeMax, { maxResults = 50 } = {}) {
-  const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`);
-  url.search = new URLSearchParams({
-    timeMin,
-    timeMax,
-    singleEvents: 'true',
-    orderBy: 'startTime',
-    maxResults: String(maxResults),
-  }).toString();
+//
+// `maxPages` follows Google's `nextPageToken` to return EVERY event in range,
+// not just the first `maxResults`. Default 1 preserves the single-page behavior
+// the wall UI relies on (90-day / month windows never exceed one page); the
+// uncapped `?all=1` path raises it so a multi-year window isn't silently
+// truncated at 250. Pages are fetched sequentially (Google requires the prior
+// page's token), but the endpoint fans out across calendars in parallel.
+export async function listEvents(accessToken, calendarId, timeMin, timeMax, { maxResults = 50, maxPages = 1 } = {}) {
+  const endpoint = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`;
+  const items = [];
+  let pageToken = null;
+  let pages = 0;
+  do {
+    const params = new URLSearchParams({
+      timeMin,
+      timeMax,
+      singleEvents: 'true',
+      orderBy: 'startTime',
+      maxResults: String(maxResults),
+    });
+    if (pageToken) params.set('pageToken', pageToken);
+    const url = new URL(endpoint);
+    url.search = params.toString();
 
-  const res = await fetch(url, { headers: { authorization: `Bearer ${accessToken}` } });
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '');
-    throw new Error(`calendar ${calendarId} ${res.status}: ${detail}`);
-  }
-  const data = await res.json();
-  return data.items || [];
+    const res = await fetch(url, { headers: { authorization: `Bearer ${accessToken}` } });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '');
+      throw new Error(`calendar ${calendarId} ${res.status}: ${detail}`);
+    }
+    const data = await res.json();
+    if (Array.isArray(data.items)) items.push(...data.items);
+    pageToken = data.nextPageToken || null;
+    pages += 1;
+  } while (pageToken && pages < maxPages);
+  return items;
 }
 
 // Some upstream events were created by tools that stored UTF-8 bytes decoded
@@ -131,30 +149,50 @@ export function normalizeUpcoming(events, calendarLabel) {
     .filter(Boolean);
 }
 
-// Resolve the fetch window for /api/calendar/upcoming. Explicit
-// timeMin/timeMax params win (the month-calendar view fetches arbitrary
-// months, including past days of the current month), clamped to a ≤62-day
-// span inside now ± 366 days. Anything invalid falls back to the legacy
-// forward-looking `days` window (1..90 from now) so existing consumers
-// (overlay, Hermes cron) are untouched.
+// Resolve the fetch window (+ page budget) for /api/calendar/upcoming.
+//
+// Priority:
+//   1. ?all=1  → UNCAPPED window for machine consumers (Hermes calendar
+//      helpers). The wall UI caps its views for readability; an agent asked to
+//      find/cancel/reschedule "the dentist in 6 months" must see the WHOLE
+//      calendar. Bounded (not literally infinite) only because singleEvents=true
+//      expands recurring events into unbounded future instances — the window
+//      below (−1yr … +3yr) covers every event a household realistically books,
+//      and maxPages paginates so nothing IN range is dropped.
+//   2. explicit timeMin/timeMax (month-calendar view) → ≤62-day span inside
+//      now ± 366 days.
+//   3. legacy forward-looking `days` window (1..90 from now) — overlay + any
+//      caller that omits both of the above.
+// Every return carries maxPages so the endpoint knows how deep to paginate.
 const RANGE_DAY_MS = 86_400_000;
 const RANGE_SPAN_MAX_MS = 62 * RANGE_DAY_MS;
 const RANGE_WINDOW_MS = 366 * RANGE_DAY_MS;
 const RANGE_DAYS_DEFAULT = 90;
 const RANGE_DAYS_MAX = 90;
+const RANGE_ALL_BACK_MS = 366 * RANGE_DAY_MS;   // 1 year of history
+const RANGE_ALL_FWD_MS = 1095 * RANGE_DAY_MS;   // 3 years ahead
+const RANGE_ALL_MAX_PAGES = 12;                 // 12 × maxResults safety backstop (well above real volume)
 
 export function resolveRange(searchParams, now = new Date()) {
+  const all = searchParams.get('all');
+  if (all === '1' || all === 'true') {
+    return {
+      timeMin: new Date(+now - RANGE_ALL_BACK_MS).toISOString(),
+      timeMax: new Date(+now + RANGE_ALL_FWD_MS).toISOString(),
+      maxPages: RANGE_ALL_MAX_PAGES,
+    };
+  }
   const min = searchParams.get('timeMin') ? new Date(searchParams.get('timeMin')) : null;
   const max = searchParams.get('timeMax') ? new Date(searchParams.get('timeMax')) : null;
   if (min && max && !Number.isNaN(+min) && !Number.isNaN(+max) && +max > +min
       && (+max - +min) <= RANGE_SPAN_MAX_MS
       && Math.abs(+min - +now) <= RANGE_WINDOW_MS
       && Math.abs(+max - +now) <= RANGE_WINDOW_MS) {
-    return { timeMin: min.toISOString(), timeMax: max.toISOString() };
+    return { timeMin: min.toISOString(), timeMax: max.toISOString(), maxPages: 1 };
   }
   const n = parseInt(searchParams.get('days'), 10);
   const days = !Number.isFinite(n) || n < 1 ? RANGE_DAYS_DEFAULT : Math.min(n, RANGE_DAYS_MAX);
-  return { timeMin: now.toISOString(), timeMax: new Date(+now + days * RANGE_DAY_MS).toISOString() };
+  return { timeMin: now.toISOString(), timeMax: new Date(+now + days * RANGE_DAY_MS).toISOString(), maxPages: 1 };
 }
 
 // Look up calendarId from a human label (case-insensitive, after canonicalization).
