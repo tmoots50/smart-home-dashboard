@@ -24,6 +24,13 @@ html.kiosk { scrollbar-width: none; }
 html.kiosk::-webkit-scrollbar { display: none; }
 html.kiosk, html.kiosk body { overscroll-behavior-y: none; }
 
+/* Unified list-row height (Tim, 2026-07-11): line items in the Family
+   Calendar, Coming Up, Todo and Groceries cards all share this height — the
+   calendar's single-line row is the reference. Rows may still GROW for
+   wrapped content (2-line calendar titles, wrapped todo text); they never
+   render shorter. Touch floors stay on the 44px hit rects inside the rows. */
+:root { --list-row: 3.65rem; }
+
 /* ───── card primitive ─────
    The visual unit. Every widget renders into one of these. */
 .card {
@@ -60,12 +67,15 @@ html.kiosk, html.kiosk body { overscroll-behavior-y: none; }
   opacity: 0.65;
 }
 /* Inside list rows the icons go borderless — two outlined circles per row
-   read as a button farm and steal ~30% of the text column. */
+   read as a button farm and steal ~30% of the text column. The negative
+   block margin keeps the 44px hit rect from inflating the unified row
+   height (rows are 58px apart, so adjacent hit areas never overlap). */
 .todos__item .btn--icon,
 .groceries__item .btn--icon {
   border: none;
   width: 2.75rem; /* 44px hit target */
   height: 2.75rem;
+  margin-block: -0.5rem;
 }
 
 /* ───── buttons ───── */
@@ -130,6 +140,10 @@ html.kiosk, html.kiosk body { overscroll-behavior-y: none; }
   min-height: 100vh;
   padding: var(--space-3);
   display: grid;
+  /* The topbox (clock + photo) is the flexible hero row: any height the
+     other sections free up flows there instead of stretching every row
+     equally (2026-07-11: rows unified at --list-row bought this space). */
+  grid-template-rows: auto 1fr auto auto auto;
   gap: 10px;
   max-width: 1080px;
   margin: 0 auto;
@@ -1045,7 +1059,9 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 /* ───── clock ───── */
 .clock { font-family: var(--font-display); }
 .clock__time {
-  font-size: 4rem;
+  /* 4rem → 4.5rem (2026-07-11): the time is the topbox hero and had been
+     compressed by earlier density passes. */
+  font-size: 4.5rem;
   line-height: 1;
   letter-spacing: -0.03em;
   font-weight: 400;
@@ -1264,7 +1280,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   border-bottom: 1px solid var(--color-border);
   /* Category color edge; transparent placeholder keeps rows aligned. */
   border-left: 3px solid transparent;
-  min-height: 2.75rem;
+  min-height: var(--list-row);
   transition: transform 0.15s, opacity 0.15s;
 }
 .countdown__item:last-child { border-bottom: none; }
@@ -1273,10 +1289,12 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .countdown__item--mabel     { border-left-color: #d98a9c; }
 .countdown__item--travel    { border-left-color: #5fa8d3; }
 /* The button holds the 44px touch floor; the visible circle stays modest.
-   Grow hit areas, not visuals. */
+   Grow hit areas, not visuals. Negative block margin keeps the hit rect
+   from inflating the unified row height (row pitch > 44px — no overlap). */
 .countdown__check {
   width: 2.75rem;
   height: 2.75rem;
+  margin-block: -0.25rem;
   padding: 0;
   border: none;
   background: transparent;
@@ -1398,8 +1416,8 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   gap: var(--space-3);
   padding: 0;
   border-bottom: 1px solid var(--color-border);
-  /* Rows are tap targets (open event detail) — hold the 44px touch floor. */
-  min-height: 2.75rem;
+  /* Unified list-row height (covers the 44px tap floor — rows open detail). */
+  min-height: var(--list-row);
   align-content: center;
 }
 .calendar__when { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
@@ -1676,10 +1694,11 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   grid-template-columns: auto auto 1fr auto;
   gap: var(--space-3);
   align-items: center;
-  /* Row breathing room is part of the design contract; the 2.75rem .btn--icon
-     buttons already hold the 44px touch floor — never strip padding to make
-     touch math work. */
-  padding: var(--space-3) 0;
+  /* 10px + 10px sits exactly on the design-contract floor (20px total) —
+     the price of matching the calendar's unified row height. The 2.75rem
+     .btn--icon buttons hold the 44px touch floor; never go below this. */
+  padding: 0.625rem 0;
+  min-height: var(--list-row);
   border-bottom: 1px solid var(--color-border);
   cursor: pointer;
 }
@@ -1688,6 +1707,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   flex-wrap: wrap;
   gap: var(--space-3);
   align-items: center;
+  line-height: 1.2;
 }
 .todos__item:last-child { border-bottom: none; }
 .todos__check {
@@ -1720,7 +1740,9 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   line-height: 1;
 }
 .todos__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.todos__text { font-size: 1rem; overflow-wrap: anywhere; }
+/* Line spacing matches the calendar rows so two-line bodies (text + meta)
+   fit the unified row height without shrinking any font. */
+.todos__text { font-size: 1rem; line-height: 1.3; overflow-wrap: anywhere; }
 .todos__text--done { text-decoration: line-through; color: var(--color-muted); }
 .todos__due {
   color: var(--color-muted);
@@ -1743,8 +1765,9 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   grid-template-columns: auto auto 1fr auto;
   gap: var(--space-3);
   align-items: center;
-  /* Same contract as .todos__item — breathing room stays; buttons hold the floor. */
-  padding: var(--space-3) 0;
+  /* Same as .todos__item — contract-floor padding, unified row height. */
+  padding: 0.625rem 0;
+  min-height: var(--list-row);
   border-bottom: 1px solid var(--color-border);
   cursor: pointer;
 }
@@ -1762,7 +1785,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   background: var(--color-accent);
   border-color: var(--color-accent);
 }
-.groceries__text { font-size: 1rem; overflow-wrap: anywhere; }
+.groceries__text { font-size: 1rem; line-height: 1.3; overflow-wrap: anywhere; }
 .groceries__text--done { text-decoration: line-through; color: var(--color-muted); }
 .groceries__qty {
   color: var(--color-muted);
@@ -1976,9 +1999,16 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   white-space: nowrap;
 }
 
-/* ───── time card — action bar sits close under weather ───── */
+/* ───── time card — action bar anchors to the card bottom ─────
+   The card stretches with the flexible topbox row; slack lands between the
+   weather block and the action bar instead of pooling under the buttons. */
+.time-card {
+  display: flex;
+  flex-direction: column;
+}
 .time-card .action-bar {
-  margin-top: var(--space-4);
+  margin-top: auto;
+  padding-top: var(--space-4);
 }
 
 /* ───── on this day ───── */
@@ -2144,4 +2174,6 @@ a.pick__item .pick__title { color: var(--color-accent, var(--color-fg)); }
 }
 .briefing__lists .todos__list::-webkit-scrollbar,
 .briefing__lists .groceries__list::-webkit-scrollbar { display: none; }
-.briefing__lists [data-slot="groceries"] { height: 18rem; overflow: hidden; }
+/* 18rem → 16rem (2026-07-11): unified rows are ~19px shorter, so the same
+   ~3 rows fit in less card — the difference feeds the topbox hero row. */
+.briefing__lists [data-slot="groceries"] { height: 16rem; overflow: hidden; }
