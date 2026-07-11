@@ -1451,7 +1451,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   line-height: 1;
 }
 .todos__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.todos__text { font-size: 1rem; }
+.todos__text { font-size: 1rem; overflow-wrap: anywhere; }
 .todos__text--done { text-decoration: line-through; color: var(--color-muted); }
 .todos__due {
   color: var(--color-muted);
@@ -1493,7 +1493,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   background: var(--color-accent);
   border-color: var(--color-accent);
 }
-.groceries__text { font-size: 1rem; }
+.groceries__text { font-size: 1rem; overflow-wrap: anywhere; }
 .groceries__text--done { text-decoration: line-through; color: var(--color-muted); }
 .groceries__qty {
   color: var(--color-muted);

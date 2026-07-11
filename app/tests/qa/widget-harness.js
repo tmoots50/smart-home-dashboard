@@ -3,7 +3,8 @@
 // mechanics so adding a fixture state stays cheap and consistent.
 import { expect } from '@playwright/test';
 import { FIXED_NOW } from './clock.js';
-import { auditTapTargets, detectOverflow, freezeMotion } from './measure.js';
+import { auditTapTargets, auditDesignContract, auditTextClipping, detectOverflow, freezeMotion } from './measure.js';
+import { contract } from './design-contract.js';
 
 export async function openHarness(page, widget, state) {
   await page.clock.install({ time: FIXED_NOW });
@@ -16,6 +17,16 @@ export async function expectHarnessGeometry(page, { tapTargets = true } = {}) {
   const overflow = await detectOverflow(page);
   expect(overflow.horizontal, `horizontal overflow ${overflow.scrollWidth}px > ${overflow.clientWidth}px`).toBe(false);
   if (tapTargets) expect(await auditTapTargets(page)).toEqual([]);
+
+  // Text never clipped mid-glyph without a deliberate truncation style.
+  const clipped = await auditTextClipping(page);
+  expect(clipped, `clipped text: ${JSON.stringify(clipped, null, 2)}`).toEqual([]);
+
+  // Design contract bands are canvas-only (rem values scale on the tablet).
+  if (page.viewportSize()?.width === 1080) {
+    const offenders = await auditDesignContract(page, contract);
+    expect(offenders, `design-contract violations: ${JSON.stringify(offenders, null, 2)}`).toEqual([]);
+  }
 }
 
 // Exercise a real wheel gesture at both the middle and bottom of a nested

@@ -4,7 +4,8 @@
 import { test, expect } from '@playwright/test';
 import { FIXED_NOW } from './clock.js';
 import { states } from '../../src/widgets/calendar.fixtures.js';
-import { detectOverflow, auditTapTargets, captureArtifact, collectErrors, freezeMotion } from './measure.js';
+import { detectOverflow, auditTapTargets, auditDesignContract, auditTextClipping, captureArtifact, collectErrors, freezeMotion } from './measure.js';
+import { contract } from './design-contract.js';
 import { expectNestedScrollContained } from './widget-harness.js';
 
 const url = (state) => `/harness.html?widget=calendar&state=${state}`;
@@ -32,10 +33,24 @@ for (const state of Object.keys(states)) {
     });
     expect(offenders, `tap targets under 44px: ${JSON.stringify(offenders, null, 2)}`).toEqual([]);
 
+    const clipped = await auditTextClipping(page);
+    expect(clipped, `clipped text: ${JSON.stringify(clipped, null, 2)}`).toEqual([]);
+    if (page.viewportSize()?.width === 1080) {
+      expect(await auditDesignContract(page, contract)).toEqual([]);
+    }
+
     await captureArtifact(page, `calendar-${state}`, testInfo);
     expect(errors, `console errors: ${errors.join(' | ')}`).toEqual([]);
   });
 }
+
+// Regression lock for the 2026-07 column-starvation bug: per-column limits
+// mean a packed Family week can never evict Tim's few events.
+test('calendar/uneven: no connected column with events is starved by another', async ({ page }) => {
+  await open(page, 'uneven');
+  await expect(page.locator('.calendar__column--family .calendar__event')).toHaveCount(6);
+  await expect(page.locator('.calendar__column--tim .calendar__event')).toHaveCount(1);
+});
 
 test('calendar/typical: tapping an event row opens the detail panel', async ({ page }) => {
   await open(page, 'typical');

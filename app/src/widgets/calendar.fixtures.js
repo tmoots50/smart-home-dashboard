@@ -58,4 +58,20 @@ export const states = {
   overflow: {
     data: { sections: [section('Tim', []), packedSection('Family', 12), section('Caroline', [])], nextEventId: 'family-0' },
   },
+
+  // Worst-case distribution: Family flooded, Tim with one LATE event, long
+  // title exercising the single-line ellipsis. Under the old global top-10
+  // Tim's event was evicted entirely — the parity spec locks the fix.
+  uneven: {
+    data: {
+      sections: [
+        section('Family', [
+          ...packedSection('Family', 12).events,
+          evt('family-long', 20, 30, 'An intentionally very long family event title that must ellipsize on one compact line', 'Somewhere with an equally long location name'),
+        ]),
+        section('Tim', [evt('tim-late', 20, 0, 'Spiritual Direction')]),
+      ],
+      nextEventId: 'family-0',
+    },
+  },
 };

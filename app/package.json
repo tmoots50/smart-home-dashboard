@@ -9,7 +9,9 @@
     "preview": "vite preview --host --port 4173",
     "test": "vitest",
     "qa": "playwright test",
-    "qa:gate": "QA_GATE=1 playwright test"
+    "qa:gate": "QA_GATE=1 playwright test",
+    "qa:ship": "QA_GATE=1 QA_ARTIFACTS=1 playwright test",
+    "qa:visual": "node tests/qa/contact-sheet.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",

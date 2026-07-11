@@ -4,7 +4,8 @@
 // remains deterministic.
 import { test, expect } from '@playwright/test';
 import { FIXED_NOW } from './clock.js';
-import { detectOverflow, captureArtifact, freezeMotion } from './measure.js';
+import { detectOverflow, auditDesignContract, auditTextClipping, captureArtifact, freezeMotion } from './measure.js';
+import { contract } from './design-contract.js';
 
 test('morning briefing: calendar precedes the compact updates row', async ({ page }, testInfo) => {
   await page.clock.install({ time: FIXED_NOW });
@@ -23,5 +24,15 @@ test('morning briefing: calendar precedes the compact updates row', async ({ pag
   expect(updatesBox.height).toBeLessThanOrEqual(344);
   expect((await detectOverflow(page)).horizontal).toBe(false);
   await expect(page.locator('.pick__item')).toHaveCount(3);
+
+  // Full-composition design-contract + clipping sweep — the widgets all
+  // together is where density regressions actually show.
+  const clipped = await auditTextClipping(page);
+  expect(clipped, `clipped text: ${JSON.stringify(clipped, null, 2)}`).toEqual([]);
+  if (page.viewportSize()?.width === 1080) {
+    const offenders = await auditDesignContract(page, contract);
+    expect(offenders, `design-contract violations: ${JSON.stringify(offenders, null, 2)}`).toEqual([]);
+  }
+
   await captureArtifact(page, 'briefing-layout', testInfo);
 });

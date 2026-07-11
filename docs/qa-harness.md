@@ -101,17 +101,68 @@ never deploys.
   vertical is design-dependent (the briefing scrolls, overlays shouldn't).
 - `auditTapTargets(page, {min: 44})` — every interactive element under the
   floor, with sizes and text, so the failure message names the offender.
+  **Fix offenders by extending the hit area, never by inflating the visual
+  element** — see the design contract below.
+- `auditDesignContract(page, contract)` — visual bands from
+  `tests/qa/design-contract.js` (see below). Canvas profile only.
+- `auditTextClipping(page)` — text amputated without a deliberate truncation
+  style (`text-overflow: ellipsis` and `-webkit-line-clamp` are exempt).
+  Known limitation: text painting outside an overflow-visible auto-height box
+  is invisible to it — that class is covered by `detectOverflow` and the
+  ship-time visual review.
 - `countFullyVisible(page, container, row)` — the empirical layout-fit
   engine: how many rows fit without scrolling. Grounds "how many events
   should the empty state show?" in measured reality, per profile.
+- `touchScroll(page, selector, yDistance)` — CDP synthetic TOUCH scroll; the
+  wheel-based containment check exercises a different event path than a
+  finger on the wall tablet.
 - `freezeMotion(page)` / `captureArtifact(page, name, testInfo)`.
+
+## Design contract (`tests/qa/design-contract.js`)
+
+The 2026-07 density regression shipped because the gate enforced a 44px tap
+FLOOR with no aesthetic counterweight: an agent inflated checkboxes to meet
+the floor, then stripped padding and shrank fonts to claw the space back.
+Every individual change satisfied the gate; the sum destroyed the design.
+
+The contract locks visual BANDS (not exact pixels) for the handful of values
+that broke: checkbox visual size, list-row vertical padding, card insets, and
+font-size bands for key text roles. The rule the bands encode:
+
+> **Touch floors are met with hit areas — row/button padding, transparent
+> wrappers, whole-row targets — never by inflating the visible element,
+> shrinking fonts, or stripping padding.**
+
+Moving a band requires Tim's explicit OK, recorded in the commit message.
+Bands are canvas-profile-only; the tablet profile needs scale-adjusted bands
+when it's activated (followups.md).
+
+## Visual review at ship time
+
+The gate proves geometry; it cannot prove the dashboard looks right. When
+`app/` changed, `ship.sh` refreshes the screenshot artifacts (`qa:ship`),
+builds a contact sheet (`qa:visual` → `tests/qa/artifacts/contact-sheet.html`),
+and **refuses to commit without a visual sign-off**:
+
+- Interactive: the sheet opens; you type a one-line sign-off at the prompt.
+- Agents: actually view (Read) the artifact PNGs for every widget you touched
+  plus `briefing-layout`, then re-run with
+  `VISUAL_SIGNOFF="checked todos+briefing: spacing, checkbox size, no clipping" scripts/ship.sh "…"`.
+  The sign-off must name something concrete you observed — not "looks fine".
+
+The sign-off is recorded as a `Visual-Signoff:` commit trailer. Honest
+limitation: nothing can mechanically verify eyeballs — the gate's value is
+making "skipped the look" a deliberate, recorded act instead of a silent
+default.
 
 ## Commands
 
 ```bash
 cd app
 npm run qa        # full suite + screenshot artifacts
-npm run qa:gate   # what ship.sh runs — same asserts, no artifacts (~3s)
+npm run qa:gate   # fast asserts, no artifacts (~3s)
+npm run qa:ship   # what ship.sh runs — asserts AND refreshes artifacts
+npm run qa:visual # build tests/qa/artifacts/contact-sheet.html
 npx playwright show-trace test-results/<test>/trace.zip   # debug a failure
 ```
 

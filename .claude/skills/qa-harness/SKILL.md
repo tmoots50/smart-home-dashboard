@@ -117,3 +117,8 @@ the numbers). On rejection: keep or discard the branch as Tim prefers.
 - **Don't manufacture findings.** If a state is clean at both profiles, say
   so and move on. Improvements must clear the "wife would notice or a thumb
   would miss" bar, not pad a report.
+- **Fix tap-floor findings with hit areas, not bigger visuals.** Extend
+  padding / transparent wrappers / whole-row targets; visual sizes are locked
+  in bands by `tests/qa/design-contract.js`. Note: `ship.sh` now also requires
+  a `VISUAL_SIGNOFF` (artifact review) whenever `app/` changed — this skill's
+  own never-ship-without-Tim contract is unchanged.
