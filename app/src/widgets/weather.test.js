@@ -26,11 +26,11 @@ describe('renderWeather', () => {
     }
   });
 
-  it('labels the compact rest-of-day and seven-day strips', () => {
+  it('labels the compact hourly and daily strips', () => {
     const html = renderWeather(data);
-    expect(html).toContain('Rest of day');
-    expect(html).toContain('7 days');
-    expect(data.forecast).toHaveLength(7);
+    expect(html).toContain('Next 5 hours');
+    expect(html).toContain('5 days');
+    expect(data.forecast).toHaveLength(5);
   });
 
   it('escapes HTML in user-controlled fields', () => {

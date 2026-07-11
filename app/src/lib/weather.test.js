@@ -23,10 +23,10 @@ function apiPayload(overrides = {}) {
 }
 
 describe('normalizeWeather', () => {
-  it('keeps every remaining hour today and seven daily entries', () => {
+  it('keeps a fixed 5 hourly entries and 5 daily entries', () => {
     const data = normalizeWeather(apiPayload(), 'Atlanta, GA');
-    expect(data.hourly.map(h => h.label)).toHaveLength(7); // 17:00 through 23:00
-    expect(data.forecast).toHaveLength(7);
+    expect(data.hourly.map(h => h.label)).toHaveLength(5); // 17:00 through 21:00
+    expect(data.forecast).toHaveLength(5);
   });
 
   it('maps the stat-cluster fields when present', () => {

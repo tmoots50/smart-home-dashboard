@@ -42,8 +42,8 @@ export function renderWeather(data) {
       </div>
       <div class="weather__outlook">
         <div class="weather__strip">
-          <span class="weather__strip-label">Rest of day</span>
-          <div class="weather__hourly" aria-label="Rest of day hourly forecast">
+          <span class="weather__strip-label">Next 5 hours</span>
+          <div class="weather__hourly" aria-label="Hourly forecast, next 5 hours">
             ${(data.hourly ?? []).map(hour => `
               <div class="weather__hour">
                 <div class="weather__hour-label">${escapeHtml(hour.label)}</div>
@@ -55,8 +55,8 @@ export function renderWeather(data) {
           </div>
         </div>
         <div class="weather__strip">
-          <span class="weather__strip-label">7 days</span>
-          <div class="weather__forecast" aria-label="Seven day forecast">
+          <span class="weather__strip-label">5 days</span>
+          <div class="weather__forecast" aria-label="5 day forecast">
             ${data.forecast.map(day => `
               <div class="weather__day">
                 <div class="weather__day-label">${escapeHtml(day.label)}</div>
