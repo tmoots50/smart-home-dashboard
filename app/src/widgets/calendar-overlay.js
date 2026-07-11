@@ -1,7 +1,9 @@
-// Expanded calendar — full-screen overlay behind the Family Calendar card's
-// "See more". Production shows the next ten events for each linked person,
-// Family first. Read-only on purpose: edits belong to the
-// phone calendar apps (or Hermes over Telegram), not tablet forms.
+// Expanded calendar ("What's ahead") — full-screen overlay behind the Family
+// Calendar card's "See more". Production shows the next ten events for each
+// household person (sticky color-coded section per person, including unlinked
+// ones, so the roster matches the card's columns). Read-only on purpose:
+// edits belong to the phone calendar apps (or Hermes over Telegram), not
+// tablet forms.
 //
 // Empty week: instead of a lone "nothing scheduled" line in a full-screen
 // panel, we surface the next events BEYOND the 7-day window ("Coming up"),
@@ -82,13 +84,20 @@ export function renderCalendarOverlay(events, { days = 7, now = new Date(), grou
   } else if (groupBy === 'day') {
     body = groupByDay(within, days, now).map(renderDay).join('');
   } else {
-    body = groupByPerson(within, days, now, perPerson ?? Infinity).map(g => renderPerson(g, now)).join('');
+    body = rosterGroups(events, within, days, now, perPerson ?? Infinity).map(g => renderPerson(g, now)).join('');
   }
+
+  const heading = perPerson
+    ? `<div class="cal-overlay__heading">
+        <h2 class="overlay__title">What&#39;s ahead</h2>
+        <p class="cal-overlay__subtitle">Next ${perPerson} events per person</p>
+      </div>`
+    : `<h2 class="overlay__title">Next ${days} days</h2>`;
 
   return `
     <div class="overlay__panel cal-overlay" role="dialog" aria-label="Expanded calendar">
       <div class="overlay__header">
-        <h2 class="overlay__title">${perPerson ? `Next ${perPerson} events per person` : `Next ${days} days`}</h2>
+        ${heading}
         <button class="overlay__close" data-action="close" aria-label="Close">${CLOSE_SVG}</button>
       </div>
       <div class="cal-overlay__body">
@@ -96,6 +105,22 @@ export function renderCalendarOverlay(events, { days = 7, now = new Date(), grou
       </div>
     </div>
   `;
+}
+
+// Merge the grouped events with the household roster so every person renders
+// a section, in PERSON_ORDER, even with nothing scheduled. A person appearing
+// nowhere in the source data at all is "not linked" (Caroline's reality until
+// her calendar is wired); one with events beyond the horizon just has a quiet
+// week. Unknown labels from the data append after the roster.
+function rosterGroups(allEvents, within, days, now, limit) {
+  const groups = groupByPerson(within, days, now, limit);
+  const byPerson = new Map(groups.map(g => [g.person, g]));
+  const linked = new Set((allEvents ?? []).map(e => e?.calendar).filter(Boolean));
+  return [
+    ...PERSON_ORDER.map(person =>
+      byPerson.get(person) ?? { person, events: [], linked: linked.has(person) }),
+    ...groups.filter(g => !PERSON_ORDER.includes(g.person)),
+  ];
 }
 
 function renderDay(group) {
@@ -123,15 +148,27 @@ function renderDay(group) {
 }
 
 // One person's week: chronological rows with an inline day column. No chip —
-// the section header already names the person.
+// the sticky section header already names (and colors) the person.
 function renderPerson(group, now) {
   const today = dayStart(now);
-  return `
-    <section class="cal-person cal-person--${slug(group.person)}">
-      <h3 class="cal-day__label cal-person__label">${escapeHtml(group.person)}</h3>
+  let rows;
+  if (group.events.length) {
+    rows = `
       <ul class="cal-day__list">
         ${group.events.map(ev => renderDatedRow(ev, nearDayLabel(ev, today))).join('')}
-      </ul>
+      </ul>`;
+  } else if (group.linked === false) {
+    rows = '<p class="cal-overlay__unlinked muted">Not linked yet</p>';
+  } else {
+    rows = '<p class="cal-overlay__quiet muted">Nothing coming up.</p>';
+  }
+  return `
+    <section class="cal-person cal-person--${slug(group.person)}">
+      <h3 class="cal-person__head">
+        <span class="cal-person__name">${escapeHtml(group.person)}</span>
+        ${group.events.length ? `<span class="cal-person__count">${group.events.length}</span>` : ''}
+      </h3>
+      ${rows}
     </section>
   `;
 }

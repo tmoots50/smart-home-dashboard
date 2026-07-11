@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { renderPick } from './pick.js';
+import { describe, it, expect, vi } from 'vitest';
+import { renderPick, attachPickHandlers } from './pick.js';
 import { getMockPick } from '../lib/pick-mock.js';
 
 describe('renderPick', () => {
@@ -45,5 +45,33 @@ describe('renderPick', () => {
   it('returns empty string when there is no pick', () => {
     expect(renderPick(null)).toBe('');
     expect(renderPick({})).toBe('');
+  });
+});
+
+describe('attachPickHandlers', () => {
+  it('intercepts a pick tap: prevents navigation, opens the article overlay', () => {
+    const el = document.createElement('div');
+    el.innerHTML = renderPick({ title: 'Hozier @ Fox', url: 'https://foxtheatre.org/x', note: 'go', source: 'Fox Theatre' });
+    const openArticle = vi.fn();
+    attachPickHandlers(el, { openArticle });
+
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    el.querySelector('a.pick__item').dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(openArticle).toHaveBeenCalledWith(expect.objectContaining({
+      url: 'https://foxtheatre.org/x',
+      source: 'Fox Theatre',
+      title: 'Hozier @ Fox',
+    }));
+  });
+
+  it('ignores taps on unlinked picks', () => {
+    const el = document.createElement('div');
+    el.innerHTML = renderPick({ title: 'no link', url: '' });
+    const openArticle = vi.fn();
+    attachPickHandlers(el, { openArticle });
+    el.querySelector('.pick__item').dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(openArticle).not.toHaveBeenCalled();
   });
 });

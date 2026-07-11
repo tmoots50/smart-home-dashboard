@@ -133,7 +133,9 @@ Scope expanded: Aqara U100 lock + smart plugs (in Aqara Home + Apple HomeKit). D
 - [x] Mock-first bottom ticker: local progress, adaptive polling, visibility lifecycle, controls, inactive collapse
 - [x] In-dashboard playlist/search drawer + Web Playback SDK + Connect-device fallback
 - [x] Unit tests, fixture harness entries, and device QA specs
-- [ ] Tim: protected-content/WebView smoke test on the Meswao tablet
+- [ ] Tim: protected-content/WebView smoke test on the Meswao tablet *(normal
+  WebView UA returned Spotify “unsupported” on 2026-07-10; Desktop Mode → Edge
+  fake-UA retry in progress; Connect-controller fallback is already built)*
 - [ ] Tim: create Spotify app, mint token, set Cloudflare variables, and flip `VITE_SPOTIFY_LIVE=1`
 - [ ] Run the eight on-wall acceptance checks in `docs/spotify-setup.md`
 
@@ -145,7 +147,8 @@ Scope expanded: Aqara U100 lock + smart plugs (in Aqara Home + Apple HomeKit). D
 - [x] LaunchAgent, deploy/smoke scripts, tunnel example, security/runbook docs, fixtures, unit and QA specs
 - [ ] Tim: provide domain + registrar; confirm Cloudflare plan and Fully Kiosk PLUS
 - [ ] Tim: store Telegram API credentials locally and authorize the user session on the old Mac
-- [ ] Bind Workers AI, create the Cloudflare tunnel, set server variables, and flip `VITE_VOICE_LIVE=1`
+- [x] Bind Workers AI to Production + Preview without disturbing KV/env bindings *(2026-07-10)*
+- [ ] Create the Cloudflare tunnel/DNS route, set server variables, and flip `VITE_VOICE_LIVE=1` *(token needs Tunnel Edit + Zone Read + DNS Edit)*
 - [ ] Verify real tablet webm/opus transcription before polish; complete the six failure drills and 48-hour session check
 
 ---

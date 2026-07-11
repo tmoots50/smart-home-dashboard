@@ -1,10 +1,13 @@
-// GET /api/calendar/upcoming[?days=N] → { events: [...] } sorted by start
+// GET /api/calendar/upcoming[?days=N | ?timeMin=ISO&timeMax=ISO]
+//   → { events: [...] } sorted by start
 //
 // Wide event window across EVERY calendar in GOOGLE_CALENDARS_JSON, including
-// all-day events (birthdays, trips, flights). Two consumers:
+// all-day events (birthdays, trips, flights). Three consumers:
 //   - the dashboard's expanded calendar overlay (?days=7)
 //   - the Hermes curation job's Coming-Up selection (default 90)
-// `days` clamps to 1..90. Cached at the edge for 5 min like /api/calendar.
+//   - the month-calendar overlay (?timeMin/?timeMax — arbitrary months)
+// Ranges resolve via resolveRange (days clamps 1..90; explicit ranges clamp
+// to ≤62-day spans within now ± 366d). Cached at the edge for 5 min.
 //
 // Event shape: { id, calendar, title, sub, startsAt, endsAt, allDay }
 // (startsAt/endsAt are ISO datetimes, or YYYY-MM-DD when allDay; all-day
@@ -12,11 +15,8 @@
 
 import { getAccessToken } from '../../_lib/google-auth.js';
 import { checkAuth, corsHeaders, json } from '../../_lib/auth.js';
-import { parseCalendars, listEvents, normalizeUpcoming } from '../../_lib/calendar-api.js';
+import { parseCalendars, listEvents, normalizeUpcoming, resolveRange } from '../../_lib/calendar-api.js';
 
-const DAY_MS = 86_400_000;
-const DAYS_DEFAULT = 90;
-const DAYS_MAX = 90;
 const MAX_RESULTS = 250; // per calendar; a household calendar won't exceed this in 90 days
 const CACHE_TTL_S = 300;
 
@@ -47,10 +47,7 @@ export async function onRequest(context) {
   }
 
   const url = new URL(request.url);
-  const days = clampDays(url.searchParams.get('days'));
-  const now = new Date();
-  const timeMin = now.toISOString();
-  const timeMax = new Date(now.getTime() + days * DAY_MS).toISOString();
+  const { timeMin, timeMax } = resolveRange(url.searchParams, new Date());
 
   try {
     const perCalendar = await Promise.all(calendars.map(async (c) =>
@@ -60,12 +57,6 @@ export async function onRequest(context) {
   } catch (err) {
     return json({ error: err.message }, { status: 502 }, cors);
   }
-}
-
-function clampDays(raw) {
-  const n = parseInt(raw, 10);
-  if (!Number.isFinite(n) || n < 1) return DAYS_DEFAULT;
-  return Math.min(n, DAYS_MAX);
 }
 
 function withCors(res, cors) {

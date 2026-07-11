@@ -70,6 +70,12 @@ Long-press mic separately and confirm Telegram opens.
    mode and targets the phone/speakers. A native `spotify://` launch is the last
    resort because it leaves kiosk context.
 
+**2026-07-10 smoke result:** Spotify returned “unsupported” under Fully Kiosk's
+normal WebView user agent. Retry order: **View in Desktop Mode**, then **Edge**
+under Fake User Agent String, with Graphics Acceleration set to Hardware. If
+both fail, accept Connect-device mode; the Web Playback SDK's initialization
+error is expected when the WebView cannot expose EME/Widevine.
+
 Do not use a 60-second idle-return timer: it can kill tablet-speaker playback.
 If an idle return is still desired for external-app fallbacks, use at least 300
 seconds and explicitly test the trade-off.

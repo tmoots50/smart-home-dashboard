@@ -8,7 +8,11 @@ export function getMockWeather() {
       condition: 'Partly cloudy',
       hi: 78,
       lo: 58,
+      feelsLikeF: 74,
+      humidity: 62,
+      windMph: 6,
     },
+    today: { uvMax: 7, rainPct: 20 },
     hourly: [
       { label: 'Now', tempF: 71, code: 2, emoji: '⛅', precipitation: 8 },
       { label: '9 AM', tempF: 72, code: 2, emoji: '⛅', precipitation: 8 },

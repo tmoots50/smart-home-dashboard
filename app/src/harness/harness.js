@@ -18,7 +18,9 @@ import { openEventDetail } from '../widgets/event-detail.js';
 import { states as calendarStates } from '../widgets/calendar.fixtures.js';
 import { states as calendarOverlayStates } from '../widgets/calendar-overlay.fixtures.js';
 import { renderWeather } from '../widgets/weather.js';
-import { renderPick } from '../widgets/pick.js';
+import { renderPick, attachPickHandlers } from '../widgets/pick.js';
+import { openArticleOverlay } from '../widgets/article-overlay.js';
+import { states as articleOverlayStates } from '../widgets/article-overlay.fixtures.js';
 import { mountComingUp } from '../widgets/countdown.js';
 import { mountTodos } from '../widgets/todos.js';
 import { mountGroceries } from '../widgets/groceries.js';
@@ -33,6 +35,8 @@ import { renderSpotifyDrawer } from '../widgets/spotify-drawer.js';
 import { states as spotifyDrawerStates } from '../widgets/spotify-drawer.fixtures.js';
 import { renderVoiceOverlay } from '../widgets/voice-overlay.js';
 import { states as voiceOverlayStates } from '../widgets/voice-overlay.fixtures.js';
+import { openMonthCalendar } from '../widgets/month-calendar.js';
+import { states as monthCalendarStates } from '../widgets/month-calendar.fixtures.js';
 
 const WIDGETS = {
   calendar: {
@@ -74,7 +78,17 @@ const WIDGETS = {
     states: pickStates,
     mount(root, fixture) {
       root.innerHTML = `<main class="briefing"><section class="briefing__duo briefing__duo--updates"><div></div><section class="card" data-slot="pick"></section></section></main>`;
-      root.querySelector('[data-slot="pick"]').innerHTML = renderPick(fixture);
+      const slot = root.querySelector('[data-slot="pick"]');
+      slot.innerHTML = renderPick(fixture);
+      attachPickHandlers(slot); // same tap → article-overlay delegation as production
+    },
+  },
+
+  'article-overlay': {
+    states: articleOverlayStates,
+    mount(root, fixture) {
+      root.innerHTML = '<main class="briefing"></main>';
+      openArticleOverlay(fixture);
     },
   },
 
@@ -129,6 +143,18 @@ const WIDGETS = {
     mount(root, fixture) {
       root.innerHTML = `<main class="briefing"></main><div class="overlay voice-overlay-host">${renderVoiceOverlay(fixture)}</div>`;
       document.documentElement.classList.add('has-overlay');
+    },
+  },
+
+  'month-calendar': {
+    states: monthCalendarStates,
+    mount(root, fixture) {
+      root.innerHTML = '<main class="briefing"></main>';
+      // Stub source keyed by `${year}-${month0}` — nav across months works
+      // without any fetch.
+      openMonthCalendar({
+        getMonth: (y, m) => ({ initial: fixture.months?.[`${y}-${m}`] ?? [], live: Promise.resolve(null) }),
+      });
     },
   },
 };

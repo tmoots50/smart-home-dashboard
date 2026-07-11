@@ -4,7 +4,7 @@
 import { test, expect } from '@playwright/test';
 import { FIXED_NOW } from './clock.js';
 import { states } from '../../src/widgets/calendar-overlay.fixtures.js';
-import { detectOverflow, auditTapTargets, countFullyVisible, captureArtifact, collectErrors, freezeMotion } from './measure.js';
+import { detectOverflow, auditTapTargets, countFullyVisible, captureArtifact, collectErrors, freezeMotion, touchScroll } from './measure.js';
 import { expectNestedScrollContained } from './widget-harness.js';
 
 const url = (state) => `/harness.html?widget=calendar-overlay&state=${state}`;
@@ -74,7 +74,8 @@ test('overlay/empty: truly-empty stays calm — one line, no Coming up', async (
 
 test('overlay/empty-with-later: future events are capped at ten per person', async ({ page }) => {
   await open(page, 'empty-with-later');
-  await expect(page.locator('.cal-overlay .overlay__title')).toHaveText('Next 10 events per person');
+  await expect(page.locator('.cal-overlay .overlay__title')).toHaveText("What's ahead");
+  await expect(page.locator('.cal-overlay__subtitle')).toHaveText('Next 10 events per person');
   const sections = page.locator('.cal-person');
   await expect(sections).toHaveCount(3);
   for (let i = 0; i < 3; i += 1) {
@@ -84,12 +85,42 @@ test('overlay/empty-with-later: future events are capped at ten per person', asy
 
 test('overlay/typical: person sections in household order with day column', async ({ page }) => {
   await open(page, 'typical');
-  const labels = await page.locator('.cal-person__label').allTextContents();
+  const labels = await page.locator('.cal-person__name').allTextContents();
   expect(labels.map(s => s.trim())).toEqual(['Family', 'Tim', 'Caroline']);
   await expect(page.locator('.cal-event__day').first()).toBeVisible();
+});
+
+test('overlay/caroline-unlinked: her section renders "Not linked yet" instead of vanishing', async ({ page }) => {
+  await open(page, 'caroline-unlinked');
+  const caroline = page.locator('.cal-person--caroline');
+  await expect(caroline).toHaveCount(1);
+  await expect(caroline.locator('.cal-overlay__unlinked')).toHaveText('Not linked yet');
 });
 
 test('overlay/overflow: body scrolling stays inside the modal', async ({ page }) => {
   await open(page, 'overflow');
   await expectNestedScrollContained(page, '.cal-overlay__body');
+});
+
+// A real synthetic TOUCH gesture — the wall tablet's only input. The wheel
+// test above exercises a different event path entirely.
+test('overlay/overflow: touch swipe scrolls the body, not the page', async ({ page }) => {
+  await open(page, 'overflow');
+  const body = page.locator('.cal-overlay__body');
+  await touchScroll(page, '.cal-overlay__body', -400);
+  await expect.poll(() => body.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+});
+
+test('overlay/overflow: person headers stay pinned while their section scrolls', async ({ page }) => {
+  await open(page, 'overflow');
+  const body = page.locator('.cal-overlay__body');
+  await body.evaluate(el => { el.scrollTop = 400; });
+  const bodyTop = (await body.boundingBox()).y;
+  const heads = page.locator('.cal-person__head');
+  const boxes = await heads.evaluateAll(els => els.map(el => el.getBoundingClientRect().top));
+  // At 400px deep, at least one header is pinned at (or within a hair of)
+  // the scroller's top edge.
+  const bodyTopRounded = Math.round(bodyTop);
+  expect(boxes.some(top => Math.abs(Math.round(top) - bodyTopRounded) <= 2)).toBe(true);
 });

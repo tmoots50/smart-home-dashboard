@@ -63,6 +63,9 @@ RELAY_HOST=old-mac.local ./deploy.sh
 launchctl kickstart -k gui/$(id -u)/ai.hermes.relay
 ```
 
+Use `./deploy.sh --install-only` before `.env` and the Telegram session exist;
+this installs code/dependencies without starting a failing KeepAlive loop.
+
 The deploy helper defaults to Intel Homebrew's `/usr/local/bin/python3.11`
 because the old Mac's Apple `python3` currently has a broken Command Line Tools shim.
 Set `RELAY_PYTHON=/another/python3.11` if Homebrew is in a different location.

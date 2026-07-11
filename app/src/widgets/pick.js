@@ -1,7 +1,10 @@
 // Three linked Atlanta picks with one-line context. Re-checks the curated feed
 // every ten minutes so newly published picks reach the wall without a reload.
+// Taps open the in-app article overlay (kiosk stays in context); the anchor's
+// target=_blank remains as the no-JS / overlay-failure fallback.
 
 import { getPicks, fetchPicks } from '../lib/curated.js';
+import { openArticleOverlay } from './article-overlay.js';
 
 const REFRESH_MS = 10 * 60 * 1000;
 
@@ -35,9 +38,29 @@ function renderPickItem(pick) {
     : `<article class="pick__item">${inner}</article>`;
 }
 
+// Delegated tap → in-app overlay. Exported so the harness wires the exact
+// production behavior. Survives innerHTML refreshes on the container.
+export function attachPickHandlers(el, { openArticle = openArticleOverlay } = {}) {
+  el.addEventListener('click', (e) => {
+    const a = e.target.closest('a.pick__item');
+    if (!a) return;
+    e.preventDefault();
+    try {
+      openArticle({
+        url: a.href,
+        source: a.querySelector('.pick__source')?.textContent ?? '',
+        title: a.querySelector('.pick__title')?.textContent ?? '',
+      });
+    } catch {
+      window.open(a.href, '_blank', 'noopener');
+    }
+  });
+}
+
 export function mountPick(el) {
   const { initial, live } = getPicks();
   el.innerHTML = renderPick(initial);
+  attachPickHandlers(el);
   live.then(picks => { if (picks?.length) el.innerHTML = renderPick(picks); });
 
   const id = setInterval(() => {

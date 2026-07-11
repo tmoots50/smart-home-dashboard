@@ -3,7 +3,7 @@
 
 import { getMockWeather } from './weather-mock.js';
 
-const CACHE_KEY = 'weather:v4';
+const CACHE_KEY = 'weather:v5'; // v5: adds feels-like/humidity/wind + today uv/rain
 const CACHE_TTL_MS = 15 * 60 * 1000;
 
 // WMO weather code → short human label. Source: open-meteo.com/en/docs.
@@ -69,6 +69,16 @@ export function normalizeWeather(api, location) {
       condition: WMO[c.weather_code] ?? '—',
       hi: Math.round(d.temperature_2m_max[0]),
       lo: Math.round(d.temperature_2m_min[0]),
+      // Null-safe: absent API fields render as omitted stat cells, never "NaN°".
+      feelsLikeF: c.apparent_temperature != null ? Math.round(c.apparent_temperature) : null,
+      humidity: c.relative_humidity_2m != null ? Math.round(c.relative_humidity_2m) : null,
+      windMph: c.wind_speed_10m != null ? Math.round(c.wind_speed_10m) : null,
+    },
+    // UV and rain-probability aren't available under `current` on the standard
+    // forecast endpoint — today's daily max is the honest label ("UV", "Rain").
+    today: {
+      uvMax: d.uv_index_max?.[0] != null ? Math.round(d.uv_index_max[0]) : null,
+      rainPct: d.precipitation_probability_max?.[0] ?? null,
     },
     forecast: d.time.slice(0, 7).map((iso, i) => ({
       label: DOW[new Date(iso + 'T12:00:00').getDay()],
@@ -95,10 +105,11 @@ export async function fetchWeather({ lat, lon, location }) {
   url.search = new URLSearchParams({
     latitude: lat,
     longitude: lon,
-    current: 'temperature_2m,weather_code',
+    current: 'temperature_2m,weather_code,apparent_temperature,relative_humidity_2m,wind_speed_10m',
     hourly: 'temperature_2m,weather_code,precipitation_probability',
-    daily: 'temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset',
+    daily: 'temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset,uv_index_max,precipitation_probability_max',
     temperature_unit: 'fahrenheit',
+    wind_speed_unit: 'mph',
     timezone: 'auto',
     forecast_days: '7',
   }).toString();

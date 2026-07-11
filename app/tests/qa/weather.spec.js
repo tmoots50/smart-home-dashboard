@@ -14,3 +14,15 @@ for (const state of Object.keys(states)) {
     expect(errors).toEqual([]);
   });
 }
+
+test('weather/typical: stat cluster fills the space right of the temp', async ({ page }) => {
+  await openHarness(page, 'weather', 'typical');
+  await expect(page.locator('.weather__stat')).toHaveCount(4);
+  expect(await page.locator('.weather__main').textContent()).not.toContain('undefined');
+});
+
+test('weather/no-stats: cluster vanishes cleanly on old cached payloads', async ({ page }) => {
+  await openHarness(page, 'weather', 'no-stats');
+  await expect(page.locator('.weather__stats')).toHaveCount(0);
+  expect(await page.locator('.weather__main').textContent()).not.toContain('undefined');
+});

@@ -102,13 +102,42 @@ describe('renderCalendarOverlay', () => {
     expect(html).not.toContain('cal-chip--family'); // section header names the person
   });
 
-  it('renders the production ten-per-person title and cap', () => {
+  it('renders the production title, subtitle, and ten-per-person cap', () => {
     const events = Array.from({ length: 12 }, (_, i) => ev({
       id: `f${i}`, title: `Family ${i}`, startsAt: `2026-07-${String(8 + i).padStart(2, '0')}T09:00:00`,
     }));
     const html = renderCalendarOverlay(events, { days: 90, perPerson: 10, now: NOW });
-    expect(html).toContain('Next 10 events per person');
+    expect(html).toContain('What&#39;s ahead');
+    expect(html).toContain('Next 10 events per person'); // subtitle
     expect(html.match(/cal-event--dated/g)).toHaveLength(10);
+  });
+
+  it('always renders the full household roster in person mode', () => {
+    // Family-only data → Tim and Caroline still get sections.
+    const html = renderCalendarOverlay([ev({ id: 'f1' })], { days: 7, now: NOW });
+    expect(html).toContain('cal-person--family');
+    expect(html).toContain('cal-person--tim');
+    expect(html).toContain('cal-person--caroline');
+  });
+
+  it('distinguishes "not linked" from "linked but quiet"', () => {
+    const events = [
+      ev({ id: 'f1' }), // Family, within horizon
+      ev({ id: 't1', calendar: 'Tim', startsAt: '2026-09-01T10:00:00' }), // Tim, beyond horizon
+    ];
+    const html = renderCalendarOverlay(events, { days: 7, now: NOW });
+    // Tim exists in the data → quiet week; Caroline appears nowhere → unlinked.
+    expect(html).toContain('Nothing coming up.');
+    expect(html).toContain('Not linked yet');
+  });
+
+  it('shows an event-count badge only for sections with events', () => {
+    const html = renderCalendarOverlay(
+      [ev({ id: 'f1' }), ev({ id: 'f2', startsAt: '2026-07-09T10:00:00' })],
+      { days: 7, now: NOW },
+    );
+    expect(html.match(/cal-person__count/g)).toHaveLength(1);
+    expect(html).toContain('<span class="cal-person__count">2</span>');
   });
 
   it('groupBy day keeps the original day-bucketed view with chips', () => {

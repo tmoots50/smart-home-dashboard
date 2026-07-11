@@ -43,6 +43,9 @@ The smart-home dashboard (vanilla JS + Vite, Cloudflare Pages + Functions, deplo
 ## Goals — Workstream S: Spotify
 
 ### S0 — Tablet smoke test (manual, gates ONLY the music-button navigation)
+**Execution status (2026-07-10):** normal Fully Kiosk WebView UA returned
+Spotify “unsupported.” Desktop Mode and Edge fake-UA retries are pending. If
+both fail, S5 ships in Connect-controller mode without tablet-speaker playback.
 **Objective:** Prove the Spotify web player plays audio inside Fully Kiosk's Android WebView (Widevine DRM).
 **Steps:** FK settings → Web Content: **Enable Protected Content ON**, Autoplay Videos ON, cookies ON, no cache/cookie clearing on reload. Load `open.spotify.com`, log in (Tim's Premium), play a track. If UA-blocked, retry with desktop User Agent and record which worked. Kill FK + relaunch, then reboot tablet → verify login + playback persist. Note behavior navigating back to dashboard mid-playback (audio expected to stop). If FK supports tabs, test Spotify in a second tab.
 **Acceptance:** on-demand playback from tablet speakers; login survives restart + reboot.

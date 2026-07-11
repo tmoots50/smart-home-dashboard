@@ -49,6 +49,18 @@ to become Active before creating the tunnel. Confirm the Workers plan: audio is
 capped at 1MB, but the base64 conversion and AI invocation should still be
 tested on the actual plan with a real `audio/webm;codecs=opus` tablet recording.
 
+The automation token needs Account **Cloudflare Tunnel: Edit** plus zone-scoped
+**Zone: Read** and **DNS: Edit** for `mootsproductgroup.com`. Then run:
+
+```bash
+source .envrc.local
+node scripts/setup-relay-tunnel.mjs mootsproductgroup.com oldmac
+```
+
+The script never prints the tunnel secret: it sends credentials to the old Mac
+over SSH stdin, installs `~/.cloudflared/config.yml`, and creates the proxied DNS
+record idempotently.
+
 On the old Mac:
 
 ```bash

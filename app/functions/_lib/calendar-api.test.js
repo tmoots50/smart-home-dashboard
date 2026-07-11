@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { normalizeUpcoming, normalize, parseCalendars, repairMojibake } from './calendar-api.js';
+import { normalizeUpcoming, normalize, parseCalendars, repairMojibake, resolveRange } from './calendar-api.js';
 
 const timed = {
   id: 'e1',
@@ -130,5 +130,45 @@ describe('repairMojibake', () => {
     expect(b.title).toBe('Aidan\u2019s party');
     expect(b.sub).toBe('Nana\u2019s house');
     expect(b.description).toBe('Don\u2019t forget gifts');
+  });
+});
+
+describe('resolveRange', () => {
+  const NOW = new Date('2026-07-10T12:00:00Z');
+  const params = (obj) => new URLSearchParams(obj);
+
+  it('honors a valid explicit timeMin/timeMax range', () => {
+    const r = resolveRange(params({ timeMin: '2026-07-01T00:00:00Z', timeMax: '2026-08-01T00:00:00Z' }), NOW);
+    expect(r.timeMin).toBe('2026-07-01T00:00:00.000Z');
+    expect(r.timeMax).toBe('2026-08-01T00:00:00.000Z');
+  });
+
+  it('allows past months within the ±366-day window (month view needs them)', () => {
+    const r = resolveRange(params({ timeMin: '2026-03-01T00:00:00Z', timeMax: '2026-04-01T00:00:00Z' }), NOW);
+    expect(r.timeMin).toBe('2026-03-01T00:00:00.000Z');
+  });
+
+  it('rejects spans over 62 days → falls back to days default', () => {
+    const r = resolveRange(params({ timeMin: '2026-07-01T00:00:00Z', timeMax: '2026-10-01T00:00:00Z' }), NOW);
+    expect(r.timeMin).toBe(NOW.toISOString());
+  });
+
+  it('rejects ranges outside now ± 366 days', () => {
+    const r = resolveRange(params({ timeMin: '2029-07-01T00:00:00Z', timeMax: '2029-08-01T00:00:00Z' }), NOW);
+    expect(r.timeMin).toBe(NOW.toISOString());
+  });
+
+  it('rejects garbage and inverted ranges → days fallback', () => {
+    expect(resolveRange(params({ timeMin: 'nope', timeMax: 'also nope' }), NOW).timeMin).toBe(NOW.toISOString());
+    expect(resolveRange(params({ timeMin: '2026-08-01T00:00:00Z', timeMax: '2026-07-01T00:00:00Z' }), NOW).timeMin).toBe(NOW.toISOString());
+  });
+
+  it('keeps the legacy days behavior (default 90, clamped)', () => {
+    const def = resolveRange(params({}), NOW);
+    expect(new Date(def.timeMax) - new Date(def.timeMin)).toBe(90 * 86_400_000);
+    const seven = resolveRange(params({ days: '7' }), NOW);
+    expect(new Date(seven.timeMax) - new Date(seven.timeMin)).toBe(7 * 86_400_000);
+    const big = resolveRange(params({ days: '500' }), NOW);
+    expect(new Date(big.timeMax) - new Date(big.timeMin)).toBe(90 * 86_400_000);
   });
 });

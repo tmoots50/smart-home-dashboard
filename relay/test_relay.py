@@ -1,7 +1,10 @@
 import asyncio
 import unittest
 
-from relay.relay_core import TokenBucket, collect_quiescent, secure_compare
+try:
+    from relay.relay_core import TokenBucket, collect_quiescent, secure_compare
+except ModuleNotFoundError:  # deployed flat under ~/.hermes-relay/app
+    from relay_core import TokenBucket, collect_quiescent, secure_compare
 
 
 class RelayCoreTests(unittest.TestCase):

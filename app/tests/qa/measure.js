@@ -64,6 +64,23 @@ export async function countFullyVisible(page, containerSel, rowSel) {
   }, { containerSel, rowSel });
 }
 
+// Chromium-only CDP synthetic touch scroll. The wheel-based nested-scroll
+// check misses the touch event path entirely — this is what a finger on the
+// wall tablet actually does. Negative yDistance scrolls content down (finger
+// swipes up).
+export async function touchScroll(page, selector, yDistance = -300) {
+  const box = await page.locator(selector).first().boundingBox();
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.synthesizeScrollGesture', {
+    x: box.x + box.width / 2,
+    y: box.y + box.height / 2,
+    yDistance,
+    speed: 800,
+    gestureSourceType: 'touch',
+  });
+  await cdp.detach();
+}
+
 // Kill all animation/transition motion. Call RIGHT AFTER page.goto, before
 // any geometry read: entrance animations (e.g. .overlay's home-rise) apply
 // transforms that scale getBoundingClientRect results mid-flight, and CSS

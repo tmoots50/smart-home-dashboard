@@ -128,6 +128,32 @@ export function normalizeUpcoming(events, calendarLabel) {
     .filter(Boolean);
 }
 
+// Resolve the fetch window for /api/calendar/upcoming. Explicit
+// timeMin/timeMax params win (the month-calendar view fetches arbitrary
+// months, including past days of the current month), clamped to a ≤62-day
+// span inside now ± 366 days. Anything invalid falls back to the legacy
+// forward-looking `days` window (1..90 from now) so existing consumers
+// (overlay, Hermes cron) are untouched.
+const RANGE_DAY_MS = 86_400_000;
+const RANGE_SPAN_MAX_MS = 62 * RANGE_DAY_MS;
+const RANGE_WINDOW_MS = 366 * RANGE_DAY_MS;
+const RANGE_DAYS_DEFAULT = 90;
+const RANGE_DAYS_MAX = 90;
+
+export function resolveRange(searchParams, now = new Date()) {
+  const min = searchParams.get('timeMin') ? new Date(searchParams.get('timeMin')) : null;
+  const max = searchParams.get('timeMax') ? new Date(searchParams.get('timeMax')) : null;
+  if (min && max && !Number.isNaN(+min) && !Number.isNaN(+max) && +max > +min
+      && (+max - +min) <= RANGE_SPAN_MAX_MS
+      && Math.abs(+min - +now) <= RANGE_WINDOW_MS
+      && Math.abs(+max - +now) <= RANGE_WINDOW_MS) {
+    return { timeMin: min.toISOString(), timeMax: max.toISOString() };
+  }
+  const n = parseInt(searchParams.get('days'), 10);
+  const days = !Number.isFinite(n) || n < 1 ? RANGE_DAYS_DEFAULT : Math.min(n, RANGE_DAYS_MAX);
+  return { timeMin: now.toISOString(), timeMax: new Date(+now + days * RANGE_DAY_MS).toISOString() };
+}
+
 // Pick the soonest upcoming event across all sections — widget highlights it.
 export function pickNextEventId(sections, now = new Date()) {
   let nextId = null;

@@ -2,6 +2,28 @@ import { getWeather, fetchWeather } from '../lib/weather.js';
 
 const REFRESH_MS = 15 * 60 * 1000;
 
+// The quiet 2×2 stat cluster to the right of the hero temp. Cells with no
+// data are omitted; under two cells the whole cluster disappears (old cached
+// payloads, mock without the fields) rather than looking lopsided.
+function renderStats(data) {
+  const cells = [
+    { label: 'Feels like', value: data.current?.feelsLikeF != null ? `${data.current.feelsLikeF}°` : null },
+    { label: 'Rain', value: data.today?.rainPct != null ? `${data.today.rainPct}%` : null },
+    { label: 'Wind', value: data.current?.windMph != null ? `${data.current.windMph} mph` : null },
+    { label: 'UV', value: data.today?.uvMax != null ? String(data.today.uvMax) : null },
+  ].filter(c => c.value != null);
+  if (cells.length < 2) return '';
+  return `
+    <div class="weather__stats" aria-label="Current conditions">
+      ${cells.map(c => `
+        <div class="weather__stat">
+          <span class="weather__stat-label">${escapeHtml(c.label)}</span>
+          <span class="weather__stat-value">${escapeHtml(c.value)}</span>
+        </div>
+      `).join('')}
+    </div>`;
+}
+
 export function renderWeather(data) {
   return `
     <div class="weather">
@@ -16,6 +38,7 @@ export function renderWeather(data) {
             </div>
           </div>
         </div>
+        ${renderStats(data)}
       </div>
       <div class="weather__outlook">
         <div class="weather__strip">

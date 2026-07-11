@@ -5,7 +5,7 @@
 // when the endpoint returns no sections — so the dashboard never has a blank
 // calendar card during dev / outages.
 
-import { getMockCalendar, getMockUpcoming } from './calendar-mock.js';
+import { getMockCalendar, getMockUpcoming, getMockMonth } from './calendar-mock.js';
 
 const TOKEN = import.meta.env.VITE_DASHBOARD_TOKEN;
 const CACHE_KEY = 'calendar:v1';
@@ -98,6 +98,43 @@ export function getUpcoming(days = 7) {
   const initial = canonicalizeUpcoming(cached ?? getMockUpcoming());
   const live = TOKEN
     ? fetchUpcoming(days).catch(() => initial)
+    : Promise.resolve(initial);
+  return { initial, live };
+}
+
+// ── month view: arbitrary month windows via timeMin/timeMax ──
+
+const MONTH_TTL_MS = 5 * 60 * 1000;
+const monthKey = (year, month) => `calendar:month:${year}-${String(month + 1).padStart(2, '0')}:v1`;
+
+// `month` is 0-based (Date convention). Window = [first of month, first of
+// next month) in LOCAL time, so all-day events land on the right cells.
+export async function fetchMonth(year, month) {
+  const timeMin = new Date(year, month, 1).toISOString();
+  const timeMax = new Date(year, month + 1, 1).toISOString();
+  const res = await fetch(`/api/calendar/upcoming?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`, {
+    headers: { authorization: `Bearer ${TOKEN}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`calendar month: ${res.status}`);
+  const data = await res.json();
+  const events = canonicalizeUpcoming(data.events || []);
+  try { localStorage.setItem(monthKey(year, month), JSON.stringify({ at: Date.now(), data: events })); } catch {}
+  return events;
+}
+
+export function getMonth(year, month) {
+  let cached = null;
+  try {
+    const raw = localStorage.getItem(monthKey(year, month));
+    if (raw) {
+      const { at, data } = JSON.parse(raw);
+      if (Date.now() - at <= MONTH_TTL_MS) cached = data;
+    }
+  } catch { /* fall through to mock */ }
+  const initial = canonicalizeUpcoming(cached ?? getMockMonth(year, month));
+  const live = TOKEN
+    ? fetchMonth(year, month).catch(() => initial)
     : Promise.resolve(initial);
   return { initial, live };
 }

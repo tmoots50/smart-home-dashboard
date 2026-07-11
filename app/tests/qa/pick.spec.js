@@ -30,3 +30,15 @@ test('pick/overflow: every pick at least starts inside the card', async ({ page 
   const last = await page.locator('.pick__item').last().boundingBox();
   expect(last.y).toBeLessThan(card.y + card.height);
 });
+
+test('pick/typical: tap opens the in-app article overlay instead of navigating away', async ({ page }) => {
+  // Fixture URLs are external — keep the spec hermetic.
+  await page.route('https://**', route => route.abort());
+  await openHarness(page, 'pick', 'typical');
+  await page.locator('a.pick__item').first().tap();
+  await expect(page.locator('.article-overlay')).toBeVisible();
+  await expect(page).toHaveURL(/harness\.html/); // no navigation happened
+  await page.locator('.article-overlay__back').tap();
+  await expect(page.locator('.article-overlay')).toHaveCount(0);
+  await expect(page.locator('[data-slot="pick"]')).toBeVisible();
+});

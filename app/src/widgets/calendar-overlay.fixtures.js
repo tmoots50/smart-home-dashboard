@@ -77,6 +77,11 @@ export const states = {
 
   overflow: overflowWeek(),
 
+  // Caroline appears nowhere in the data (her production reality — the API
+  // canonicalizes her label to Family) → her roster section must render
+  // "Not linked yet" instead of vanishing.
+  'caroline-unlinked': getMockUpcoming(NOW).filter(ev => ev.calendar !== 'Caroline'),
+
   // All-day pinning stress: several all-day events stacked on the same days.
   'all-day-heavy': [
     { id: 'ad-1', calendar: 'Family', title: 'Grandma visiting', sub: '', description: '', startsAt: ymd(day(0)), endsAt: ymd(day(2)), allDay: true },

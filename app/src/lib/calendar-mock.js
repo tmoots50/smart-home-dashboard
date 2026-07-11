@@ -28,6 +28,38 @@ export function getMockUpcoming(now = new Date()) {
   ];
 }
 
+// Deterministic month of household events for the month-calendar overlay.
+// Family + Tim only (mirrors production linkage). Pure in (year, month) —
+// same input, same events.
+export function getMockMonth(year, month) {
+  const at = (day, h, m = 0) => new Date(year, month, day, h, m).toISOString();
+  const ymd = (day) => {
+    const d = new Date(year, month, day);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const events = [];
+
+  // Family: swim lesson every Saturday at 11:00.
+  for (let day = 1; day <= daysInMonth; day++) {
+    if (new Date(year, month, day).getDay() === 6) {
+      events.push({ id: `m-swim-${day}`, calendar: 'Family', title: 'Swim lesson', sub: 'Piedmont Aquatic', description: 'Bring swim diaper and towel.', startsAt: at(day, 11, 0), endsAt: at(day, 11, 45), allDay: false });
+    }
+  }
+  // Tim: recruiter sync every Wednesday at 10:00.
+  for (let day = 1; day <= daysInMonth; day++) {
+    if (new Date(year, month, day).getDay() === 3) {
+      events.push({ id: `m-rec-${day}`, calendar: 'Tim', title: 'Recruiter sync', sub: 'Phone', description: '', startsAt: at(day, 10, 0), endsAt: at(day, 10, 30), allDay: false });
+    }
+  }
+  events.push(
+    { id: 'm-pedi', calendar: 'Family', title: 'Pediatrician — Mabel', sub: 'Northside Pediatrics', description: 'Check weight, milestones, vaccines.', startsAt: at(12, 15, 30), endsAt: at(12, 16, 15), allDay: false },
+    { id: 'm-grandma', calendar: 'Family', title: 'Grandma visiting', sub: '', description: '', startsAt: ymd(14), endsAt: ymd(17), allDay: true },
+    { id: 'm-dentist', calendar: 'Tim', title: 'Dentist', sub: 'Midtown Dental', description: 'Cleaning + X-rays.', startsAt: at(20, 14, 0), endsAt: at(20, 15, 0), allDay: false },
+  );
+  return events.sort((a, b) => String(a.startsAt).localeCompare(String(b.startsAt)));
+}
+
 export function getMockCalendar(now = new Date()) {
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
