@@ -14,7 +14,7 @@ import { fetchHeadlines } from './headlines.js';
 import { getMockCountdowns } from './countdown-mock.js';
 
 const TOKEN = import.meta.env.VITE_DASHBOARD_TOKEN;
-const CACHE_KEY = 'picks:v2';
+const CACHE_KEY = 'picks:v3';
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
 function readCache() {
@@ -38,32 +38,43 @@ function fromHeadline(h) {
 }
 
 export async function fetchPicks() {
-  const res = await fetch('/api/curated', {
-    headers: { authorization: `Bearer ${TOKEN}` },
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error(`curated: ${res.status}`);
-  const data = await res.json();
-  const picks = (data.picks ?? []).filter(p => p?.title).slice(0, 3);
-  if (!picks.length) throw new Error('curated: no picks');
+  let curated = [];
+  let headlines = [];
+  try {
+    const res = await fetch('/api/curated', {
+      headers: { authorization: `Bearer ${TOKEN}` },
+      cache: 'no-store',
+    });
+    if (res.ok) curated = (await res.json()).picks ?? [];
+  } catch { /* supplement entirely from RSS/mock */ }
+
+  if (curated.filter(p => p?.title).length < 3) {
+    try { headlines = (await fetchHeadlines()).map(fromHeadline); } catch {}
+  }
+  const picks = mergePicks(curated, headlines, getMockPicks());
   writeCache(picks);
   return picks;
+}
+
+export function mergePicks(...groups) {
+  const seen = new Set();
+  const result = [];
+  for (const pick of groups.flat()) {
+    if (!pick?.title) continue;
+    const key = String(pick.url || pick.title).trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    result.push(pick);
+    if (result.length === 3) break;
+  }
+  return result;
 }
 
 export async function fetchPick() { return (await fetchPicks())[0]; }
 
 // Try curated → newest RSS headline → the initial frame. Never throws.
 async function resolveLive(initial) {
-  try {
-    return await fetchPicks();
-  } catch {
-    try {
-      const items = await fetchHeadlines();
-      const picks = (items ?? []).filter(h => h?.title).slice(0, 3).map(fromHeadline);
-      if (picks.length) return picks;
-    } catch { /* fall through to initial */ }
-    return initial;
-  }
+  return fetchPicks().catch(() => initial);
 }
 
 export function getPicks() {

@@ -63,6 +63,14 @@ describe('groupByPerson', () => {
     expect(groups[0].events.map(e => e.id)).toEqual(['sooner', 'allday', 'later']);
   });
 
+  it('caps each person independently', () => {
+    const events = Array.from({ length: 14 }, (_, i) => ev({
+      id: `f${i}`, calendar: 'Family', startsAt: `2026-07-${String(8 + i).padStart(2, '0')}T09:00:00`,
+    }));
+    const groups = groupByPerson(events, 90, NOW, 10);
+    expect(groups[0].events).toHaveLength(10);
+  });
+
   it('drops events past the horizon and unknown labels sort last', () => {
     const groups = groupByPerson([
       ev({ id: 'far', startsAt: '2026-08-20T10:00:00' }),
@@ -92,6 +100,15 @@ describe('renderCalendarOverlay', () => {
     expect(html).toContain('cal-event__day');
     expect(html).toContain('Pediatrician — Mabel 2mo');
     expect(html).not.toContain('cal-chip--family'); // section header names the person
+  });
+
+  it('renders the production ten-per-person title and cap', () => {
+    const events = Array.from({ length: 12 }, (_, i) => ev({
+      id: `f${i}`, title: `Family ${i}`, startsAt: `2026-07-${String(8 + i).padStart(2, '0')}T09:00:00`,
+    }));
+    const html = renderCalendarOverlay(events, { days: 90, perPerson: 10, now: NOW });
+    expect(html).toContain('Next 10 events per person');
+    expect(html.match(/cal-event--dated/g)).toHaveLength(10);
   });
 
   it('groupBy day keeps the original day-bucketed view with chips', () => {

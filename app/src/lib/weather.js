@@ -3,7 +3,7 @@
 
 import { getMockWeather } from './weather-mock.js';
 
-const CACHE_KEY = 'weather:v3';
+const CACHE_KEY = 'weather:v4';
 const CACHE_TTL_MS = 15 * 60 * 1000;
 
 // WMO weather code → short human label. Source: open-meteo.com/en/docs.
@@ -54,11 +54,14 @@ function writeCache(data) {
   catch { /* localStorage full or disabled — fine */ }
 }
 
-function normalize(api, location) {
+export function normalizeWeather(api, location) {
   const c = api.current;
   const d = api.daily;
   const h = api.hourly;
   const firstHour = Math.max(0, h.time.findIndex(iso => iso >= c.time.slice(0, 13) + ':00'));
+  const today = c.time.slice(0, 10);
+  let endOfDay = firstHour;
+  while (endOfDay < h.time.length && h.time[endOfDay].startsWith(today)) endOfDay += 1;
   return {
     location,
     current: {
@@ -67,13 +70,13 @@ function normalize(api, location) {
       hi: Math.round(d.temperature_2m_max[0]),
       lo: Math.round(d.temperature_2m_min[0]),
     },
-    forecast: d.time.slice(1, 6).map((iso, i) => ({
+    forecast: d.time.slice(0, 7).map((iso, i) => ({
       label: DOW[new Date(iso + 'T12:00:00').getDay()],
-      tempF: Math.round(d.temperature_2m_max[i + 1]),
-      code: d.weather_code[i + 1],
-      emoji: WMO_EMOJI[d.weather_code[i + 1]] ?? '',
+      tempF: Math.round(d.temperature_2m_max[i]),
+      code: d.weather_code[i],
+      emoji: WMO_EMOJI[d.weather_code[i]] ?? '',
     })),
-    hourly: h.time.slice(firstHour, firstHour + 6).map((iso, i) => ({
+    hourly: h.time.slice(firstHour, endOfDay).map((iso, i) => ({
       label: i === 0 ? 'Now' : new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).format(new Date(iso)),
       tempF: Math.round(h.temperature_2m[firstHour + i]),
       code: h.weather_code[firstHour + i],
@@ -97,12 +100,12 @@ export async function fetchWeather({ lat, lon, location }) {
     daily: 'temperature_2m_max,temperature_2m_min,weather_code,sunrise,sunset',
     temperature_unit: 'fahrenheit',
     timezone: 'auto',
-    forecast_days: '6',
+    forecast_days: '7',
   }).toString();
 
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) throw new Error(`weather: ${res.status}`);
-  const data = normalize(await res.json(), location);
+  const data = normalizeWeather(await res.json(), location);
   writeCache(data);
   return data;
 }

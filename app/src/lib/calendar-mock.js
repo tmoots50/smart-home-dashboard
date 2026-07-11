@@ -3,8 +3,8 @@
 // is actually integrated.
 // Widget highlights the single soonest upcoming event globally.
 
-// Mock for the expanded 7-day overlay (matches /api/calendar/upcoming shape).
-// Mix of timed + all-day events across all three calendars.
+// Mock for expanded/Coming Up views. Mirrors the two calendars actually linked
+// today; Caroline is added only by dedicated stress fixtures.
 export function getMockUpcoming(now = new Date()) {
   const day = (offset) => {
     const d = new Date(now);
@@ -23,7 +23,6 @@ export function getMockUpcoming(now = new Date()) {
     { id: 'u1', calendar: 'Family', title: 'Pediatrician — Mabel 2mo', sub: 'Northside Pediatrics', description: 'Check weight, milestones, vaccines. Bring insurance card.', startsAt: at(0, 15, 30), endsAt: at(0, 16, 15), allDay: false },
     { id: 'u2', calendar: 'Tim', title: 'Recruiter call — Tessa', sub: 'Phone', description: 'Director PM role at fintech startup. Pre-screen, 30 min.', startsAt: at(1, 10, 0), endsAt: at(1, 10, 30), allDay: false },
     { id: 'u3', calendar: 'Family', title: 'Grandma visiting', sub: '', description: '', startsAt: ymd(day(2)), endsAt: ymd(day(4)), allDay: true },
-    { id: 'u4', calendar: 'Caroline', title: 'Back-to-office day', sub: "Carter's HQ", description: '', startsAt: at(3, 9, 0), endsAt: at(3, 17, 0), allDay: false },
     { id: 'u5', calendar: 'Family', title: 'Swim lesson — intro', sub: 'Piedmont Aquatic', description: 'Bring swim diaper and towel.', startsAt: at(5, 11, 0), endsAt: at(5, 11, 45), allDay: false },
     { id: 'u6', calendar: 'Tim', title: 'Dentist', sub: 'Midtown Dental', description: 'Cleaning + X-rays. 4615 Peachtree Rd NE, Suite 200.', startsAt: at(6, 14, 0), endsAt: at(6, 15, 0), allDay: false },
   ];

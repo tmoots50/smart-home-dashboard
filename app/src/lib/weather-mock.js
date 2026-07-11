@@ -18,11 +18,13 @@ export function getMockWeather() {
       { label: '1 PM', tempF: 78, code: 1, emoji: '🌤️', precipitation: 4 },
     ],
     forecast: [
+      { label: 'Mon', tempF: 78, code: 2, emoji: '⛅' },
       { label: 'Tue', tempF: 80, code: 0, emoji: '☀️' },
       { label: 'Wed', tempF: 76, code: 2, emoji: '⛅' },
       { label: 'Thu', tempF: 82, code: 95, emoji: '⛈️' },
       { label: 'Fri', tempF: 79, code: 1, emoji: '🌤️' },
       { label: 'Sat', tempF: 75, code: 61, emoji: '🌧️' },
+      { label: 'Sun', tempF: 77, code: 1, emoji: '🌤️' },
     ],
     sun: { sunrise: null, sunset: null },
   };

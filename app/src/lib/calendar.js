@@ -26,13 +26,34 @@ function writeCache(data) {
   catch {}
 }
 
+const canonicalLabel = (label) => String(label ?? '').trim().toLowerCase() === 'caroline' ? 'Family' : String(label ?? '').trim();
+
+export function canonicalizeCalendarData(data) {
+  const grouped = new Map();
+  for (const section of data?.sections ?? []) {
+    const label = canonicalLabel(section.label);
+    grouped.set(label, [...(grouped.get(label) ?? []), ...(section.events ?? [])]);
+  }
+  return {
+    ...data,
+    sections: [...grouped].map(([label, events]) => ({
+      label,
+      events: events.sort((a, b) => String(a.startsAt).localeCompare(String(b.startsAt))),
+    })),
+  };
+}
+
+export function canonicalizeUpcoming(events) {
+  return (events ?? []).map(event => ({ ...event, calendar: canonicalLabel(event.calendar) }));
+}
+
 export async function fetchCalendar() {
   const res = await fetch('/api/calendar', {
     headers: { authorization: `Bearer ${TOKEN}` },
     cache: 'no-store',
   });
   if (!res.ok) throw new Error(`calendar: ${res.status}`);
-  const data = await res.json();
+  const data = canonicalizeCalendarData(await res.json());
   if (!data.sections?.length) throw new Error('calendar: no sections');
   writeCache(data);
   return data;
@@ -41,7 +62,7 @@ export async function fetchCalendar() {
 // Same {initial, live} contract as getWeather / getPhotos.
 export function getCalendar() {
   const cached = readCache();
-  const initial = cached ?? getMockCalendar();
+  const initial = canonicalizeCalendarData(cached ?? getMockCalendar());
   const live = TOKEN
     ? fetchCalendar().catch(() => initial)
     : Promise.resolve(initial);
@@ -60,7 +81,7 @@ export async function fetchUpcoming(days = 7) {
   });
   if (!res.ok) throw new Error(`calendar upcoming: ${res.status}`);
   const data = await res.json();
-  const events = data.events || [];
+  const events = canonicalizeUpcoming(data.events || []);
   try { localStorage.setItem(upcomingKey(days), JSON.stringify({ at: Date.now(), data: events })); } catch {}
   return events;
 }
@@ -74,7 +95,7 @@ export function getUpcoming(days = 7) {
       if (Date.now() - at <= UPCOMING_TTL_MS) cached = data;
     }
   } catch { /* fall through to mock */ }
-  const initial = cached ?? getMockUpcoming();
+  const initial = canonicalizeUpcoming(cached ?? getMockUpcoming());
   const live = TOKEN
     ? fetchUpcoming(days).catch(() => initial)
     : Promise.resolve(initial);

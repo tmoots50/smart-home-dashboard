@@ -7,7 +7,7 @@ const TIME_FMT = new Intl.DateTimeFormat(undefined, {
 });
 const REFRESH_MS = 5 * 60 * 1000; // re-fetch every 5min — events can be added during the day
 
-const DAY_FMT = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+const DAY_FMT = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' });
 const MAX_DEFAULT_EVENTS = 10;
 
 // Column order + labels for the family calendar. Each column pulls its events
@@ -79,7 +79,7 @@ function columnBody(column, nextEventId, now) {
               <span class="calendar__date">${formatDay(event.startsAt, now)}</span>
               <span class="calendar__time">${event.allDay ? 'All day' : TIME_FMT.format(parseLocalish(event.startsAt))}</span>
             </span>
-            <span>
+            <span class="calendar__details">
               <div class="calendar__title">${escapeHtml(event.title)}</div>
               ${event.sub ? `<div class="calendar__sub">${escapeHtml(event.sub)}</div>` : ''}
             </span>

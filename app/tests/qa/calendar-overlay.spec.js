@@ -5,6 +5,7 @@ import { test, expect } from '@playwright/test';
 import { FIXED_NOW } from './clock.js';
 import { states } from '../../src/widgets/calendar-overlay.fixtures.js';
 import { detectOverflow, auditTapTargets, countFullyVisible, captureArtifact, collectErrors, freezeMotion } from './measure.js';
+import { expectNestedScrollContained } from './widget-harness.js';
 
 const url = (state) => `/harness.html?widget=calendar-overlay&state=${state}`;
 
@@ -71,16 +72,14 @@ test('overlay/empty: truly-empty stays calm — one line, no Coming up', async (
   await expect(page.locator('.cal-coming')).toHaveCount(0);
 });
 
-test('overlay/empty-with-later: Coming up fills the week, capped, rows tappable', async ({ page }) => {
+test('overlay/empty-with-later: future events are capped at ten per person', async ({ page }) => {
   await open(page, 'empty-with-later');
-  await expect(page.locator('.cal-overlay__empty')).toBeVisible();
-  await expect(page.locator('.cal-coming')).toBeVisible();
-  // Fixture supplies 15 later events; EMPTY_NEXT_MAX caps at 12 (derived from
-  // the measured 29-rows-before-fold ceiling — see calendar-overlay.js).
-  await expect(page.locator('.cal-coming .cal-event')).toHaveCount(12);
-  // Coming-up rows are full citizens: tap → event detail.
-  await page.locator('.cal-coming .cal-event').first().tap();
-  await expect(page.locator('.event-detail')).toBeVisible();
+  await expect(page.locator('.cal-overlay .overlay__title')).toHaveText('Next 10 events per person');
+  const sections = page.locator('.cal-person');
+  await expect(sections).toHaveCount(3);
+  for (let i = 0; i < 3; i += 1) {
+    await expect(sections.nth(i).locator('.cal-event')).toHaveCount(10);
+  }
 });
 
 test('overlay/typical: person sections in household order with day column', async ({ page }) => {
@@ -88,4 +87,9 @@ test('overlay/typical: person sections in household order with day column', asyn
   const labels = await page.locator('.cal-person__label').allTextContents();
   expect(labels.map(s => s.trim())).toEqual(['Family', 'Tim', 'Caroline']);
   await expect(page.locator('.cal-event__day').first()).toBeVisible();
+});
+
+test('overlay/overflow: body scrolling stays inside the modal', async ({ page }) => {
+  await open(page, 'overflow');
+  await expectNestedScrollContained(page, '.cal-overlay__body');
 });

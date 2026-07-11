@@ -31,7 +31,7 @@ export async function expectNestedScrollContained(page, selector) {
   await scroller.hover();
   const pageBefore = await page.evaluate(() => scrollY);
   await page.mouse.wheel(0, 240);
-  expect(await scroller.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
+  await expect.poll(() => scroller.evaluate(el => el.scrollTop)).toBeGreaterThan(0);
   expect(await page.evaluate(() => scrollY)).toBe(pageBefore);
 
   await scroller.evaluate(el => { el.scrollTop = el.scrollHeight; });

@@ -64,13 +64,16 @@ export const states = {
 
   // Nothing in the next 7 days but a busy month beyond — exercises the
   // "Coming up" fill and its EMPTY_NEXT_MAX cap (15 later events > cap of 12).
-  'empty-with-later': Array.from({ length: 15 }, (_, i) =>
+  'empty-with-later': Array.from({ length: 36 }, (_, i) =>
     evt(200 + i, 8 + i, 9 + (i % 8), `Later event ${i + 1}`)),
 
   single: [evt(0, 2, 10, 'Recruiter call — Tessa')],
 
   // The standard demo mix: timed + all-day across all three calendars.
-  typical: getMockUpcoming(NOW),
+  typical: [
+    ...getMockUpcoming(NOW),
+    evt(150, 3, 9, 'Caroline work-calendar preview', { calendar: 'Caroline', sub: "Carter's HQ" }),
+  ],
 
   overflow: overflowWeek(),
 

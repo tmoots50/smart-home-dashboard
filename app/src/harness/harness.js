@@ -52,7 +52,7 @@ const WIDGETS = {
     mount(root, events) {
       // The real overlay mounts over the briefing; give it the same backdrop.
       root.innerHTML = '<main class="briefing"></main>';
-      openCalendarOverlay({ initial: events }, { days: 7 });
+      openCalendarOverlay({ initial: events }, { days: 90, perPerson: 10 });
     },
   },
 

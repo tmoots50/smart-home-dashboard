@@ -64,3 +64,12 @@ test('calendar/overflow: column scrolling stays inside the card', async ({ page 
   await open(page, 'overflow');
   await expectNestedScrollContained(page, '.calendar__list');
 });
+
+test('calendar/overflow: default-view titles stay on one compact line', async ({ page }) => {
+  await open(page, 'overflow');
+  const heights = await page.locator('.calendar__title').evaluateAll(nodes => nodes.map(node => ({
+    height: node.getBoundingClientRect().height,
+    lineHeight: parseFloat(getComputedStyle(node).lineHeight),
+  })));
+  expect(heights.every(({ height, lineHeight }) => height <= lineHeight + 1)).toBe(true);
+});

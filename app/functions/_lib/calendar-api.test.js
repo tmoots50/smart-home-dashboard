@@ -79,4 +79,9 @@ describe('parseCalendars', () => {
     expect(parseCalendars({})).toEqual([]);
     expect(parseCalendars({ GOOGLE_CALENDARS_JSON: 'nope' })).toEqual([]);
   });
+
+  it('treats the currently mislabeled Caroline calendar as Family', () => {
+    const env = { GOOGLE_CALENDARS_JSON: '[{"label":"Caroline","id":"family-id"}]' };
+    expect(parseCalendars(env)).toEqual([{ label: 'Family', id: 'family-id' }]);
+  });
 });

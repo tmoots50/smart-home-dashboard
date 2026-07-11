@@ -130,8 +130,8 @@ export function renderMorningBriefing(root) {
       return;
     }
     const overlay = e.target.closest('[data-overlay]')?.dataset.overlay;
-    // 30-day fetch, 7-day view: the overlay groups the first 7 days; events
-    // beyond the horizon power the empty week's "Coming up" list.
-    if (overlay === 'calendar') openCalendarOverlay(getUpcoming(30), { days: 7 });
+    if (overlay === 'calendar') {
+      openCalendarOverlay(getUpcoming(90), { days: 90, perPerson: 10 });
+    }
   });
 }

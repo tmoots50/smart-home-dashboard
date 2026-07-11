@@ -55,14 +55,27 @@ export async function onRequest(context) {
   const timeMax = new Date(now.getTime() + WINDOW_FORWARD_MS).toISOString();
 
   try {
-    const sections = await Promise.all(calendars.map(async (c) => ({
+    const fetched = await Promise.all(calendars.map(async (c) => ({
       label: c.label,
       events: normalize(await listEvents(accessToken, c.id, timeMin, timeMax, { maxResults: MAX_RESULTS_PER_CALENDAR })),
     })));
+    const sections = mergeSections(fetched);
     return json({ sections, nextEventId: pickNextEventId(sections, now) }, {}, cors);
   } catch (err) {
     return json({ error: err.message }, { status: 502 }, cors);
   }
+}
+
+function mergeSections(input) {
+  const byLabel = new Map();
+  for (const section of input) {
+    const existing = byLabel.get(section.label) ?? [];
+    byLabel.set(section.label, [...existing, ...section.events]);
+  }
+  return [...byLabel].map(([label, events]) => ({
+    label,
+    events: events.sort((a, b) => String(a.startsAt).localeCompare(String(b.startsAt))).slice(0, MAX_RESULTS_PER_CALENDAR),
+  }));
 }
 
 async function discoverCalendars(accessToken, cors) {

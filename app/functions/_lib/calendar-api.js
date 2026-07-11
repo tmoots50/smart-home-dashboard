@@ -14,10 +14,20 @@ export function parseCalendars(env) {
   try {
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr)) return [];
-    return arr.filter(c => c && typeof c.label === 'string' && typeof c.id === 'string');
+    return arr
+      .filter(c => c && typeof c.label === 'string' && typeof c.id === 'string')
+      .map(c => ({ ...c, label: canonicalCalendarLabel(c.label) }));
   } catch {
     return [];
   }
+}
+
+// Ground truth until Caroline's separate work calendar is integrated: the
+// calendar currently configured as "Caroline" is the household Family feed.
+// Keep this exact-match alias narrow so a future "Caroline Work" label is not
+// silently rewritten.
+export function canonicalCalendarLabel(label) {
+  return String(label).trim().toLowerCase() === 'caroline' ? 'Family' : String(label).trim();
 }
 
 // Fetch events for a single calendar in [timeMin, timeMax].

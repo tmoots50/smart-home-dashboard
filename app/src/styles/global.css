@@ -345,6 +345,15 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .cal-chip--family { color: #6dac8e; }
 .cal-chip--caroline { color: #6e8faf; }
 .cal-overlay__empty { text-align: center; padding: var(--space-4) 0; }
+.cal-overlay { overflow: hidden; }
+.cal-overlay__body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: none;
+}
+.cal-overlay__body::-webkit-scrollbar { display: none; }
 /* Tappable rows in the overlay */
 .cal-event[data-event] { cursor: pointer; }
 .cal-event[data-event]:hover .cal-event__title { color: var(--color-accent); }
@@ -595,7 +604,6 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .weather__main {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: var(--space-3);
 }
 .weather__current { flex: 0 0 auto; }
@@ -623,47 +631,61 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   color: var(--color-muted);
   font-size: 0.9rem;
 }
-.weather__outlook { flex: 1 1 0; min-width: 0; }
+.weather__outlook { min-width: 0; margin-top: var(--space-2); }
+.weather__strip {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  align-items: center;
+  min-width: 0;
+}
+.weather__strip + .weather__strip { border-top: 1px solid var(--color-border); }
+.weather__strip-label {
+  color: var(--color-muted);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
 .weather__hourly,
 .weather__forecast {
   display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
+  gap: var(--space-1);
   overflow-x: auto;
   overscroll-behavior-inline: contain;
   scrollbar-width: none;
 }
 .weather__hourly::-webkit-scrollbar,
 .weather__forecast::-webkit-scrollbar { display: none; }
-.weather__hourly { padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border); }
-.weather__forecast { padding-top: var(--space-2); }
+.weather__hourly { padding: var(--space-1) 0; }
+.weather__forecast { padding: var(--space-1) 0; }
 .weather__hour,
 .weather__day {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-1);
-  min-width: 2.65rem;
+  gap: 1px;
+  min-width: 2.35rem;
 }
 .weather__hour-label,
 .weather__day-label {
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: 0.62rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 .weather__hour-temp,
 .weather__day-temp {
   font-family: var(--font-display);
-  font-size: 1.05rem;
+  font-size: 0.85rem;
 }
 .weather__hour-emoji,
 .weather__day-emoji {
-  font-size: 1.1rem;
+  font-size: 0.9rem;
   line-height: 1;
   margin-top: 2px;
 }
-.weather__rain { color: #6e9fc4; font-size: 0.65rem; line-height: 1; }
+.weather__rain { color: #6e9fc4; font-size: 0.58rem; line-height: 1; }
 
 /* ───── traffic ───── */
 .traffic__row {
@@ -758,12 +780,12 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .calendar__grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-4);
-  margin-top: var(--space-3);
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 .calendar__column + .calendar__column {
   border-left: 1px solid var(--color-border);
-  padding-left: var(--space-4);
+  padding-left: var(--space-2);
 }
 .calendar__column-label {
   font-family: var(--font-body);
@@ -772,8 +794,8 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-accent);
-  margin: 0 0 var(--space-3) 0;
-  padding-bottom: var(--space-2);
+  margin: 0 0 var(--space-1) 0;
+  padding-bottom: var(--space-1);
   border-bottom: 2px solid currentColor;
   opacity: 0.85;
 }
@@ -789,7 +811,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   list-style: none;
   padding: 0;
   margin: 0;
-  max-height: 19rem; /* roughly five detailed rows; more events scroll here */
+  max-height: 13.75rem; /* five compact 44px rows; more events scroll here */
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
@@ -798,16 +820,17 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .calendar__list::-webkit-scrollbar { display: none; }
 .calendar__event {
   display: grid;
-  grid-template-columns: 6.25rem 1fr;
-  gap: var(--space-3);
-  padding: var(--space-2) 0;
+  grid-template-columns: 4.6rem 1fr;
+  gap: var(--space-2);
+  padding: 0;
   border-bottom: 1px solid var(--color-border);
   /* Rows are tap targets (open event detail) — hold the 44px touch floor. */
   min-height: 2.75rem;
   align-content: center;
 }
-.calendar__when { display: flex; flex-direction: column; min-width: 0; }
-.calendar__date { color: var(--color-muted); font-size: 0.72rem; white-space: nowrap; }
+.calendar__when { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+.calendar__date { color: var(--color-muted); font-size: 0.62rem; white-space: nowrap; }
+.calendar__details { min-width: 0; line-height: 1.2; }
 .calendar__event:last-child { border-bottom: none; }
 .calendar__event--next {
   border-left: 3px solid var(--color-accent);
@@ -824,16 +847,22 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .calendar__time {
   font-family: var(--font-display);
   color: var(--color-fg);
-  font-size: 1rem;
+  font-size: 0.82rem;
   white-space: nowrap;
 }
 .calendar__title {
-  font-size: 1rem;
+  font-size: 0.86rem;
   color: var(--color-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .calendar__sub {
   color: var(--color-muted);
-  font-size: 0.85rem;
+  font-size: 0.7rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ───── photo ───── */
@@ -1332,18 +1361,28 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   scrollbar-width: none;
 }
 .pick__list::-webkit-scrollbar { display: none; }
-.pick__item { padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); }
+.pick__item {
+  display: grid;
+  grid-template-columns: 4.75rem 1fr;
+  grid-template-rows: auto auto;
+  column-gap: var(--space-2);
+  padding: 2px 0;
+  border-bottom: 1px solid var(--color-border);
+}
 .pick__item:last-child { border-bottom: none; }
 .pick__source {
   color: var(--color-muted);
-  font-size: 0.75rem;
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-size: 0.62rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  white-space: nowrap;
+  white-space: normal;
+  line-height: 1.2;
 }
 .pick__title {
-  font-size: 1rem;
-  line-height: 1.3;
+  font-size: 0.9rem;
+  line-height: 1.2;
   color: var(--color-fg);
   text-decoration: none;
   display: -webkit-box;
@@ -1355,9 +1394,12 @@ a.pick__title { color: var(--color-accent, var(--color-fg)); }
 a.pick__title { min-height: 2.75rem; }
 .pick__note {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   color: var(--color-muted);
   line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* List cards render every item and use their allotted space efficiently. */

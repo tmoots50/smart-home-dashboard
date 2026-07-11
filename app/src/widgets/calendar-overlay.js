@@ -1,8 +1,6 @@
 // Expanded calendar — full-screen overlay behind the Family Calendar card's
-// "See more". A 7-day agenda across every linked calendar, grouped BY PERSON
-// by default (each family member's week reads as one chronological column —
-// "what does Caroline's week look like?" in one glance). groupBy:'day' keeps
-// the original day-bucketed view. Read-only on purpose: edits belong to the
+// "See more". Production shows the next ten events for each linked person,
+// Family first. Read-only on purpose: edits belong to the
 // phone calendar apps (or Hermes over Telegram), not tablet forms.
 //
 // Empty week: instead of a lone "nothing scheduled" line in a full-screen
@@ -35,7 +33,7 @@ const PERSON_ORDER = ['Family', 'Tim', 'Caroline'];
 // Re-measure via tests/qa/calendar-overlay.spec.js if row height changes.
 const EMPTY_NEXT_MAX = 12;
 
-export function openCalendarOverlay(source, { days = 7, groupBy = 'person' } = {}) {
+export function openCalendarOverlay(source, { days = 7, groupBy = 'person', perPerson = null } = {}) {
   const host = document.createElement('div');
   host.className = 'overlay';
   document.body.appendChild(host);
@@ -44,7 +42,7 @@ export function openCalendarOverlay(source, { days = 7, groupBy = 'person' } = {
   let events = source.initial ?? [];
 
   function draw() {
-    host.innerHTML = renderCalendarOverlay(events, { days, groupBy });
+    host.innerHTML = renderCalendarOverlay(events, { days, groupBy, perPerson });
   }
 
   function close() {
@@ -75,7 +73,7 @@ export function openCalendarOverlay(source, { days = 7, groupBy = 'person' } = {
 
 // ───── pure render ─────
 
-export function renderCalendarOverlay(events, { days = 7, now = new Date(), groupBy = 'person' } = {}) {
+export function renderCalendarOverlay(events, { days = 7, now = new Date(), groupBy = 'person', perPerson = null } = {}) {
   const { within, later } = splitByHorizon(events, days, now);
 
   let body;
@@ -84,13 +82,13 @@ export function renderCalendarOverlay(events, { days = 7, now = new Date(), grou
   } else if (groupBy === 'day') {
     body = groupByDay(within, days, now).map(renderDay).join('');
   } else {
-    body = groupByPerson(within, days, now).map(g => renderPerson(g, now)).join('');
+    body = groupByPerson(within, days, now, perPerson ?? Infinity).map(g => renderPerson(g, now)).join('');
   }
 
   return `
     <div class="overlay__panel cal-overlay" role="dialog" aria-label="Expanded calendar">
       <div class="overlay__header">
-        <h2 class="overlay__title">Next ${days} days</h2>
+        <h2 class="overlay__title">${perPerson ? `Next ${perPerson} events per person` : `Next ${days} days`}</h2>
         <button class="overlay__close" data-action="close" aria-label="Close">${CLOSE_SVG}</button>
       </div>
       <div class="cal-overlay__body">
@@ -217,7 +215,7 @@ export function groupByDay(events, days, now = new Date()) {
 // (PERSON_ORDER), then A→Z for anything unexpected. Within a person:
 // chronological — all-day events parse to local midnight, so they naturally
 // lead their day.
-export function groupByPerson(events, days, now = new Date()) {
+export function groupByPerson(events, days, now = new Date(), limit = Infinity) {
   const today = dayStart(now);
   const groups = new Map(); // person → events
 
@@ -236,7 +234,7 @@ export function groupByPerson(events, days, now = new Date()) {
 
   return [...groups.entries()]
     .sort(([a], [b]) => (rank(a) - rank(b)) || a.localeCompare(b))
-    .map(([person, evs]) => ({ person, events: evs.sort(byStart) }));
+    .map(([person, evs]) => ({ person, events: evs.sort(byStart).slice(0, limit) }));
 }
 
 // ───── date helpers ─────

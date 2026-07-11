@@ -16,8 +16,10 @@ Atlanta Picks, Todo/Groceries density and reversibility, Bible ribbon, and the
   inherit the frozen clock, motion freeze, overflow checks, and touch audit.
 - Added real wheel-gesture containment checks at the middle and bottom boundary
   of Calendar, Coming Up, Picks, Todo, and Groceries scrollers.
-- Current result: 44 Playwright checks pass at the 1080×1920 design canvas;
-  218 unit tests and the production build pass.
+- Current result: 46 Playwright checks pass at the 1080×1920 design canvas;
+  227 unit tests and the production build pass. Coverage now also locks the
+  ten-per-person modal contract, compact single-line default calendar rows,
+  seven-day/rest-of-day weather strips, and three simultaneously visible picks.
 
 ## Recommended next improvements (priority order)
 
