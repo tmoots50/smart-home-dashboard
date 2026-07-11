@@ -81,4 +81,17 @@ The LaunchAgent runs after user login/FileVault unlock. cloudflared should run a
 its system LaunchDaemon so the tunnel comes up before login, though the relay
 health endpoint will correctly return 503 until the user service is connected.
 
+After the tunnel config and credentials are in `~/.cloudflared`, install its
+boot service from an interactive terminal. The helper copies only the tunnel
+files into `/etc/cloudflared`, validates them, and installs or restarts the
+official cloudflared LaunchDaemon:
+
+```bash
+sudo ~/.hermes-relay/app/install-tunnel-service.sh
+```
+
+To copy the relay URL and secret into both Cloudflare Pages environments without
+printing the secret, run `node scripts/sync-relay-cloudflare.mjs` from the repo
+after loading `.envrc.local`.
+
 Revocation and tunnel procedures live in `docs/voice-command-flow.md`.

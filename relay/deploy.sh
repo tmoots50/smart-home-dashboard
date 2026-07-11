@@ -7,8 +7,8 @@ REMOTE_PYTHON="${RELAY_PYTHON:-/usr/local/bin/python3.11}"
 INSTALL_ONLY="${1:-}"
 
 ssh "$RELAY_HOST" "mkdir -p ~/.hermes-relay/app ~/.hermes-relay/logs"
-scp relay.py relay_core.py test_relay.py requirements.txt configure.sh ai.hermes.relay.plist "$RELAY_HOST:$REMOTE/"
-ssh "$RELAY_HOST" "chmod 700 ~/.hermes-relay/app/configure.sh"
+scp relay.py relay_core.py test_relay.py requirements.txt configure.sh install-tunnel-service.sh ai.hermes.relay.plist "$RELAY_HOST:$REMOTE/"
+ssh "$RELAY_HOST" "chmod 700 ~/.hermes-relay/app/configure.sh ~/.hermes-relay/app/install-tunnel-service.sh"
 ssh "$RELAY_HOST" "$REMOTE_PYTHON -m venv ~/.hermes-relay/venv && ~/.hermes-relay/venv/bin/pip install -r ~/.hermes-relay/app/requirements.txt"
 if [[ "$INSTALL_ONLY" == "--install-only" ]]; then
   echo "code + venv installed; skipped launchd until .env and Telegram session are ready"

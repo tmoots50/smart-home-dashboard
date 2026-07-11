@@ -39,8 +39,7 @@ Bind Workers AI and set live mode:
 source .envrc.local
 node scripts/bind-ai.mjs
 node scripts/set-cf-env-var.mjs VITE_VOICE_LIVE 1
-node scripts/set-cf-env-var.mjs RELAY_URL "https://relay.example.com"
-node scripts/set-cf-env-var.mjs RELAY_SECRET "$RELAY_SECRET" --secret
+node scripts/sync-relay-cloudflare.mjs oldmac "https://relay.example.com"
 ```
 
 The Cloudflare account must have a zone for the relay hostname. Add the existing
