@@ -1,0 +1,59 @@
+// POST /api/calendar/events
+// Body: { calendar, summary, start, end?, allDay?, description?, location? }
+//   calendar — label from GOOGLE_CALENDARS_JSON (e.g. "Tim" or "Family")
+//   start/end — ISO 8601 datetime, or YYYY-MM-DD when allDay=true
+//   end defaults to start+1h (timed) or start+1 day (all-day)
+// → { ok: true, id: "googleEventId" }
+
+import { getAccessToken } from '../../_lib/google-auth.js';
+import { checkAuth, corsHeaders, json } from '../../_lib/auth.js';
+import { calendarIdFor, createEvent } from '../../_lib/calendar-api.js';
+
+export async function onRequest(context) {
+  const { request, env } = context;
+  const cors = corsHeaders(request, env);
+
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+  if (request.method !== 'POST') return json({ error: 'method not allowed' }, { status: 405 }, cors);
+
+  const authErr = checkAuth(request, env);
+  if (authErr) return withCors(authErr, cors);
+
+  let body;
+  try { body = await request.json(); } catch { return json({ error: 'invalid JSON body' }, { status: 400 }, cors); }
+
+  const { calendar, summary, start, end, allDay = false, description = '', location = '' } = body;
+  if (!calendar || typeof calendar !== 'string') return json({ error: 'calendar required' }, { status: 400 }, cors);
+  if (!summary || typeof summary !== 'string') return json({ error: 'summary required' }, { status: 400 }, cors);
+  if (!start || typeof start !== 'string') return json({ error: 'start required' }, { status: 400 }, cors);
+
+  const calendarId = calendarIdFor(env, calendar);
+  if (!calendarId) return json({ error: `unknown calendar "${calendar}"` }, { status: 404 }, cors);
+
+  let resolvedEnd = end;
+  if (!resolvedEnd) {
+    if (allDay) {
+      const d = new Date(start + 'T00:00:00Z');
+      d.setUTCDate(d.getUTCDate() + 1);
+      resolvedEnd = d.toISOString().slice(0, 10);
+    } else {
+      const d = new Date(start);
+      if (Number.isNaN(+d)) return json({ error: 'invalid start datetime' }, { status: 400 }, cors);
+      resolvedEnd = new Date(+d + 3_600_000).toISOString();
+    }
+  }
+
+  let accessToken;
+  try { accessToken = await getAccessToken(env); } catch (err) { return json({ error: err.message }, { status: 500 }, cors); }
+
+  try {
+    const ev = await createEvent(accessToken, calendarId, { summary, start, end: resolvedEnd, allDay, description, location });
+    return json({ ok: true, id: ev.id }, {}, cors);
+  } catch (err) {
+    return json({ error: err.message }, { status: 502 }, cors);
+  }
+}
+
+function withCors(res, cors) {
+  return new Response(res.body, { status: res.status, headers: { ...Object.fromEntries(res.headers), ...cors } });
+}

@@ -1,6 +1,6 @@
 // @vitest-environment node
-import { describe, it, expect } from 'vitest';
-import { normalizeUpcoming, normalize, parseCalendars, repairMojibake, resolveRange } from './calendar-api.js';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { normalizeUpcoming, normalize, parseCalendars, repairMojibake, resolveRange, calendarIdFor, createEvent, deleteEvent, updateEvent } from './calendar-api.js';
 
 const timed = {
   id: 'e1',
@@ -130,6 +130,113 @@ describe('repairMojibake', () => {
     expect(b.title).toBe('Aidan\u2019s party');
     expect(b.sub).toBe('Nana\u2019s house');
     expect(b.description).toBe('Don\u2019t forget gifts');
+  });
+});
+
+describe('calendarIdFor', () => {
+  const env = {
+    GOOGLE_CALENDARS_JSON: '[{"label":"Family","id":"family@group.calendar.google.com"},{"label":"Tim","id":"tim@example.com"}]',
+  };
+
+  it('returns the id for an exact label match', () => {
+    expect(calendarIdFor(env, 'Family')).toBe('family@group.calendar.google.com');
+    expect(calendarIdFor(env, 'Tim')).toBe('tim@example.com');
+  });
+
+  it('is case-insensitive', () => {
+    expect(calendarIdFor(env, 'family')).toBe('family@group.calendar.google.com');
+    expect(calendarIdFor(env, 'TIM')).toBe('tim@example.com');
+  });
+
+  it('returns null for an unknown label', () => {
+    expect(calendarIdFor(env, 'Work')).toBeNull();
+    expect(calendarIdFor({}, 'Family')).toBeNull();
+  });
+});
+
+describe('createEvent / deleteEvent / updateEvent', () => {
+  beforeEach(() => { vi.restoreAllMocks(); });
+
+  it('createEvent sends a POST with the right body for a timed event', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'new-event-id' }),
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    const result = await createEvent('tok', 'calId', {
+      summary: 'Dentist',
+      start: '2026-07-15T14:00:00-04:00',
+      end: '2026-07-15T15:00:00-04:00',
+      allDay: false,
+      description: 'Check-up',
+      location: 'Downtown Dental',
+    });
+
+    expect(result.id).toBe('new-event-id');
+    const [url, opts] = mockFetch.mock.calls[0];
+    expect(url).toContain('calId');
+    expect(opts.method).toBe('POST');
+    const body = JSON.parse(opts.body);
+    expect(body.summary).toBe('Dentist');
+    expect(body.start.dateTime).toBe('2026-07-15T14:00:00-04:00');
+    expect(body.end.dateTime).toBe('2026-07-15T15:00:00-04:00');
+    expect(body.description).toBe('Check-up');
+  });
+
+  it('createEvent uses date (not dateTime) for all-day events', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'x' }) }));
+    await createEvent('tok', 'calId', { summary: 'Holiday', start: '2026-12-25', end: '2026-12-26', allDay: true });
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1].body);
+    expect(body.start.date).toBe('2026-12-25');
+    expect(body.start.dateTime).toBeUndefined();
+  });
+
+  it('createEvent omits empty description/location', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'x' }) }));
+    await createEvent('tok', 'calId', { summary: 'Lunch', start: '2026-07-15T12:00:00Z', end: '2026-07-15T13:00:00Z' });
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1].body);
+    expect(body.description).toBeUndefined();
+    expect(body.location).toBeUndefined();
+  });
+
+  it('createEvent throws on HTTP error', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 403, text: async () => 'forbidden' }));
+    await expect(createEvent('tok', 'calId', { summary: 'x', start: 's', end: 'e' })).rejects.toThrow('403');
+  });
+
+  it('deleteEvent sends DELETE and resolves on 204', async () => {
+    const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 204 });
+    vi.stubGlobal('fetch', mockFetch);
+    await expect(deleteEvent('tok', 'calId', 'evId')).resolves.toBeUndefined();
+    const [url, opts] = mockFetch.mock.calls[0];
+    expect(url).toContain('evId');
+    expect(opts.method).toBe('DELETE');
+  });
+
+  it('deleteEvent treats 410 (already gone) as success', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 410 }));
+    await expect(deleteEvent('tok', 'calId', 'evId')).resolves.toBeUndefined();
+  });
+
+  it('deleteEvent throws on other HTTP errors', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404, text: async () => 'not found' }));
+    await expect(deleteEvent('tok', 'calId', 'evId')).rejects.toThrow('404');
+  });
+
+  it('updateEvent sends PATCH with only the supplied fields', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'evId' }) }));
+    await updateEvent('tok', 'calId', 'evId', { summary: 'New Title', start: '2026-07-20T10:00:00-04:00' });
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1].body);
+    expect(body.summary).toBe('New Title');
+    expect(body.start.dateTime).toBe('2026-07-20T10:00:00-04:00');
+    expect(body.end).toBeUndefined();
+    expect(vi.mocked(fetch).mock.calls[0][1].method).toBe('PATCH');
+  });
+
+  it('updateEvent throws on HTTP error', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 409, text: async () => 'conflict' }));
+    await expect(updateEvent('tok', 'calId', 'evId', {})).rejects.toThrow('409');
   });
 });
 

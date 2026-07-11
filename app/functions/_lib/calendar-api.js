@@ -154,6 +154,80 @@ export function resolveRange(searchParams, now = new Date()) {
   return { timeMin: now.toISOString(), timeMax: new Date(+now + days * RANGE_DAY_MS).toISOString() };
 }
 
+// Look up calendarId from a human label (case-insensitive, after canonicalization).
+// Returns null when no match exists — caller should 404.
+export function calendarIdFor(env, label) {
+  const calendars = parseCalendars(env);
+  const normalLabel = String(label).trim().toLowerCase();
+  const match = calendars.find(c => c.label.toLowerCase() === normalLabel);
+  return match ? match.id : null;
+}
+
+const GCAL_BASE = 'https://www.googleapis.com/calendar/v3/calendars';
+
+// Create a new event. `start`/`end` are ISO 8601 datetimes or YYYY-MM-DD for all-day.
+export async function createEvent(accessToken, calendarId, { summary, start, end, allDay = false, description = '', location = '' }) {
+  const body = {
+    summary,
+    ...(description && { description }),
+    ...(location && { location }),
+    start: allDay ? { date: start } : { dateTime: start },
+    end: allDay ? { date: end } : { dateTime: end },
+  };
+  const res = await fetch(
+    `${GCAL_BASE}/${encodeURIComponent(calendarId)}/events`,
+    {
+      method: 'POST',
+      headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`calendar insert ${res.status}: ${detail}`);
+  }
+  return res.json();
+}
+
+// Delete an event. Google returns 204; 410 means already gone — both are OK.
+export async function deleteEvent(accessToken, calendarId, eventId) {
+  const res = await fetch(
+    `${GCAL_BASE}/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+    {
+      method: 'DELETE',
+      headers: { authorization: `Bearer ${accessToken}` },
+    },
+  );
+  if (!res.ok && res.status !== 410) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`calendar delete ${res.status}: ${detail}`);
+  }
+}
+
+// Patch (partial update) an event. Only supply the fields you want to change.
+export async function updateEvent(accessToken, calendarId, eventId, patch) {
+  const body = {};
+  if (patch.summary != null) body.summary = patch.summary;
+  if (patch.description != null) body.description = patch.description;
+  if (patch.location != null) body.location = patch.location;
+  if (patch.start != null) body.start = patch.allDay ? { date: patch.start } : { dateTime: patch.start };
+  if (patch.end != null) body.end = patch.allDay ? { date: patch.end } : { dateTime: patch.end };
+
+  const res = await fetch(
+    `${GCAL_BASE}/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
+    {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`calendar patch ${res.status}: ${detail}`);
+  }
+  return res.json();
+}
+
 // Pick the soonest upcoming event across all sections — widget highlights it.
 export function pickNextEventId(sections, now = new Date()) {
   let nextId = null;
