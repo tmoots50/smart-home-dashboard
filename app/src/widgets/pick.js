@@ -22,23 +22,17 @@ function renderPickItem(pick) {
   const source = pick.source
     ? `<span class="pick__source">${escapeHtml(pick.source)}</span>`
     : '';
-  const inner = escapeHtml(pick.title);
-  // Only wrap the title in an anchor for http(s) urls. escapeHtml does NOT
-  // neutralise a javascript:/data: href, so scheme-check before linking
-  // (defence in depth — the API already rejects bad urls on write).
-  const title = isHttpUrl(pick.url)
-    ? `<a class="pick__title" href="${escapeHtml(pick.url)}" target="_blank" rel="noopener noreferrer">${inner}</a>`
-    : `<span class="pick__title">${inner}</span>`;
+  const title = `<span class="pick__title">${escapeHtml(pick.title)}</span>`;
   const note = pick.note
     ? `<p class="pick__note">${escapeHtml(pick.note)}</p>`
     : '';
-  return `
-    <article class="pick__item">
-      ${source}
-      ${title}
-      ${note}
-    </article>
-  `;
+  const inner = `${source}${title}${note}`;
+  // The whole item is the tap target, but only for http(s) urls. escapeHtml
+  // does NOT neutralise a javascript:/data: href, so scheme-check before
+  // linking (defence in depth — the API already rejects bad urls on write).
+  return isHttpUrl(pick.url)
+    ? `<a class="pick__item" href="${escapeHtml(pick.url)}" target="_blank" rel="noopener noreferrer">${inner}</a>`
+    : `<article class="pick__item">${inner}</article>`;
 }
 
 export function mountPick(el) {

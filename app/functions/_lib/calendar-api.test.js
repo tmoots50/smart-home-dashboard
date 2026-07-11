@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest';
-import { normalizeUpcoming, normalize, parseCalendars } from './calendar-api.js';
+import { normalizeUpcoming, normalize, parseCalendars, repairMojibake } from './calendar-api.js';
 
 const timed = {
   id: 'e1',
@@ -83,5 +83,52 @@ describe('parseCalendars', () => {
   it('treats the currently mislabeled Caroline calendar as Family', () => {
     const env = { GOOGLE_CALENDARS_JSON: '[{"label":"Caroline","id":"family-id"}]' };
     expect(parseCalendars(env)).toEqual([{ label: 'Family', id: 'family-id' }]);
+  });
+});
+
+describe('repairMojibake', () => {
+  it('repairs a C1-control mojibake apostrophe (the literal stored form)', () => {
+    // 'Aidan' + \u00E2\u0080\u0099 ("â" + two C1 controls) + 's' — UTF-8 bytes
+    // for \u2019 read back as Latin-1.
+    expect(repairMojibake('Aidan\u00E2\u0080\u0099s 3rd Birthday')).toBe('Aidan\u2019s 3rd Birthday');
+  });
+
+  it('repairs the cp1252 display form (a-circumflex + euro + trademark)', () => {
+    expect(repairMojibake('Aidan\u00E2\u20AC\u2122s 3rd Birthday')).toBe('Aidan\u2019s 3rd Birthday');
+  });
+
+  it('repairs curly quotes and dashes', () => {
+    expect(repairMojibake('\u00E2\u20AC\u0153quoted\u00E2\u20AC\u009D \u00E2\u20AC\u201C dash')).toBe('\u201Cquoted\u201D \u2013 dash');
+  });
+
+  it('leaves genuine accented text untouched', () => {
+    expect(repairMojibake('château')).toBe('château');
+    expect(repairMojibake('Café ☕')).toBe('Café ☕');
+    expect(repairMojibake('naïve résumé')).toBe('naïve résumé');
+  });
+
+  it('leaves plain ASCII and empty/non-string values untouched', () => {
+    expect(repairMojibake('Lunch with Sarah')).toBe('Lunch with Sarah');
+    expect(repairMojibake('')).toBe('');
+    expect(repairMojibake(null)).toBe(null);
+  });
+
+  it('is applied to title, sub, and description in both normalizers', () => {
+    const broken = {
+      id: 'x',
+      summary: 'Aidan\u00E2\u0080\u0099s party',
+      location: 'Nana\u00E2\u0080\u0099s house',
+      description: 'Don\u00E2\u0080\u0099t forget gifts',
+      start: { date: '2026-07-12' },
+      end: { date: '2026-07-13' },
+    };
+    const [a] = normalize([broken]);
+    expect(a.title).toBe('Aidan\u2019s party');
+    expect(a.sub).toBe('Nana\u2019s house');
+    expect(a.description).toBe('Don\u2019t forget gifts');
+    const [b] = normalizeUpcoming([broken], 'Family');
+    expect(b.title).toBe('Aidan\u2019s party');
+    expect(b.sub).toBe('Nana\u2019s house');
+    expect(b.description).toBe('Don\u2019t forget gifts');
   });
 });

@@ -51,6 +51,42 @@ export async function listEvents(accessToken, calendarId, timeMin, timeMax, { ma
   return data.items || [];
 }
 
+// Some upstream events were created by tools that stored UTF-8 bytes decoded
+// as Latin-1/cp1252 ("Aidanâ€™s" for "Aidan's"). The wire path through here is
+// UTF-8-clean — the damage lives in the stored event text — so repair at
+// normalize time. Conservative triggers: a UTF-8 lead-byte char followed by a
+// C1 control (never legitimate text) or a cp1252 mojibake continuation char.
+// Anything unmappable or that fails strict UTF-8 decoding returns the original,
+// so genuine accented text ("château", "Café ☕") passes through untouched.
+const CP1252_REVERSE = {
+  '€': 0x80, '‚': 0x82, 'ƒ': 0x83, '„': 0x84, '…': 0x85,
+  '†': 0x86, '‡': 0x87, 'ˆ': 0x88, '‰': 0x89, 'Š': 0x8A,
+  '‹': 0x8B, 'Œ': 0x8C, 'Ž': 0x8E, '‘': 0x91, '’': 0x92,
+  '“': 0x93, '”': 0x94, '•': 0x95, '–': 0x96, '—': 0x97,
+  '˜': 0x98, '™': 0x99, 'š': 0x9A, '›': 0x9B, 'œ': 0x9C,
+  'ž': 0x9E, 'Ÿ': 0x9F,
+};
+const MOJIBAKE_PAIR = new RegExp(
+  `[\\u00C2-\\u00F4](?:[\\u0080-\\u00BF]|[${Object.keys(CP1252_REVERSE).join('')}])`,
+);
+
+export function repairMojibake(s) {
+  if (typeof s !== 'string' || !s) return s;
+  if (!/[\u0080-\u009F]/.test(s) && !MOJIBAKE_PAIR.test(s)) return s;
+  const bytes = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) {
+    const code = s.charCodeAt(i);
+    if (code <= 0xFF) bytes[i] = code;
+    else if (CP1252_REVERSE[s[i]] != null) bytes[i] = CP1252_REVERSE[s[i]];
+    else return s; // genuine non-Latin text — not mojibake
+  }
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return s;
+  }
+}
+
 // Map Google Calendar event → default dashboard shape. Keep all-day events:
 // the default card is now a forward-looking agenda, not a short time window.
 export function normalize(events) {
@@ -59,9 +95,9 @@ export function normalize(events) {
       id: e.id,
       startsAt: e.start?.dateTime || e.start?.date || '',
       endsAt: e.end?.dateTime || e.end?.date || '',
-      title: e.summary || '(no title)',
-      sub: e.location || '',
-      description: e.description || '',
+      title: repairMojibake(e.summary || '(no title)'),
+      sub: repairMojibake(e.location || ''),
+      description: repairMojibake(e.description || ''),
       allDay: !e.start?.dateTime,
     }))
     .filter(e => e.startsAt);
@@ -81,9 +117,9 @@ export function normalizeUpcoming(events, calendarLabel) {
       return {
         id: e.id,
         calendar: calendarLabel,
-        title: e.summary || '(no title)',
-        sub: e.location || '',
-        description: e.description || '',
+        title: repairMojibake(e.summary || '(no title)'),
+        sub: repairMojibake(e.location || ''),
+        description: repairMojibake(e.description || ''),
         startsAt,
         endsAt: e.end?.dateTime || e.end?.date || '',
         allDay,

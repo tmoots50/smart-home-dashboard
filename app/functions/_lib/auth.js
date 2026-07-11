@@ -56,7 +56,7 @@ export function json(body, init = {}, extraHeaders = {}) {
   return new Response(JSON.stringify(body), {
     ...init,
     headers: {
-      'content-type': 'application/json',
+      'content-type': 'application/json; charset=utf-8',
       ...(init.headers || {}),
       ...extraHeaders,
     },

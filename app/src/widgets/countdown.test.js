@@ -75,4 +75,19 @@ describe('renderCountdown', () => {
     const html = renderCountdown([{ name: '<x>', date: '2030-01-01', sub: '' }], NOW);
     expect(html).not.toContain('<x>');
   });
+
+  it('marks completing items done, others untouched', () => {
+    const items = [
+      { id: 'a', name: 'A', date: '2026-05-05', sub: '' },
+      { id: 'b', name: 'B', date: '2026-05-06', sub: '' },
+    ];
+    const html = renderCountdown(items, NOW, new Set(), new Set(['a']));
+    expect(html).toContain('countdown__item--done');
+    expect((html.match(/countdown__item--done/g) || []).length).toBe(1);
+  });
+
+  it('renders no done rows by default', () => {
+    const html = renderCountdown(getMockCountdowns(), NOW);
+    expect(html).not.toContain('countdown__item--done');
+  });
 });

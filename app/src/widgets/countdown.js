@@ -1,15 +1,19 @@
 // Compact, dismissible Family-calendar agenda. The card shows up to ten items
-// in its own scroll region; tapping the check or swiping left dismisses an item
-// on this kiosk without mutating the source Google Calendar event.
+// in its own scroll region. Two distinct gestures: tapping the check marks the
+// item done (strikethrough, then it clears after a short linger — tap again to
+// undo), swiping left dismisses it immediately with an Undo toast. Neither
+// mutates the source Google Calendar event; state is kiosk-local.
 
 import { getUpcoming, fetchUpcoming } from '../lib/calendar.js';
+import { showToast } from './toast.js';
 
 const MAX_ITEMS = 10;
 const DAY_MS = 86_400_000;
 const REFRESH_MS = 5 * 60 * 1000;
 const DISMISSED_KEY = 'coming-up:dismissed:v1';
+const COMPLETE_LINGER_MS = 2500;
 
-export function renderCountdown(items, now = new Date(), dismissed = new Set()) {
+export function renderCountdown(items, now = new Date(), dismissed = new Set(), completing = new Set()) {
   const today = startOfDay(now);
   const upcoming = (items ?? [])
     .filter(it => !it.calendar || it.calendar === 'Family')
@@ -33,8 +37,8 @@ export function renderCountdown(items, now = new Date(), dismissed = new Set()) 
       <h2 class="card__title">Coming up · Family</h2>
       <ul class="countdown__list">
         ${upcoming.map(it => `
-          <li class="countdown__item" data-event-id="${escapeHtml(it.key)}">
-            <button class="countdown__dismiss" data-action="dismiss" aria-label="Dismiss ${escapeHtml(it.name)}">✓</button>
+          <li class="countdown__item${completing.has(it.key) ? ' countdown__item--done' : ''}" data-event-id="${escapeHtml(it.key)}">
+            <button class="countdown__check" data-action="complete" aria-label="Mark done: ${escapeHtml(it.name)}"></button>
             <div class="countdown__body">
               <div class="countdown__when">
                 <span class="countdown__days">${formatDays(it.days)}</span>
@@ -52,13 +56,47 @@ export function renderCountdown(items, now = new Date(), dismissed = new Set()) 
 export function mountComingUp(el, source = getUpcoming(90)) {
   let items = source.initial ?? [];
   const dismissed = readDismissed();
-  const draw = () => { el.innerHTML = renderCountdown(items, new Date(), dismissed); };
+  const completing = new Map(); // key → linger timer id
+  const draw = () => { el.innerHTML = renderCountdown(items, new Date(), dismissed, new Set(completing.keys())); };
+
+  const complete = (row) => {
+    const key = row?.dataset.eventId;
+    if (!key) return;
+    if (completing.has(key)) {
+      // Tap again during the linger = undo the completion.
+      clearTimeout(completing.get(key));
+      completing.delete(key);
+      draw();
+      return;
+    }
+    completing.set(key, setTimeout(() => {
+      completing.delete(key);
+      dismissed.add(key);
+      writeDismissed(dismissed);
+      draw();
+    }, COMPLETE_LINGER_MS));
+    draw();
+  };
+
   const dismiss = (row) => {
     const key = row?.dataset.eventId;
     if (!key) return;
+    const name = row.querySelector('.countdown__name')?.textContent ?? '';
+    if (completing.has(key)) {
+      clearTimeout(completing.get(key));
+      completing.delete(key);
+    }
     dismissed.add(key);
     writeDismissed(dismissed);
     draw();
+    showToast(`Dismissed "${name}"`, {
+      actionLabel: 'Undo',
+      onAction: () => {
+        dismissed.delete(key);
+        writeDismissed(dismissed);
+        draw();
+      },
+    });
   };
 
   let startX = null;
@@ -71,7 +109,7 @@ export function mountComingUp(el, source = getUpcoming(90)) {
     startX = null;
   });
   el.addEventListener('click', e => {
-    if (e.target.closest('[data-action="dismiss"]')) dismiss(e.target.closest('.countdown__item'));
+    if (e.target.closest('[data-action="complete"]')) complete(e.target.closest('.countdown__item'));
   });
 
   draw();
@@ -79,7 +117,11 @@ export function mountComingUp(el, source = getUpcoming(90)) {
   const id = setInterval(() => {
     fetchUpcoming(90).then(next => { items = next; draw(); }).catch(() => {});
   }, REFRESH_MS);
-  return () => clearInterval(id);
+  return () => {
+    clearInterval(id);
+    for (const timer of completing.values()) clearTimeout(timer);
+    completing.clear();
+  };
 }
 
 function normalizeItem(it) {

@@ -18,7 +18,9 @@ test('morning briefing: calendar precedes the compact updates row', async ({ pag
   await expect(updates).toBeVisible();
   const [calBox, updatesBox] = await Promise.all([calendar.boundingBox(), updates.boundingBox()]);
   expect(calBox.y + calBox.height).toBeLessThanOrEqual(updatesBox.y);
-  expect(updatesBox.height).toBeLessThanOrEqual(300);
+  // .briefing__duo--updates is 21rem (336px) — restored breathing room for
+  // Coming Up + Picks after the 2026-07 density regression.
+  expect(updatesBox.height).toBeLessThanOrEqual(344);
   expect((await detectOverflow(page)).horizontal).toBe(false);
   await expect(page.locator('.pick__item')).toHaveCount(3);
   await captureArtifact(page, 'briefing-layout', testInfo);

@@ -11,15 +11,17 @@ describe('renderPick', () => {
     expect(html).toContain(p.note);
   });
 
-  it('links the title for an http(s) url', () => {
+  it('links the whole item for an http(s) url', () => {
     const html = renderPick({ title: 'Hozier @ Fox', url: 'https://foxtheatre.org/x', note: 'go' });
-    expect(html).toContain('<a class="pick__title" href="https://foxtheatre.org/x"');
+    expect(html).toContain('<a class="pick__item" href="https://foxtheatre.org/x"');
     expect(html).toContain('rel="noopener noreferrer"');
+    expect(html).toContain('<span class="pick__title">Hozier @ Fox</span>');
   });
 
-  it('does NOT link a javascript: url — renders as plain text, no href', () => {
+  it('does NOT link a javascript: url — renders as plain article, no href', () => {
     const html = renderPick({ title: 'boom', url: 'javascript:alert(1)' });
     expect(html).not.toContain('href');
+    expect(html).toContain('<article class="pick__item">');
     expect(html).toContain('<span class="pick__title">boom</span>');
   });
 

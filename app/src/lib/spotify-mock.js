@@ -15,7 +15,7 @@ export const paused = { ...playing, isPlaying: false, progressMs: 116_000, fetch
 export const inactive = { active: false };
 export const overflow = {
   ...playing,
-  track: { ...playing.track, title: 'This is an intentionally sweeping and beautifully overlong track title', artist: 'A Very Long Artist Name & Friends' },
+  track: { ...playing.track, title: 'This is an intentionally sweeping, ostentatiously ornate, and beautifully overlong track title that cannot possibly fit', artist: 'A Very Long Artist Name & Friends' },
 };
 export const episode = {
   ...playing, type: 'episode', durationMs: 2_700_000, progressMs: 540_000,

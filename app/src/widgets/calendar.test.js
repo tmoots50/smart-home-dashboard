@@ -66,16 +66,34 @@ describe('renderCalendar', () => {
     expect(html).toContain('calendar__event--next');
   });
 
-  it('shows at most the next 10 events across all columns', () => {
+  it('caps each column at 6 events', () => {
     const NOW = new Date('2026-04-29T07:00:00');
     const events = Array.from({ length: 8 }, (_, i) => ({
-      id: `e-${i}`, startsAt: new Date(NOW.getTime() + (i + 1) * 60_000).toISOString(), title: `Event ${i}`, sub: '',
+      id: `e-${i}`, startsAt: new Date(NOW.getTime() + (i + 1) * 60_000).toISOString(), title: `Family Event ${i}`, sub: '',
+    }));
+    const html = renderCalendar({ sections: [{ label: 'Family', events }] }, NOW);
+    expect((html.match(/class="calendar__event/g) || [])).toHaveLength(6);
+    expect(html).not.toContain('Family Event 6');
+    expect(html).not.toContain('Family Event 7');
+  });
+
+  it('columns fill independently — a packed column never starves another', () => {
+    const NOW = new Date('2026-04-29T07:00:00');
+    const familyEvents = Array.from({ length: 8 }, (_, i) => ({
+      id: `f-${i}`, startsAt: new Date(NOW.getTime() + (i + 1) * 60_000).toISOString(), title: `Family Event ${i}`, sub: '',
+    }));
+    const timEvents = Array.from({ length: 3 }, (_, i) => ({
+      // Tim's events start hours after all of Family's — under the old global
+      // top-10 they'd be evicted entirely.
+      id: `t-${i}`, startsAt: new Date(NOW.getTime() + (i + 10) * 3_600_000).toISOString(), title: `Tim Event ${i}`, sub: '',
     }));
     const html = renderCalendar({ sections: [
-      { label: 'Family', events },
-      { label: 'Tim', events: events.map((e, i) => ({ ...e, id: `t-${i}`, startsAt: new Date(NOW.getTime() + (i + 1) * 60_000 + 30_000).toISOString() })) },
+      { label: 'Family', events: familyEvents },
+      { label: 'Tim', events: timEvents },
     ] }, NOW);
-    expect((html.match(/class="calendar__event/g) || [])).toHaveLength(10);
+    expect((html.match(/class="calendar__event/g) || [])).toHaveLength(9); // 6 + 3
+    expect(html).toContain('Tim Event 0');
+    expect(html).toContain('Tim Event 2');
   });
 
   it('still renders all column labels when nothing is scheduled', () => {

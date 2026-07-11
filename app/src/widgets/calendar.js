@@ -8,7 +8,10 @@ const TIME_FMT = new Intl.DateTimeFormat(undefined, {
 const REFRESH_MS = 5 * 60 * 1000; // re-fetch every 5min — events can be added during the day
 
 const DAY_FMT = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' });
-const MAX_DEFAULT_EVENTS = 10;
+// Per-column cap. Columns fill independently — a packed Family week must not
+// starve Tim's column (the old global top-10 did exactly that). Six rows means
+// five fully visible + the sixth peeking as the scroll affordance.
+const MAX_PER_COLUMN = 6;
 
 // Column order + labels for the family calendar. Each column pulls its events
 // from the data section whose `label` matches. A column with no matching
@@ -18,19 +21,12 @@ const COLUMNS = ['Family', 'Tim', 'Caroline'];
 
 export function renderCalendar(data, now = new Date()) {
   const byLabel = new Map((data.sections ?? []).map(s => [s.label, s]));
-  const selectedIds = new Set((data.sections ?? [])
-    .flatMap(section => (section.events ?? []).map(event => ({ event, label: section.label })))
-    .filter(({ event }) => parseLocalish(event.startsAt) >= now)
-    .sort((a, b) => parseLocalish(a.event.startsAt) - parseLocalish(b.event.startsAt))
-    .slice(0, MAX_DEFAULT_EVENTS)
-    .map(({ event, label }) => `${label}:${event.id}`));
-
   const columns = COLUMNS.map(label => {
     const section = byLabel.get(label);
     const events = (section?.events ?? [])
-      .filter(e => selectedIds.has(`${label}:${e.id}`))
+      .filter(e => parseLocalish(e.startsAt) >= now)
       .sort((a, b) => parseLocalish(a.startsAt) - parseLocalish(b.startsAt))
-      .slice(0, MAX_DEFAULT_EVENTS);
+      .slice(0, MAX_PER_COLUMN);
     return { label, events, connected: !!section };
   });
 
