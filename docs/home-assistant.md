@@ -281,9 +281,12 @@ The traps most likely to burn the session, pre-answered:
 
 ## Support later (deliberately deferred)
 
-- **Local Tuya control** (`tuya-local` HACS): needs a Tuya IoT developer account (trial
-  expires ~every 6 months — a recurring chore), local-key extraction, DHCP reservations.
-  Do it when cloud latency or a Tuya outage actually bites.
+- **Local Tuya control** ([`make-all/tuya-local`](https://github.com/make-all/tuya-local),
+  HACS): newer versions offer cloud-assisted setup (QR scan with the Smart Life app) that
+  can fetch device IDs/local keys without a Tuya IoT developer account — much lower
+  barrier than the classic local-key extraction chore. Still wants DHCP reservations for
+  the plugs. Do it when cloud latency or a Tuya outage bites; verify the QR flow works
+  for the Gosund models at that point.
 - **Voice depth:** Assist's built-in intents cover "turn on X / is the door locked";
   open-ended queries need an LLM conversation agent behind Assist (local or API) —
   later. Watch Pi RAM once whisper joins Chromium; zram or a second box are the outs.

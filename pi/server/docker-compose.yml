@@ -16,6 +16,9 @@ services:
       - ./homeassistant:/config
       - /etc/localtime:/etc/localtime:ro
       - /run/dbus:/run/dbus:ro  # Bluetooth adapters (future) — harmless if absent
+    cap_add:                    # full (non-degraded) Bluetooth adapter access
+      - NET_ADMIN
+      - NET_RAW
     restart: unless-stopped
 
   matter-server:
