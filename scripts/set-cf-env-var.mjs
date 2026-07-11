@@ -10,8 +10,9 @@
 //
 // Token needs: Account · Cloudflare Pages · Edit scope.
 
-const [, , key, value] = process.argv;
-if (!key || value === undefined) { console.error('usage: set-cf-env-var.mjs KEY VALUE'); process.exit(1); }
+const [, , key, value, ...flags] = process.argv;
+if (!key || value === undefined) { console.error('usage: set-cf-env-var.mjs KEY VALUE [--secret]'); process.exit(1); }
+const type = flags.includes('--secret') ? 'secret_text' : 'plain_text';
 
 const { CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_PAGES_PROJECT } = process.env;
 for (const [k, v] of Object.entries({ CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_PAGES_PROJECT })) {
@@ -28,10 +29,10 @@ const project = (await getRes.json()).result;
 const update = {};
 for (const envName of ['production', 'preview']) {
   const existing = project?.deployment_configs?.[envName]?.env_vars || {};
-  update[envName] = { env_vars: { ...existing, [key]: { type: 'plain_text', value } } };
+  update[envName] = { env_vars: { ...existing, [key]: { type, value } } };
 }
 
 const body = { deployment_configs: update };
 const patchRes = await fetch(base, { method: 'PATCH', headers, body: JSON.stringify(body) });
 if (!patchRes.ok) { console.error(`PATCH failed ${patchRes.status}: ${await patchRes.text()}`); process.exit(1); }
-console.log(`OK. Set ${key} on production + preview. Trigger a redeploy for it to bind.`);
+console.log(`OK. Set ${key} (${type}) on production + preview. Trigger a redeploy for it to bind.`);

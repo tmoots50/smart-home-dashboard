@@ -1,7 +1,5 @@
-// Voice path to Hermes: the mic button deep-links into the Telegram app on
-// the tablet, opening the @mootsfambot chat, where holding the mic records a
-// voice note. Hermes has server-side STT (Whisper), so a voice note IS a
-// message to the agent — no dashboard-side audio plumbing needed.
+// Fallback voice path to Hermes. A normal mic tap now stays in the dashboard;
+// a ~600ms long-press (or an error-state button) opens the real Telegram chat.
 //
 // Requirements on the tablet (one-time, documented in docs/install.md):
 //   1. Telegram installed + signed in as Tim (Hermes ignores unknown senders).

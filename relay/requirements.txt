@@ -1,0 +1,4 @@
+aiohttp==3.12.15
+Telethon==1.40.0
+pytest==8.4.1
+

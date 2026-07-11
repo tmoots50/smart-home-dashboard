@@ -17,6 +17,16 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 
 - **✅ KV namespaces bound (2026-07-08, automated via API token).** Both created + bound to Production **and** Preview: `CURATED` → `smart-home-dashboard-curated` (`baf2a2d5c09a45548af3ea07f09b2f81`) and `HOME_DEVICES` → `smart-home-dashboard-home_devices` (`0604585a58d44b8d97c8313f0cdaf2f2`). Done by widening the CF API token to `Workers KV Storage: Edit` (+ existing `Pages: Edit`) and running `source .envrc.local && node scripts/bind-kv.mjs CURATED && node scripts/bind-kv.mjs HOME_DEVICES` — idempotent, additive (14 Pages env vars preserved). **Activation:** bindings only take effect on the *next deployment* — the `api/curated.js` / `api/home/devices.js` code was already shipped in `6a4b337`, so any push activates them. Redeployed 2026-07-09; end-to-end test: `hermes cron run curate-dashboard` on the Old Mac → blob in KV → live on the dashboard.
 - **Tablet one-time settings (Fully Kiosk + Telegram).** Scroll + mic features need tablet-side toggles — full steps in [`docs/tablet-kiosk-setup.md`](./docs/tablet-kiosk-setup.md).
+- **Activate Spotify + voice infrastructure.** Local implementation is complete.
+  Remaining hands-on gates: Spotify protected-content smoke test/token mint;
+  domain + registrar/Cloudflare zone; Workers plan; Fully Kiosk PLUS; Telegram
+  API credential + old-Mac user-session login; Workers AI binding; tunnel; and
+  on-wall failure drills. Runbooks: `docs/spotify-setup.md` and
+  `docs/voice-command-flow.md`.
+- **Calendar a Spotify token reauthorization.** Developer Dashboard refresh
+  tokens now expire six months after consent and refreshing does not extend the
+  lifetime. Add a reminder when the first production token is minted; runbook is
+  `docs/spotify-setup.md` §6.
 - **Seed `reference/household/entertainment-taste.md`** in the Hermes vault (else Atlanta Picks stay generic). Hermes can draft it — say "draft our entertainment taste profile" on Telegram and confirm.
 - **Caroline + Apple Notes divergence.** Since the 2026-07-08 SoR cutover, Telegram captures land in Google Tasks (shared with the dashboard). If Caroline still edits the legacy Apple Notes directly, her items diverge silently. One conversation + optionally "Hermes, migrate the old Apple groceries" (item-by-item, curated — see `hermes-setup/_context/tasks-migration-diff.md`).
 
@@ -47,7 +57,10 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 - **Monarch Money button → Monarch view.** `?theme=light` shows a `$` button in the action bar (replaces phone). Stubbed alert. Real wiring: open Monarch in the same kiosk window or a focused overlay; show $ goals.
 
 - **USB lavalier mic + Whisper.cpp on the Pi.** ~$30 hardware, one weekend of wiring. Closes the "I'd add this to a chore list but only my phone can type" loop — turns the wall from a display into a capture surface. Pairs with the Claude / OpenClaw integration the spec already anticipates. *Source: `_audits/2026-04-29-ui-audit.md`.*
-- **Voice commands via wall mic** (broader than the lavalier idea — full conversational interface). *Migrated from `todo.md`.*
+- **Voice refinements after real use.** Silence-based auto-stop/VAD; Cloudflare
+  Access in front of relay health/command paths; Caroline's separately
+  authorized voice/persona; optional client-side WAV encoding only if Workers AI
+  rejects the tablet's real webm/opus output.
 - **Motion-sensor wake/sleep** to extend monitor lifespan and reduce midnight glow. *Migrated from `todo.md`.* **Important: PIR (passive infrared), NOT camera-based.** Fully Kiosk Plus offers camera-based motion via the tablet's front cam; rejected 2026-05-06 because the dashboard mounts in a bathroom — a camera there is a non-starter regardless of on-device-only claims (future Fully bugs, Caroline's comfort, family/guest perception). Real implementation: external PIR sensor (ESP32 + HC-SR501, Aqara wireless, or similar) wired to hit an HTTP endpoint that toggles brightness. v1 fallback: schedule-based dimming via Fully's daily schedule (bright 06:30 → dim 22:00).
 - **Display upgrade to Elo 1502L FHD 15.6"** (commercial-grade, 5–7yr humid-bathroom lifespan) if the family loves the v1 build. *Migrated from `todo.md`.*
 - **Smart-home control surface** — lights, thermostat, locks — once Home Assistant joins the stack. *Migrated from `todo.md`.*

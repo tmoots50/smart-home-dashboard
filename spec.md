@@ -33,6 +33,12 @@ A wall-mounted smart home dashboard for my family home. A 15.6" portrait-orienta
 - Morning briefing view shows time/date/weather, today's calendar, family todos, a rotating photo, an occasional message from Tim, and curated headlines
 - At least two custom-built widgets (vs. off-the-shelf) running on it
 - Aesthetic clears wife's décor bar — editorial-magazine restraint, no hobbyist-gadget look
+- Music stays in context: a bottom now-playing ticker and an in-dashboard Spotify
+  drawer browse/play on the tablet or control another Connect device without
+  discarding the briefing.
+- Voice stays in context: tap mic, record, confirm the transcript, and see
+  Hermes's reply on the kiosk while the real Telegram thread remains the system
+  of record. A long press opens Telegram as the fallback.
 
 ### Portfolio
 - Public GitHub repo with a strong README, screenshots, and a demo video
@@ -215,7 +221,8 @@ It has to look like a piece of décor, not a hobbyist gadget. Editorial-magazine
 
 ### Future expansion (post-v1, in rough order)
 
-- **Voice commands** via a wall-mounted microphone — "Claude, add eggs to the grocery list," "Claude, what's on my calendar?"
+- **Voice command refinements** — silence auto-stop, Cloudflare Access, and a
+  separately authorized Caroline voice/persona path. The core in-kiosk flow is built.
 - **Motion-sensor wake/sleep** to extend monitor lifespan
 - **Display upgrade** to commercial-grade Elo 1502L if the family loves the dashboard
 - **Smart-home control surface** — lights, thermostat, locks — once Home Assistant joins the stack

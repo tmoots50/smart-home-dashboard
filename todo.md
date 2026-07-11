@@ -127,5 +127,28 @@ Scope expanded: Aqara U100 lock + smart plugs (in Aqara Home + Apple HomeKit). D
 
 ---
 
+## Phase 14 — Spotify in the kiosk *(implementation complete 2026-07-10)*
+- [x] OAuth mint helper + setup runbook with complete Web Playback SDK scopes
+- [x] Cloudflare player proxy, controls, playlists, search, queue, add-to-playlist, transfer, and short-lived SDK token routes
+- [x] Mock-first bottom ticker: local progress, adaptive polling, visibility lifecycle, controls, inactive collapse
+- [x] In-dashboard playlist/search drawer + Web Playback SDK + Connect-device fallback
+- [x] Unit tests, fixture harness entries, and device QA specs
+- [ ] Tim: protected-content/WebView smoke test on the Meswao tablet
+- [ ] Tim: create Spotify app, mint token, set Cloudflare variables, and flip `VITE_SPOTIFY_LIVE=1`
+- [ ] Run the eight on-wall acceptance checks in `docs/spotify-setup.md`
+
+## Phase 15 — In-kiosk voice to Hermes *(implementation complete 2026-07-10)*
+- [x] Mock-first recording/transcript/countdown/reply overlay + long-press Telegram fallback
+- [x] Workers AI Whisper endpoint with 1MB guard, chunked base64, and model fallback chain
+- [x] Held `/api/voice/send` relay proxy with timeout/rate/failure mapping
+- [x] Localhost-only Telethon/aiohttp relay with fixed peer, constant-time auth, token bucket, one in-flight command, and progress-message quiescence
+- [x] LaunchAgent, deploy/smoke scripts, tunnel example, security/runbook docs, fixtures, unit and QA specs
+- [ ] Tim: provide domain + registrar; confirm Cloudflare plan and Fully Kiosk PLUS
+- [ ] Tim: store Telegram API credentials locally and authorize the user session on the old Mac
+- [ ] Bind Workers AI, create the Cloudflare tunnel, set server variables, and flip `VITE_VOICE_LIVE=1`
+- [ ] Verify real tablet webm/opus transcription before polish; complete the six failure drills and 48-hour session check
+
+---
+
 ## Future / parking lot
 *Migrated to [`followups.md`](./followups.md). Feature backlog, ideas, limitations, and parking-lot items live there now. This section kept as a pointer.*

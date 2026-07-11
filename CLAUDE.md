@@ -45,6 +45,10 @@ That one command stages all changes, commits with the given message, and pushes 
 
 ## Conventions
 - **Mock data first.** Every widget gets a mock-data adapter in `app/src/lib/` before touching real APIs. Real-data wiring is a swap, not a rewrite.
+- **Kiosk interactions stay in context.** Use modals/drawers over the dashboard;
+  never navigate away and discard the family's place. A full-page view is
+  acceptable only as an explicit v1 stepping stone with a named in-context
+  iteration already on the plan (for example Spotify web player → drawer).
 - **Tests co-located with code.** `widgets/clock.test.js` next to `widgets/clock.js`. No top-level `tests/` folder.
 - **Conventional commits.** `feat:`, `fix:`, `chore:`, `docs:`. Trunk-based — straight to `main`.
 - **Node 22 LTS** on both laptop and Pi.

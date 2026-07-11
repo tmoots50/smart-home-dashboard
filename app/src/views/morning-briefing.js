@@ -10,10 +10,15 @@ import { mountCardPhoto } from '../widgets/card-photo.js';
 import { openHomeOverlay } from '../widgets/home.js';
 import { openCalendarOverlay } from '../widgets/calendar-overlay.js';
 import { mountHomeCard } from '../widgets/home-card.js';
+import { mountSpotifyTicker } from '../widgets/spotify-ticker.js';
+import { openSpotifyDrawer } from '../widgets/spotify-drawer.js';
+import { openVoiceOverlay } from '../widgets/voice-overlay.js';
 
 import { getHome, actions as homeActions, deviceActions, isConfigured as homeConfigured } from '../lib/home.js';
 import { getUpcoming } from '../lib/calendar.js';
 import { openHermesChat } from '../lib/telegram.js';
+import { fetchPlayer, controls as spotifyControls } from '../lib/spotify.js';
+import { voice } from '../lib/voice.js';
 
 import { getMockBibleVerse } from '../lib/bible-mock.js';
 import { getPhotos } from '../lib/photos.js';
@@ -33,7 +38,6 @@ const PHONE_SVG = `<svg ${SVG_ATTRS}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79
 const MONEY_SVG = `<svg ${SVG_ATTRS}><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`;
 
 const LAUNCH_STUBS = {
-  music: 'Music view not built yet.',
   phone: 'Phone-call hand-off not wired yet.',
   money: 'Monarch Money view not built yet.',
 };
@@ -91,6 +95,7 @@ export function renderMorningBriefing(root) {
         </div>
       </section>
     </main>
+    <aside class="spotify-ticker" data-slot="spotify-ticker" hidden aria-label="Now playing"></aside>
   `;
 
   mountClock(root.querySelector('[data-slot="clock"]'));
@@ -113,6 +118,27 @@ export function renderMorningBriefing(root) {
 
   mountCardPhoto(root.querySelector('[data-slot="photo"]'), photos);
   mountHomeCard(root.querySelector('[data-slot="home-card"]'), getHome, homeActions, deviceActions, { askEntityId: homeConfigured });
+  mountSpotifyTicker(root.querySelector('[data-slot="spotify-ticker"]'), {
+    getPlayer: fetchPlayer,
+    controls: spotifyControls,
+    onOpen: () => openSpotifyDrawer(),
+  });
+
+  let micLongPressed = false;
+  let micHoldTimer = null;
+  root.addEventListener('pointerdown', (event) => {
+    if (!event.target.closest('[data-launch="mic"]')) return;
+    micLongPressed = false;
+    clearTimeout(micHoldTimer);
+    micHoldTimer = setTimeout(() => {
+      micLongPressed = true;
+      showToast('Opening the Telegram fallback', { duration: 2500 });
+      openHermesChat();
+    }, 600);
+  });
+  for (const eventName of ['pointerup', 'pointercancel', 'pointerleave']) {
+    root.addEventListener(eventName, () => clearTimeout(micHoldTimer));
+  }
 
   root.addEventListener('click', (e) => {
     const launch = e.target.closest('[data-launch]')?.dataset.launch;
@@ -121,8 +147,16 @@ export function renderMorningBriefing(root) {
       return;
     }
     if (launch === 'mic') {
-      showToast('Opening Telegram — hold the mic to talk to Hermes', { duration: 4000 });
-      openHermesChat();
+      if (micLongPressed) { micLongPressed = false; return; }
+      if (voice.isSupported()) openVoiceOverlay(voice);
+      else {
+        showToast('Microphone unavailable — opening Telegram', { duration: 3500 });
+        openHermesChat();
+      }
+      return;
+    }
+    if (launch === 'music') {
+      window.open('spotify:', '_blank');
       return;
     }
     if (launch && LAUNCH_STUBS[launch]) {

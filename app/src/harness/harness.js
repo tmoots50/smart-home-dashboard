@@ -27,6 +27,12 @@ import { states as pickStates } from '../widgets/pick.fixtures.js';
 import { states as countdownStates } from '../widgets/countdown.fixtures.js';
 import { states as todosStates } from '../widgets/todos.fixtures.js';
 import { states as groceriesStates } from '../widgets/groceries.fixtures.js';
+import { renderSpotifyTicker } from '../widgets/spotify-ticker.js';
+import { states as spotifyTickerStates } from '../widgets/spotify-ticker.fixtures.js';
+import { renderSpotifyDrawer } from '../widgets/spotify-drawer.js';
+import { states as spotifyDrawerStates } from '../widgets/spotify-drawer.fixtures.js';
+import { renderVoiceOverlay } from '../widgets/voice-overlay.js';
+import { states as voiceOverlayStates } from '../widgets/voice-overlay.fixtures.js';
 
 const WIDGETS = {
   calendar: {
@@ -98,6 +104,31 @@ const WIDGETS = {
       mountGroceries(root.querySelector('[data-slot="groceries"]'), fixture, {
         append: async () => {}, strike: async () => {}, move: async () => {}, update: async () => {}, setDone: async () => {},
       });
+    },
+  },
+
+  'spotify-ticker': {
+    states: spotifyTickerStates,
+    mount(root, fixture) {
+      root.innerHTML = `<main class="briefing"></main><aside class="spotify-ticker" aria-label="Now playing">${renderSpotifyTicker(fixture)}</aside>`;
+      root.querySelector('.spotify-ticker').hidden = !fixture.active;
+      document.body.classList.toggle('has-spotify-ticker', Boolean(fixture.active));
+    },
+  },
+
+  'spotify-drawer': {
+    states: spotifyDrawerStates,
+    mount(root, fixture) {
+      root.innerHTML = `<main class="briefing"></main><div class="overlay spotify-overlay">${renderSpotifyDrawer(fixture)}</div>`;
+      document.documentElement.classList.add('has-overlay');
+    },
+  },
+
+  'voice-overlay': {
+    states: voiceOverlayStates,
+    mount(root, fixture) {
+      root.innerHTML = `<main class="briefing"></main><div class="overlay voice-overlay-host">${renderVoiceOverlay(fixture)}</div>`;
+      document.documentElement.classList.add('has-overlay');
     },
   },
 };

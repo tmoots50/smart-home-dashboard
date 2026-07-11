@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>ai.hermes.relay</string>
+  <key>ProgramArguments</key><array>
+    <string>__HOME__/.hermes-relay/venv/bin/python</string>
+    <string>__HOME__/.hermes-relay/app/relay.py</string>
+  </array>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>WorkingDirectory</key><string>__HOME__/.hermes-relay/app</string>
+  <key>StandardOutPath</key><string>__HOME__/.hermes-relay/logs/relay.log</string>
+  <key>StandardErrorPath</key><string>__HOME__/.hermes-relay/logs/relay-error.log</string>
+</dict></plist>
+
