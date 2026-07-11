@@ -96,8 +96,17 @@ decision from Tim. Check items off as they land.
       `curl -X POST https://smart-home-dashboard-de0.pages.dev/api/comingup \
         -H "authorization: Bearer $DASHBOARD_TOKEN" -H "content-type: application/json" \
         -d '{"overrides":[{"match":"water hanging","hide":true},{"match":"St George Island","score":900}]}'`
-      → needs a small `dash-comingup` helper + prompt note on the Old Mac (hermes-setup
-      repo) so Tim can say "move X up" in Telegram. Tracked in followups.md.
+      → DONE same day: `dash-comingup {current|publish|clear}` + `adjust-comingup`
+      skill deployed to the Old Mac, round-trip smoke-tested (hermes-setup c2c7956).
+
+## Round 3 (same day — live-wall review #2 + follow-on asks)
+- [x] Coming Up rows tap → shared event-detail modal (check still completes,
+      swipe still dismisses).
+- [x] Next-4-weeks pane: nothing sooner than 3 days out, and nothing the Family
+      Calendar card already shows (first CARD_MAX_PER_COLUMN=6 per person —
+      shared constant, so the two widgets can't drift apart).
+- [x] Spotify ticker unmounted from the briefing (widget/harness kept for later).
+- [x] dash-comingup wired end-to-end on the Old Mac (see Round 2 item above).
 
 ## Decisions log
 - Left pane kept CHRONOLOGICAL (agenda scanning), right pane importance-ordered —

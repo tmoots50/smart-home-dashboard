@@ -40,15 +40,14 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 ## Feature backlog — medium priority
 *(post-v1, but architecturally directional — informs how v1 should be structured so they're easy to add)*
 
-- **Hermes Coming-Up override skill on the Old Mac (2026-07-11, dashboard side DONE).**
-  Tim's decision: keep the deterministic rules engine, but he'll ad-hoc tell Hermes to
-  adjust ordering. Dashboard side shipped: `GET/POST /api/comingup` (bearer auth)
-  stores `{match, score?, pane?, hide?}` overrides in the CURATED KV namespace under
-  `comingup-overrides`; the widget merges them every refresh (hide / reorder / force
-  pane; `match` = title substring or event id). REMAINING (hermes-setup repo, ~30 min):
-  a `dash-comingup` helper mirroring `dash-curated` (POST the overrides doc; support
-  `--clear`) + a prompt/skill note so "move the flight up / hide the watering" maps to
-  an override write. Contract + curl example in `_audits/2026-07-11-design-feedback.md`.
+- **✅ Hermes Coming-Up override channel (2026-07-11, BOTH sides done).** Rules engine
+  stays the baseline order; Tim ad-hoc adjusts through Hermes. Dashboard: `GET/POST
+  /api/comingup` (bearer) stores `{match, score?, pane?, hide?}` in the CURATED KV
+  namespace (`comingup-overrides`); widget merges every refresh (≤5 min). Old Mac:
+  `~/.hermes/bin/dash-comingup {current|publish|clear}` + the `adjust-comingup` skill
+  + an AGENTS.md capture-table row ("hide the watering from coming up" → read-merge-
+  publish). Deployed, round-trip smoke-tested, gateway restarted, static smoke 12/12
+  (hermes-setup `c2c7956`). Voice-test whenever: "Hermes, hide X from coming up."
 - **Atlanta Picks: bring back later (2026-07-11).** Unmounted from the briefing on
   Tim's request; `widgets/pick.js`, the curated KV feed, harness entry, and QA spec
   all remain live. Re-mounting is one line in `views/morning-briefing.js` — decide
