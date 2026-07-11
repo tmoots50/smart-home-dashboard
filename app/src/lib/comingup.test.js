@@ -114,3 +114,46 @@ describe('rankComingUp', () => {
     expect(left[0].days).toBe(5);
   });
 });
+
+describe('rankComingUp overrides (the Hermes hand)', () => {
+  const items = [
+    ev({ title: 'Lunch with Sarah', startsAt: '2026-07-20T12:00:00' }),      // left window
+    ev({ title: 'Flight to Denver', startsAt: '2026-10-01T08:00:00' }),      // right, travel 100
+    ev({ title: 'Narvar offsite', startsAt: '2026-09-10T09:00:00' }),        // right, offsite 90
+    ev({ title: 'Dinner with the Fregos', startsAt: '2026-09-01T18:00:00' }),// nowhere (not planning)
+  ];
+
+  it('hide drops the event everywhere', () => {
+    const { left } = rankComingUp(items, { now: NOW, overrides: [{ match: 'lunch with sarah', hide: true }] });
+    expect(left.map(i => i.name)).not.toContain('Lunch with Sarah');
+  });
+
+  it('score reorders the plan-ahead pane', () => {
+    const { right } = rankComingUp(items, { now: NOW, overrides: [{ match: 'Narvar', score: 500 }] });
+    expect(right[0].name).toBe('Narvar offsite');
+  });
+
+  it('scored left items float above the chronological agenda', () => {
+    const { left } = rankComingUp([
+      ev({ title: 'Early thing', startsAt: '2026-07-20T09:00:00' }),
+      ev({ title: 'Late thing', startsAt: '2026-08-01T09:00:00' }),
+    ], { now: NOW, overrides: [{ match: 'Late thing', score: 10 }] });
+    expect(left.map(i => i.name)).toEqual(['Late thing', 'Early thing']);
+  });
+
+  it('pane forces placement past the window rules, no dupes', () => {
+    const { left, right } = rankComingUp(items, {
+      now: NOW,
+      overrides: [{ match: 'Dinner with the Fregos', pane: 'right', score: 1 }, { match: 'Flight to Denver', pane: 'left' }],
+    });
+    expect(right.map(i => i.name)).toContain('Dinner with the Fregos');
+    expect(left.map(i => i.name)).toContain('Flight to Denver');
+    expect(right.map(i => i.name)).not.toContain('Flight to Denver');
+  });
+
+  it('matches by exact id as well as title substring', () => {
+    const flagged = ev({ id: 'evt-42', title: 'Mystery block', startsAt: '2026-07-21T10:00:00' });
+    const { left } = rankComingUp([flagged], { now: NOW, overrides: [{ match: 'evt-42', hide: true }] });
+    expect(left).toEqual([]);
+  });
+});

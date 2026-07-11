@@ -98,7 +98,11 @@ const WIDGETS = {
       localStorage.removeItem('coming-up:dismissed:v1');
       // Mirrors morning-briefing.js: Coming Up owns the full-width updates row.
       root.innerHTML = `<main class="briefing"><section class="card briefing__updates" data-slot="countdown"></section></main>`;
-      mountComingUp(root.querySelector('[data-slot="countdown"]'), { initial: fixture, live: Promise.resolve(fixture) });
+      mountComingUp(
+        root.querySelector('[data-slot="countdown"]'),
+        { initial: fixture, live: Promise.resolve(fixture) },
+        { initial: [], live: Promise.resolve(null) }, // no Hermes overrides in fixtures
+      );
     },
   },
 

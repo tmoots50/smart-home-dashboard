@@ -80,6 +80,25 @@ decision from Tim. Check items off as they land.
    a relay round-trip cached in KV (refreshed a few times/day) — synchronous calls per
    render are too slow/rate-limited (6/min, 20s cap). Green-light the KV+cron follow-up?
 
+## Round 2 (same day, from Tim's live-wall photo + answers)
+- [x] **Flavor decision: `stacked` confirmed as default** (was already shipped).
+- [x] **Fam Cal column misalignment fixed** — long unbroken location text inflated the
+      Family column's 1fr track (stacked rows lost the min-width chain). Now
+      `repeat(3, minmax(0,1fr))` + `min-width:0` on columns: addresses truncate,
+      columns stay equal.
+- [x] **Location details removed from Coming Up rows** — one-line rows; that depth
+      lives in the calendar card / event detail.
+- [x] **Hermes ordering = rules engine + ad-hoc override channel** (Tim's pick):
+      `GET/POST /api/comingup` stores `{match, score?, pane?, hide?}` overrides in the
+      CURATED KV namespace (key `comingup-overrides`, no new binding). Widget merges
+      them into `rankComingUp()` on each refresh (≤5 min; hide / reorder / force-pane).
+      Hermes-side skill: POST with the dashboard bearer token, e.g.
+      `curl -X POST https://smart-home-dashboard-de0.pages.dev/api/comingup \
+        -H "authorization: Bearer $DASHBOARD_TOKEN" -H "content-type: application/json" \
+        -d '{"overrides":[{"match":"water hanging","hide":true},{"match":"St George Island","score":900}]}'`
+      → needs a small `dash-comingup` helper + prompt note on the Old Mac (hermes-setup
+      repo) so Tim can say "move X up" in Telegram. Tracked in followups.md.
+
 ## Decisions log
 - Left pane kept CHRONOLOGICAL (agenda scanning), right pane importance-ordered —
   reading of "order by importance" as governing the plan-ahead list. Flag if wrong.

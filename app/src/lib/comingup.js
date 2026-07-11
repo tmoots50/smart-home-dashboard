@@ -12,10 +12,10 @@
 //   birthday | mabel | travel | recurring
 //
 // This module is the "Hermes seam": rankComingUp() is the single pure
-// function that decides membership and order. When Hermes starts making
-// these calls for real (relay → KV-cached ranking), its output replaces or
-// re-orders what this deterministic pass produces — the widget doesn't care
-// who ranked, it just renders {left, right}.
+// function that decides membership and order. Hermes adjusts it ad-hoc via
+// /api/comingup overrides ({match, score?, pane?, hide?}) — Tim tells Hermes
+// "move the flight up / hide the watering", Hermes POSTs, the widget merges
+// on its next refresh. Baseline order stays deterministic.
 
 const DAY_MS = 86_400_000;
 
@@ -48,7 +48,7 @@ const SCORE = {
   recurring: 30,
 };
 
-export function rankComingUp(events, { now = new Date() } = {}) {
+export function rankComingUp(events, { now = new Date(), overrides = [] } = {}) {
   const today = dayStart(now);
   const wkEnd = weekEnd(now);
   const leftEnd = addDays(wkEnd, LEFT_WINDOW_DAYS);
@@ -58,6 +58,8 @@ export function rankComingUp(events, { now = new Date() } = {}) {
     .map(normalizeItem)
     .filter(it => it.startsAt)
     .map(it => classify(it))
+    .map(it => applyOverride(it, overrides))
+    .filter(it => !it.hidden)
     .map(it => ({ ...it, day: dayStart(parseLocalDate(it.startsAt)) }))
     .filter(it => it.day >= today)
     .map(it => ({ ...it, days: Math.round((it.day - today) / DAY_MS) }))
@@ -65,15 +67,44 @@ export function rankComingUp(events, { now = new Date() } = {}) {
 
   // Left: chronological agenda. Repeating series show once (their first
   // occurrence) — five "Water planters" rows is noise, not information.
-  const left = dedupeByTitle(enriched.filter(it => it.day >= wkEnd && it.day < leftEnd));
+  // Hermes-scored items float to the top (score desc), the rest stay
+  // chronological; a forced pane wins over the window rules.
+  const left = dedupeByTitle(enriched.filter(it =>
+    it.pane === 'left' ||
+    (it.pane !== 'right' && it.day >= wkEnd && it.day < leftEnd),
+  )).sort((a, b) => (byScored(a, b)) || (a.day - b.day));
 
   const leftKeys = new Set(left.map(it => it.key));
   const right = dedupeByTitle(
     enriched.filter(it =>
-      it.day < rightEnd && it.needsPlanning && !leftKeys.has(it.key)),
+      !leftKeys.has(it.key) &&
+      (it.pane === 'right' || (it.pane !== 'left' && it.day < rightEnd && it.needsPlanning))),
   ).sort((a, b) => (b.score - a.score) || (a.day - b.day));
 
   return { left, right };
+}
+
+// Merge the first matching /api/comingup override into one classified item.
+// match = case-insensitive title substring, or the exact id/key.
+function applyOverride(it, overrides) {
+  for (const o of overrides ?? []) {
+    const m = String(o?.match ?? '');
+    if (!m) continue;
+    const hit = it.key === m || String(it.id ?? '') === m ||
+      it.name.toLowerCase().includes(m.toLowerCase());
+    if (!hit) continue;
+    const out = { ...it };
+    if (o.hide) out.hidden = true;
+    if (typeof o.score === 'number') { out.score = o.score; out.scored = true; }
+    if (o.pane === 'left' || o.pane === 'right') out.pane = o.pane;
+    return out;
+  }
+  return it;
+}
+
+function byScored(a, b) {
+  if (a.scored && b.scored) return b.score - a.score;
+  return (b.scored ? 1 : 0) - (a.scored ? 1 : 0);
 }
 
 // Tag one event with category, planning-need, and importance score.

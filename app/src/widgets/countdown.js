@@ -6,8 +6,9 @@
 //                           big-effort), importance-ordered, no dupes of left
 //
 // Rows are compact on purpose (≥4 visible per pane): one line of title +
-// countdown/date, location wrapping underneath only when present. Category
-// colors (birthday / recurring / Mabel / travel) ride the row's left edge.
+// countdown/date. No location details here (Tim, 2026-07-11) — that depth
+// lives in the calendar card / event detail. Category colors (birthday /
+// recurring / Mabel / travel) ride the row's left edge.
 //
 // Two distinct gestures, unchanged from the single-pane version: tapping the
 // check marks an item done (strikethrough, clears after a short linger — tap
@@ -16,6 +17,7 @@
 
 import { getUpcoming, fetchUpcoming } from '../lib/calendar.js';
 import { rankComingUp, parseLocalDate } from '../lib/comingup.js';
+import { getOverrides, fetchOverrides } from '../lib/comingup-overrides.js';
 import { showToast } from './toast.js';
 
 const REFRESH_MS = 5 * 60 * 1000;
@@ -29,8 +31,8 @@ const CATEGORY_LEGEND = [
   ['travel', 'Travel'],
 ];
 
-export function renderCountdown(items, now = new Date(), dismissed = new Set(), completing = new Set()) {
-  const { left, right } = rankComingUp(items, { now });
+export function renderCountdown(items, now = new Date(), dismissed = new Set(), completing = new Set(), overrides = []) {
+  const { left, right } = rankComingUp(items, { now, overrides });
   const visible = (list) => list.filter(it => !dismissed.has(it.key));
   const panes = [
     { label: 'Next 4 weeks', items: visible(left), empty: 'Nothing on the horizon.' },
@@ -75,17 +77,17 @@ function renderItem(it, completing) {
             <span class="countdown__date">${formatAbsolute(it.startsAt)}</span>
           </span>
         </div>
-        ${it.sub ? `<div class="countdown__sub">${escapeHtml(it.sub)}</div>` : ''}
       </div>
     </li>
   `;
 }
 
-export function mountComingUp(el, source = getUpcoming(90)) {
+export function mountComingUp(el, source = getUpcoming(90), overridesSource = getOverrides()) {
   let items = source.initial ?? [];
+  let overrides = overridesSource.initial ?? [];
   const dismissed = readDismissed();
   const completing = new Map(); // key → linger timer id
-  const draw = () => { el.innerHTML = renderCountdown(items, new Date(), dismissed, new Set(completing.keys())); };
+  const draw = () => { el.innerHTML = renderCountdown(items, new Date(), dismissed, new Set(completing.keys()), overrides); };
 
   const complete = (row) => {
     const key = row?.dataset.eventId;
@@ -142,8 +144,10 @@ export function mountComingUp(el, source = getUpcoming(90)) {
 
   draw();
   source.live.then(next => { if (next) { items = next; draw(); } });
+  overridesSource.live?.then(next => { if (next) { overrides = next; draw(); } });
   const id = setInterval(() => {
     fetchUpcoming(90).then(next => { items = next; draw(); }).catch(() => {});
+    fetchOverrides().then(next => { overrides = next; draw(); }).catch(() => {});
   }, REFRESH_MS);
   return () => {
     clearInterval(id);

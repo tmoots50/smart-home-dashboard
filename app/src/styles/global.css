@@ -1342,19 +1342,19 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   font-size: 0.72rem;
   letter-spacing: 0.04em;
 }
-.countdown__sub {
-  color: var(--color-muted);
-  font-size: 0.78rem;
-  overflow-wrap: anywhere; /* location details wrap, never clip */
-}
 
 /* ───── calendar (full-width, one column per person) ───── */
 .calendar__grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* minmax(0,1fr) + min-width:0 children: long unbroken text (a full street
+     address in a row's sub line) must TRUNCATE, never inflate its column —
+     unequal columns shipped 2026-07-11 when the stacked rows lost the
+     min-width chain. */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
   margin-top: var(--space-2);
 }
+.calendar__grid > * { min-width: 0; }
 .calendar__column + .calendar__column {
   border-left: 1px solid var(--color-border);
   padding-left: var(--space-2);

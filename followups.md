@@ -40,14 +40,15 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 ## Feature backlog — medium priority
 *(post-v1, but architecturally directional — informs how v1 should be structured so they're easy to add)*
 
-- **Hermes live ranking for Coming Up (2026-07-11).** The two-pane Coming-Up card
-  orders via the deterministic rules engine in `app/src/lib/comingup.js` (the seam is
-  `rankComingUp()`). Tim's ask was "have Hermes make ordering decisions" — the real
-  wiring is a Hermes cron on the Old Mac that pulls `/api/calendar/upcoming?days=90`,
-  ranks per the rules in `_audits/2026-07-11-design-feedback.md`, and writes the
-  ordered keys to KV (like the curated-picks flow); the widget prefers the KV ranking
-  and falls back to the rules engine. Synchronous relay calls per render are a
-  non-starter (6/min rate limit, 20s cap). Awaiting Tim's green light.
+- **Hermes Coming-Up override skill on the Old Mac (2026-07-11, dashboard side DONE).**
+  Tim's decision: keep the deterministic rules engine, but he'll ad-hoc tell Hermes to
+  adjust ordering. Dashboard side shipped: `GET/POST /api/comingup` (bearer auth)
+  stores `{match, score?, pane?, hide?}` overrides in the CURATED KV namespace under
+  `comingup-overrides`; the widget merges them every refresh (hide / reorder / force
+  pane; `match` = title substring or event id). REMAINING (hermes-setup repo, ~30 min):
+  a `dash-comingup` helper mirroring `dash-curated` (POST the overrides doc; support
+  `--clear`) + a prompt/skill note so "move the flight up / hide the watering" maps to
+  an override write. Contract + curl example in `_audits/2026-07-11-design-feedback.md`.
 - **Atlanta Picks: bring back later (2026-07-11).** Unmounted from the briefing on
   Tim's request; `widgets/pick.js`, the curated KV feed, harness entry, and QA spec
   all remain live. Re-mounting is one line in `views/morning-briefing.js` — decide

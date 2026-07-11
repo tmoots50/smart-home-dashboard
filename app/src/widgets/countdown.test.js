@@ -25,14 +25,29 @@ describe('renderCountdown (two panes)', () => {
     expect(html).not.toContain('This week thing');
   });
 
-  it('renders location but omits the old reminder note', () => {
+  it('omits location details and reminder notes (Tim 2026-07-11: no locations here)', () => {
     const html = renderCountdown(
-      [{ name: 'Mom’s birthday', date: '2026-07-21', sub: 'Atlanta', note: 'Get a card this week' }],
+      [{ name: 'Mom’s birthday', date: '2026-07-21', sub: 'La Belle Buckhead 3535 Peachtree Rd NE', note: 'Get a card this week' }],
       NOW,
     );
-    expect(html).toContain('Atlanta');
-    expect(html).not.toContain('countdown__note');
+    expect(html).toContain('Mom’s birthday');
+    expect(html).not.toContain('Peachtree');
+    expect(html).not.toContain('countdown__sub');
     expect(html).not.toContain('Get a card this week');
+  });
+
+  it('applies Hermes overrides: hide + score reorder', () => {
+    const items = [
+      ev({ title: 'Water Hanging Planters', startsAt: '2026-07-20T20:00:00' }),
+      ev({ title: 'Flight to NYC', startsAt: '2026-09-01T08:00:00' }),
+      ev({ title: 'Narvar offsite', startsAt: '2026-08-20T09:00:00' }),
+    ];
+    const html = renderCountdown(items, NOW, new Set(), new Set(), [
+      { match: 'water hanging', hide: true },
+      { match: 'Narvar offsite', score: 999 },
+    ]);
+    expect(html).not.toContain('Water Hanging Planters');
+    expect(html.indexOf('Narvar offsite')).toBeLessThan(html.indexOf('Flight to NYC'));
   });
 
   it('color-codes categories on the row', () => {
