@@ -18,20 +18,27 @@ python3.11 -m venv ~/.hermes-relay/venv
 cp relay/relay.py ~/.hermes-relay/
 ```
 
-Create `~/.hermes-relay/.env`:
+Run the configuration helper in a private terminal. It prompts for the Telegram
+API ID and API hash, hides the hash while it is entered, and creates or preserves
+a random relay secret:
+
+```bash
+~/.hermes-relay/app/configure.sh
+```
+
+It writes `~/.hermes-relay/.env` with mode `600` in this form:
 
 ```dotenv
 TG_API_ID=12345678
 TG_API_HASH=from-my-telegram-org
-RELAY_SECRET=generate-with-openssl-rand-hex-32
+RELAY_SECRET=generated-by-configure-script
 RELAY_PORT=8787
 BOT_USERNAME=mootsfambot
 SESSION_PATH=/Users/YOU/.hermes-relay/tim.session
 ```
 
 ```bash
-chmod 600 ~/.hermes-relay/.env
-~/.hermes-relay/venv/bin/python relay/relay.py --login
+~/.hermes-relay/venv/bin/python ~/.hermes-relay/app/relay.py --login
 chmod 600 ~/.hermes-relay/*.session*
 ```
 
