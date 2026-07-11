@@ -118,6 +118,12 @@ async function haFetch(env, path, init = {}) {
     headers: {
       authorization: `Bearer ${env.HA_TOKEN}`,
       'content-type': 'application/json',
+      // HA sits behind Cloudflare Access; the service token opens the door
+      // (Access's non_identity policy), then HA's own Bearer auth applies.
+      ...(env.CF_ACCESS_CLIENT_ID && env.CF_ACCESS_CLIENT_SECRET ? {
+        'cf-access-client-id': env.CF_ACCESS_CLIENT_ID,
+        'cf-access-client-secret': env.CF_ACCESS_CLIENT_SECRET,
+      } : {}),
       ...(init.headers || {}),
     },
   });
