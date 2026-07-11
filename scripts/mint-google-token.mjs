@@ -36,14 +36,22 @@ import { spawn } from 'node:child_process';
 // drive.readonly — read-only access to all Drive content (we only fetch the
 //   one configured folder, but Google has no scope narrower than "all read").
 // tasks — read+write access to Google Tasks.
-// calendar.readonly — read-only access to Google Calendar (next-3-hours widget).
+// calendar.events — read+write access to events on all Google Calendars.
+//   calendar.readonly is a strict subset of this; using .events lets Hermes
+//   add, update, and delete events via the dashboard API.
 //
 // (photoslibrary.readonly was dropped 2026-05-06 — Google deprecated it on
 //  2025-03-31 and the API now returns 403 for it. Photos moved to Drive.)
+//
+// IMPORTANT: if you see a 403 "insufficientPermissions" for calendar.events
+// after re-minting, add the scope in Google Cloud Console → Google Auth
+// Platform → Data Access → + Add Scopes, search "calendar", add
+// ".../auth/calendar.events", Update → Save. Then revoke at
+// myaccount.google.com/permissions and re-run this script.
 const SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',
   'https://www.googleapis.com/auth/tasks',
-  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/calendar.events',
 ];
 
 const rl = createInterface({ input, output });

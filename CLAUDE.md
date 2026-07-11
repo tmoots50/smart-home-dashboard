@@ -35,13 +35,20 @@ Provides: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
 not paste tokens into commits or chat history.
 
 ## Shipping changes to pages.dev
-Tim does most testing on the deployed CF Pages URL (`smart-home-dashboard-de0.pages.dev`), not the local dev server. When he says "ship it" / "push it" / "deploy" or asks for a change to be live on pages.dev:
+Tim does most testing on the deployed CF Pages URL (`smart-home-dashboard-de0.pages.dev`), not the local dev server. **Agents ship to production themselves** — Tim does not handle deployment. After making a change:
 
 ```bash
 scripts/ship.sh "feat: short conventional-commit message"
 ```
 
 That one command stages all changes, commits with the given message, and pushes to `main` — CF Pages auto-rebuilds in ~1-2 min. Always pass a meaningful conventional-commit message; the script auto-generates a `wip:` one if omitted, but explicit beats default.
+
+**Agent behavior on `ship.sh` gates:**
+- If `app/` UI code changed: the QA gate runs first. If it fails, fix the failures — don't use `SKIP_QA=1` unless explicitly told to. The visual sign-off is also required: Read the PNG artifacts under `app/tests/qa/artifacts/<profile>/` for every widget you touched, then re-run with `VISUAL_SIGNOFF="checked <widget>: <what you saw>" scripts/ship.sh "…"`.
+- If only `app/functions/` (backend) or non-`app/` files changed: `ship.sh` skips the QA gate and visual sign-off. Just run it.
+- If `app/src/` already has uncommitted changes you didn't touch: commit only your files with `git add <your-files> && git commit -m "…" && git push` to avoid bundling unrelated work-in-progress.
+
+**Tim only intervenes for:** Google OAuth re-auth, CF API token rotation, or anything that requires a browser sign-in to a Google/Cloudflare account.
 
 ## Conventions
 - **Mock data first.** Every widget gets a mock-data adapter in `app/src/lib/` before touching real APIs. Real-data wiring is a swap, not a rewrite.
