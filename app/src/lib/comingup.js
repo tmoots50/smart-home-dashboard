@@ -2,8 +2,11 @@
 // event feed into the widget's two panes:
 //
 //   left  — "Next 4 weeks": everything from the END of the current week
-//           (Sunday 00:00) through +28 days, chronological. This week is
-//           excluded on purpose — it's already on the Family Calendar card.
+//           (Sunday 00:00) through +28 days, chronological. This week, the
+//           next two days, and anything ALREADY VISIBLE on the Family
+//           Calendar card (its first CARD_MAX_PER_COLUMN upcoming events per
+//           person) are excluded — the card owns the near term; this pane
+//           must add information, not repeat it (Tim, 2026-07-11).
 //   right — "Plan ahead": the next 90 days of things that likely need
 //           planning (travel, flights, offsites, anything vague or
 //           big-effort), no dupes with the left pane, ordered by IMPORTANCE.
@@ -21,6 +24,15 @@ const DAY_MS = 86_400_000;
 
 const LEFT_WINDOW_DAYS = 28;
 const RIGHT_WINDOW_DAYS = 90;
+// The left pane never shows anything sooner than this — rows labeled
+// "today"/"tomorrow"/"2 days" belong to the calendar card, not the radar.
+const LEFT_MIN_LEAD_DAYS = 3;
+
+// Mirror of the Family Calendar card's display rule (widgets/calendar.js:
+// MAX_PER_COLUMN over COLUMNS) — an event the card already shows is a dupe
+// here. Keep both constants in sync.
+export const CARD_MAX_PER_COLUMN = 6;
+const CARD_COLUMNS = ['Family', 'Tim', 'Caroline'];
 
 // Signal patterns run against "title sub". Deliberately loose — a false
 // positive colors a row, it doesn't hide anything.
@@ -50,8 +62,8 @@ const SCORE = {
 
 export function rankComingUp(events, { now = new Date(), overrides = [] } = {}) {
   const today = dayStart(now);
-  const wkEnd = weekEnd(now);
-  const leftEnd = addDays(wkEnd, LEFT_WINDOW_DAYS);
+  const leftStart = maxDate(weekEnd(now), addDays(today, LEFT_MIN_LEAD_DAYS));
+  const leftEnd = addDays(weekEnd(now), LEFT_WINDOW_DAYS);
   const rightEnd = addDays(today, RIGHT_WINDOW_DAYS);
 
   const enriched = (events ?? [])
@@ -65,13 +77,15 @@ export function rankComingUp(events, { now = new Date(), overrides = [] } = {}) 
     .map(it => ({ ...it, days: Math.round((it.day - today) / DAY_MS) }))
     .sort((a, b) => (a.day - b.day) || String(a.startsAt).localeCompare(String(b.startsAt)));
 
+  const cardKeys = cardVisibleKeys(enriched, now);
+
   // Left: chronological agenda. Repeating series show once (their first
   // occurrence) — five "Water planters" rows is noise, not information.
   // Hermes-scored items float to the top (score desc), the rest stay
-  // chronological; a forced pane wins over the window rules.
+  // chronological; a forced pane wins over the window AND card-dupe rules.
   const left = dedupeByTitle(enriched.filter(it =>
     it.pane === 'left' ||
-    (it.pane !== 'right' && it.day >= wkEnd && it.day < leftEnd),
+    (it.pane !== 'right' && it.day >= leftStart && it.day < leftEnd && !cardKeys.has(it.key)),
   )).sort((a, b) => (byScored(a, b)) || (a.day - b.day));
 
   const leftKeys = new Set(left.map(it => it.key));
@@ -82,6 +96,26 @@ export function rankComingUp(events, { now = new Date(), overrides = [] } = {}) 
   ).sort((a, b) => (b.score - a.score) || (a.day - b.day));
 
   return { left, right };
+}
+
+// What the Family Calendar card is showing right now: its first
+// CARD_MAX_PER_COLUMN time-ordered future events per household column
+// (mirrors widgets/calendar.js — time-aware, so an event earlier today has
+// already dropped off the card). Anything in this set is a dupe for the
+// left pane.
+function cardVisibleKeys(enriched, now) {
+  const perColumn = new Map(CARD_COLUMNS.map(c => [c, 0]));
+  const keys = new Set();
+  for (const it of enriched) {
+    const col = it.calendar || 'Family';
+    if (!perColumn.has(col)) continue; // calendars the card doesn't show
+    if (parseLocalDate(it.startsAt) < now) continue;
+    const n = perColumn.get(col);
+    if (n >= CARD_MAX_PER_COLUMN) continue;
+    perColumn.set(col, n + 1);
+    keys.add(it.key);
+  }
+  return keys;
 }
 
 // Merge the first matching /api/comingup override into one classified item.
@@ -170,6 +204,10 @@ function addDays(d, n) {
   const x = new Date(d);
   x.setDate(x.getDate() + n);
   return x;
+}
+
+function maxDate(a, b) {
+  return a >= b ? a : b;
 }
 
 function dayStart(d) {

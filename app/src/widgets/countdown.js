@@ -10,14 +10,16 @@
 // lives in the calendar card / event detail. Category colors (birthday /
 // recurring / Mabel / travel) ride the row's left edge.
 //
-// Two distinct gestures, unchanged from the single-pane version: tapping the
-// check marks an item done (strikethrough, clears after a short linger — tap
-// again to undo), swiping left dismisses immediately with an Undo toast.
-// Neither mutates the source Google Calendar event; state is kiosk-local.
+// Three gestures: tapping the check marks an item done (strikethrough,
+// clears after a short linger — tap again to undo), swiping left dismisses
+// immediately with an Undo toast, and tapping the row body opens the shared
+// event-detail panel (same drill-down as the calendar card). Neither check
+// nor swipe mutates the source Google Calendar event; state is kiosk-local.
 
 import { getUpcoming, fetchUpcoming } from '../lib/calendar.js';
 import { rankComingUp, parseLocalDate } from '../lib/comingup.js';
 import { getOverrides, fetchOverrides } from '../lib/comingup-overrides.js';
+import { openEventDetail } from './event-detail.js';
 import { showToast } from './toast.js';
 
 const REFRESH_MS = 5 * 60 * 1000;
@@ -66,8 +68,11 @@ function renderItem(it, completing) {
     it.category ? `countdown__item--${it.category}` : '',
     completing.has(it.key) ? 'countdown__item--done' : '',
   ].filter(Boolean).join(' ');
+  // Row body opens the shared event-detail panel; ensure a `title` exists for
+  // it (legacy countdown items only carry `name`).
+  const evtJson = escapeHtml(JSON.stringify({ ...it, title: it.title ?? it.name }));
   return `
-    <li class="${cls}" data-event-id="${escapeHtml(it.key)}">
+    <li class="${cls}" data-event-id="${escapeHtml(it.key)}" data-event="${evtJson}" role="button" tabindex="0">
       <button class="countdown__check" data-action="complete" aria-label="Mark done: ${escapeHtml(it.name)}"></button>
       <div class="countdown__body">
         <div class="countdown__top">
@@ -130,16 +135,25 @@ export function mountComingUp(el, source = getUpcoming(90), overridesSource = ge
   };
 
   let startX = null;
+  let swiped = false; // a drag is a gesture, not a tap — don't also open detail
   el.addEventListener('pointerdown', e => {
-    if (e.target.closest('.countdown__item')) startX = e.clientX;
+    if (e.target.closest('.countdown__item')) { startX = e.clientX; swiped = false; }
   });
   el.addEventListener('pointerup', e => {
     const row = e.target.closest('.countdown__item');
-    if (row && startX != null && e.clientX - startX < -60) dismiss(row);
+    if (row && startX != null) {
+      const dx = e.clientX - startX;
+      if (Math.abs(dx) > 10) swiped = true;
+      if (dx < -60) dismiss(row);
+    }
     startX = null;
   });
   el.addEventListener('click', e => {
-    if (e.target.closest('[data-action="complete"]')) complete(e.target.closest('.countdown__item'));
+    const row = e.target.closest('.countdown__item');
+    if (!row) return;
+    if (e.target.closest('[data-action="complete"]')) return complete(row);
+    if (swiped) return;
+    try { openEventDetail(JSON.parse(row.dataset.event)); } catch {}
   });
 
   draw();

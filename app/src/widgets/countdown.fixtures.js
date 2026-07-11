@@ -38,8 +38,17 @@ const RIGHT = [
   evt('v1', 'Plan 529 college fund', 75),
 ];
 
-// Same-week noise that must appear in NEITHER pane.
-const THIS_WEEK = [evt('w1', 'This week thing', 1)];
+// Near-term events: they fill the calendar card's six per-person slots (the
+// left pane excludes whatever the card shows) and must appear in NEITHER
+// pane themselves.
+const THIS_WEEK = [
+  evt('w1', 'This week thing', 1),
+  evt('w2', 'Water hanging planters', 0, { hour: 20, recurring: true }),
+  evt('w3', 'Lunch with Mom', 1, { hour: 12 }),
+  evt('w4', 'Water hanging planters', 1, { hour: 20, recurring: true }),
+  evt('w5', 'Stroller walk', 1, { hour: 9 }),
+  evt('w6', 'Trash & recycling out', 1, { hour: 19, recurring: true }),
+];
 
 export const states = {
   empty: [],

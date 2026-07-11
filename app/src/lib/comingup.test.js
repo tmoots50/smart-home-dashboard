@@ -10,6 +10,13 @@ const ev = (over) => normalizeItem({
   calendar: 'Family', title: 'Event', sub: '', allDay: false, ...over,
 });
 
+// Six near-term Family events that occupy the calendar card's six slots
+// (CARD_MAX_PER_COLUMN), so window/dedupe tests exercise the rules on the
+// events they actually target. Mirrors reality: the family calendar is dense
+// in the near term, so the card's slots fill within a day or two.
+const cardFillers = (day = '2026-07-15') => Array.from({ length: 6 }, (_, i) =>
+  ev({ id: `fill-${i}`, title: `Card filler ${i}`, startsAt: `${day}T${String(8 + i).padStart(2, '0')}:00:00` }));
+
 describe('weekEnd', () => {
   it('returns the Sunday after the current Sun–Sat week', () => {
     expect(weekEnd(NOW).toDateString()).toBe(new Date(2026, 6, 19).toDateString());
@@ -58,12 +65,34 @@ describe('classify', () => {
 describe('rankComingUp', () => {
   it('left pane excludes this week, includes the next four, chronological', () => {
     const { left } = rankComingUp([
+      ...cardFillers(),
       ev({ title: 'This week thing', startsAt: '2026-07-17T10:00:00' }),   // Fri this week
       ev({ title: 'Week 2 thing', startsAt: '2026-07-24T10:00:00' }),
       ev({ title: 'Week 1 thing', startsAt: '2026-07-20T10:00:00' }),
       ev({ title: 'Beyond 4 weeks', startsAt: '2026-08-20T10:00:00' }),
     ], { now: NOW });
     expect(left.map(i => i.name)).toEqual(['Week 1 thing', 'Week 2 thing']);
+  });
+
+  it('left pane enforces the 3-day lead even when the new week starts sooner', () => {
+    // Saturday: "not this week" alone would admit tomorrow (Sunday).
+    const SAT = new Date('2026-07-18T07:30:00');
+    const { left } = rankComingUp([
+      ...cardFillers('2026-07-18'),
+      ev({ title: 'Sunday thing', startsAt: '2026-07-19T10:00:00' }),  // +1
+      ev({ title: 'Monday thing', startsAt: '2026-07-20T10:00:00' }),  // +2
+      ev({ title: 'Tuesday thing', startsAt: '2026-07-21T10:00:00' }), // +3 — first eligible
+    ], { now: SAT });
+    expect(left.map(i => i.name)).toEqual(['Tuesday thing']);
+  });
+
+  it('left pane never repeats what the calendar card is showing (first 6 per person)', () => {
+    // Eight in-window Family events: the card shows the first six, so only
+    // the last two belong here.
+    const events = Array.from({ length: 8 }, (_, i) =>
+      ev({ id: `w-${i}`, title: `Window event ${i}`, startsAt: `2026-07-${20 + i}T10:00:00` }));
+    const { left } = rankComingUp(events, { now: NOW });
+    expect(left.map(i => i.name)).toEqual(['Window event 6', 'Window event 7']);
   });
 
   it('right pane keeps only planning-worthy items, ordered by importance', () => {
@@ -78,7 +107,7 @@ describe('rankComingUp', () => {
 
   it('never duplicates a left-pane event on the right', () => {
     const flight = ev({ title: 'Flight to Denver', startsAt: '2026-07-25T08:00:00' }); // in left window
-    const { left, right } = rankComingUp([flight], { now: NOW });
+    const { left, right } = rankComingUp([...cardFillers(), flight], { now: NOW });
     expect(left.map(i => i.name)).toEqual(['Flight to Denver']);
     expect(right).toEqual([]);
   });
@@ -92,6 +121,7 @@ describe('rankComingUp', () => {
 
   it('collapses repeating series to their first occurrence', () => {
     const { left } = rankComingUp([
+      ...cardFillers(),
       ev({ id: 'w1', title: 'Water Hanging Planters', startsAt: '2026-07-20T20:00:00' }),
       ev({ id: 'w2', title: 'Water Hanging Planters', startsAt: '2026-07-21T20:00:00' }),
       ev({ id: 'w3', title: 'Water Hanging Planters', startsAt: '2026-07-22T20:00:00' }),
@@ -110,13 +140,14 @@ describe('rankComingUp', () => {
   });
 
   it('computes days-from-today for display', () => {
-    const { left } = rankComingUp([ev({ title: 'X', startsAt: '2026-07-20T10:00:00' })], { now: NOW });
+    const { left } = rankComingUp([...cardFillers(), ev({ title: 'X', startsAt: '2026-07-20T10:00:00' })], { now: NOW });
     expect(left[0].days).toBe(5);
   });
 });
 
 describe('rankComingUp overrides (the Hermes hand)', () => {
   const items = [
+    ...cardFillers(),
     ev({ title: 'Lunch with Sarah', startsAt: '2026-07-20T12:00:00' }),      // left window
     ev({ title: 'Flight to Denver', startsAt: '2026-10-01T08:00:00' }),      // right, travel 100
     ev({ title: 'Narvar offsite', startsAt: '2026-09-10T09:00:00' }),        // right, offsite 90
@@ -135,6 +166,7 @@ describe('rankComingUp overrides (the Hermes hand)', () => {
 
   it('scored left items float above the chronological agenda', () => {
     const { left } = rankComingUp([
+      ...cardFillers(),
       ev({ title: 'Early thing', startsAt: '2026-07-20T09:00:00' }),
       ev({ title: 'Late thing', startsAt: '2026-08-01T09:00:00' }),
     ], { now: NOW, overrides: [{ match: 'Late thing', score: 10 }] });

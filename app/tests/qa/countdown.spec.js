@@ -39,6 +39,30 @@ test('countdown/typical: this-week items appear in neither pane', async ({ page 
   await expect(page.locator('.countdown')).not.toContainText('This week thing');
 });
 
+test('countdown/typical: nothing sooner than 3 days out in the left pane', async ({ page }) => {
+  await open(page, 'typical');
+  const leftDays = await page.locator('.countdown__pane').first().locator('.countdown__days').allTextContents();
+  expect(leftDays.length).toBeGreaterThan(0);
+  for (const label of leftDays) {
+    expect(label).not.toMatch(/^(today|tomorrow|2 days)$/);
+  }
+});
+
+test('countdown/typical: row tap opens the event-detail panel; check tap does not', async ({ page }) => {
+  await open(page, 'typical');
+  const row = page.locator('.countdown__pane').first().locator('.countdown__item').first();
+
+  await row.tap(); // row body → drill-down, same as the calendar card
+  await expect(page.locator('.event-detail')).toBeVisible();
+  await page.locator('.overlay--event-detail [data-action="close"]').tap();
+  await expect(page.locator('.event-detail')).toHaveCount(0);
+
+  await row.locator('.countdown__check').tap(); // check → complete, not detail
+  await expect(page.locator('.event-detail')).toHaveCount(0);
+  await expect(page.locator('.countdown__item--done')).toHaveCount(1);
+  await row.locator('.countdown__check').tap(); // undo the linger for a clean state
+});
+
 test('countdown/typical: plan-ahead pane is importance-ordered and dupe-free', async ({ page }) => {
   await open(page, 'typical');
   const names = await page.locator('.countdown__pane').nth(1).locator('.countdown__name').allTextContents();

@@ -25,6 +25,15 @@ export function getMockUpcoming(now = new Date()) {
     { id: 'u3', calendar: 'Family', title: 'Grandma visiting', sub: '', description: '', startsAt: ymd(day(2)), endsAt: ymd(day(4)), allDay: true },
     { id: 'u5', calendar: 'Family', title: 'Swim lesson — intro', sub: 'Piedmont Aquatic', description: 'Bring swim diaper and towel.', startsAt: at(5, 11, 0), endsAt: at(5, 11, 45), allDay: false },
     { id: 'u6', calendar: 'Tim', title: 'Dentist', sub: 'Midtown Dental', description: 'Cleaning + X-rays. 4615 Peachtree Rd NE, Suite 200.', startsAt: at(6, 14, 0), endsAt: at(6, 15, 0), allDay: false },
+    // Dense near-term Family events — these occupy the calendar card's six
+    // per-person slots, so the Coming-Up left pane (which excludes whatever
+    // the card shows) still has agenda material below. Mirrors the real
+    // household calendar's rhythm.
+    { id: 'u14', calendar: 'Family', title: 'Water hanging planters', sub: '', description: '', startsAt: at(0, 20, 0), endsAt: at(0, 20, 15), allDay: false, recurring: true },
+    { id: 'u15', calendar: 'Family', title: 'Lunch with Mom', sub: '', description: '', startsAt: at(1, 12, 0), endsAt: at(1, 13, 0), allDay: false },
+    { id: 'u16', calendar: 'Family', title: 'Water hanging planters', sub: '', description: '', startsAt: at(1, 20, 0), endsAt: at(1, 20, 15), allDay: false, recurring: true },
+    { id: 'u17', calendar: 'Family', title: 'Stroller walk with the Fregos', sub: '', description: '', startsAt: at(2, 9, 0), endsAt: at(2, 10, 0), allDay: false },
+    { id: 'u18', calendar: 'Family', title: 'Trash & recycling out', sub: '', description: '', startsAt: at(2, 19, 0), endsAt: at(2, 19, 15), allDay: false, recurring: true },
     // Next-4-weeks agenda + plan-ahead material so the two-pane Coming-Up
     // card demos both panes (birthday / recurring / Mabel / travel colors).
     { id: 'u7', calendar: 'Family', title: "Aidan's 3rd Birthday", sub: '3012 Andora Dr SW, Marietta, GA', description: '', startsAt: at(9, 15, 30), endsAt: at(9, 17, 0), allDay: false },

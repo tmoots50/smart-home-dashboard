@@ -9,9 +9,16 @@ const ev = (over) => ({
   calendar: 'Family', title: 'Event', sub: '', allDay: false, ...over,
 });
 
+// Occupy the calendar card's six per-person slots so the events under test
+// actually reach the left pane (the card-dupe rule would swallow them in a
+// sparse feed). Near-term, so the left window never shows them either.
+const cardFillers = () => Array.from({ length: 6 }, (_, i) =>
+  ev({ id: `fill-${i}`, title: `Card filler ${i}`, startsAt: `2026-07-15T${String(8 + i).padStart(2, '0')}:00:00` }));
+
 describe('renderCountdown (two panes)', () => {
   it('places agenda items left and planning items right', () => {
     const html = renderCountdown([
+      ...cardFillers(),
       ev({ title: "Aidan's 3rd Birthday", startsAt: '2026-07-20T15:30:00' }),
       ev({ title: 'Flight to NYC', startsAt: '2026-09-01T08:00:00' }),
     ], NOW);
@@ -27,17 +34,22 @@ describe('renderCountdown (two panes)', () => {
 
   it('omits location details and reminder notes (Tim 2026-07-11: no locations here)', () => {
     const html = renderCountdown(
-      [{ name: 'Mom’s birthday', date: '2026-07-21', sub: 'La Belle Buckhead 3535 Peachtree Rd NE', note: 'Get a card this week' }],
+      [...cardFillers(), { name: 'Mom’s birthday', date: '2026-07-21', sub: 'La Belle Buckhead 3535 Peachtree Rd NE', note: 'Get a card this week' }],
       NOW,
     );
     expect(html).toContain('Mom’s birthday');
-    expect(html).not.toContain('Peachtree');
+    // Location and legacy notes stay available in the row's data-event
+    // payload (the detail modal uses it) but must not render as row text.
     expect(html).not.toContain('countdown__sub');
-    expect(html).not.toContain('Get a card this week');
+    expect(html).not.toContain('countdown__note');
+    const visible = html.replace(/data-event="[^"]*"/g, '');
+    expect(visible).not.toContain('Peachtree');
+    expect(visible).not.toContain('Get a card this week');
   });
 
   it('applies Hermes overrides: hide + score reorder', () => {
     const items = [
+      ...cardFillers(),
       ev({ title: 'Water Hanging Planters', startsAt: '2026-07-20T20:00:00' }),
       ev({ title: 'Flight to NYC', startsAt: '2026-09-01T08:00:00' }),
       ev({ title: 'Narvar offsite', startsAt: '2026-08-20T09:00:00' }),
@@ -52,6 +64,7 @@ describe('renderCountdown (two panes)', () => {
 
   it('color-codes categories on the row', () => {
     const html = renderCountdown([
+      ...cardFillers(),
       ev({ title: "Aidan's 3rd Birthday", startsAt: '2026-07-20T15:30:00' }),
       ev({ title: 'Give Chloe heartworm pill', startsAt: '2026-07-21T08:00:00', recurring: true }),
       ev({ title: '4 month check up', sub: 'Lighthouse Pediatrics', startsAt: '2026-07-22T09:00:00' }),
@@ -64,6 +77,7 @@ describe('renderCountdown (two panes)', () => {
 
   it('formats today / tomorrow on imminent planning items and N days on the agenda', () => {
     const html = renderCountdown([
+      ...cardFillers(),
       ev({ title: 'Flight out', startsAt: '2026-07-15T18:00:00' }),
       ev({ title: 'Flight back', startsAt: '2026-07-16T18:00:00' }),
       ev({ title: 'Lunch with Sarah', startsAt: '2026-07-20T12:00:00' }),
@@ -74,7 +88,7 @@ describe('renderCountdown (two panes)', () => {
   });
 
   it('renders the absolute date with weekday + ordinal', () => {
-    const html = renderCountdown([ev({ title: 'X', startsAt: '2026-07-21T10:00:00' })], NOW);
+    const html = renderCountdown([...cardFillers(), ev({ title: 'X', startsAt: '2026-07-21T10:00:00' })], NOW);
     expect(html).toMatch(/Tue, Jul 21st/);
   });
 
@@ -85,12 +99,13 @@ describe('renderCountdown (two panes)', () => {
   });
 
   it('escapes HTML in names', () => {
-    const html = renderCountdown([ev({ title: '<x>', startsAt: '2026-07-21T10:00:00' })], NOW);
+    const html = renderCountdown([...cardFillers(), ev({ title: '<x>', startsAt: '2026-07-21T10:00:00' })], NOW);
     expect(html).not.toContain('<x>');
   });
 
   it('hides dismissed items and marks completing items done', () => {
     const items = [
+      ...cardFillers(),
       ev({ id: 'a', title: 'A', startsAt: '2026-07-20T10:00:00' }),
       ev({ id: 'b', title: 'B', startsAt: '2026-07-21T10:00:00' }),
       ev({ id: 'c', title: 'C', startsAt: '2026-07-22T10:00:00' }),

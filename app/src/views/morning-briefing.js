@@ -10,14 +10,11 @@ import { openHomeOverlay } from '../widgets/home.js';
 import { openCalendarOverlay } from '../widgets/calendar-overlay.js';
 import { openMonthCalendar } from '../widgets/month-calendar.js';
 import { mountHomeCard } from '../widgets/home-card.js';
-import { mountSpotifyTicker } from '../widgets/spotify-ticker.js';
-import { openSpotifyDrawer } from '../widgets/spotify-drawer.js';
 import { openVoiceOverlay } from '../widgets/voice-overlay.js';
 
 import { getHome, actions as homeActions, deviceActions, isConfigured as homeConfigured } from '../lib/home.js';
 import { getUpcoming, getMonth } from '../lib/calendar.js';
 import { openHermesChat } from '../lib/telegram.js';
-import { fetchPlayer, controls as spotifyControls } from '../lib/spotify.js';
 import { voice } from '../lib/voice.js';
 
 import { getMockBibleVerse } from '../lib/bible-mock.js';
@@ -87,8 +84,9 @@ export function renderMorningBriefing(root) {
         </div>
       </section>
     </main>
-    <aside class="spotify-ticker" data-slot="spotify-ticker" hidden aria-label="Now playing"></aside>
   `;
+  // Spotify ticker unmounted 2026-07-11 (Tim: may return later) — the widget,
+  // drawer, and harness coverage all remain in the codebase.
 
   mountClock(root.querySelector('[data-slot="clock"]'));
   mountWeather(root.querySelector('[data-slot="weather"]'), loc);
@@ -115,11 +113,6 @@ export function renderMorningBriefing(root) {
 
   mountCardPhoto(root.querySelector('[data-slot="photo"]'), photos);
   mountHomeCard(root.querySelector('[data-slot="home-card"]'), getHome, homeActions, deviceActions, { askEntityId: homeConfigured });
-  mountSpotifyTicker(root.querySelector('[data-slot="spotify-ticker"]'), {
-    getPlayer: fetchPlayer,
-    controls: spotifyControls,
-    onOpen: () => openSpotifyDrawer(),
-  });
 
   let micLongPressed = false;
   let micHoldTimer = null;

@@ -18,6 +18,7 @@
 // view persists the choice in localStorage 'calendar:flavor').
 
 import { getCalendar, fetchCalendar } from '../lib/calendar.js';
+import { CARD_MAX_PER_COLUMN } from '../lib/comingup.js';
 import { openEventDetail } from './event-detail.js';
 
 const TIME_FMT = new Intl.DateTimeFormat(undefined, {
@@ -30,8 +31,10 @@ const DAY_FMT = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'n
 const DAY_LONG_FMT = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 // Per-column cap. Columns fill independently — a packed Family week must not
 // starve Tim's column (the old global top-10 did exactly that). Six rows means
-// five fully visible + the sixth peeking as the scroll affordance.
-const MAX_PER_COLUMN = 6;
+// five fully visible + the sixth peeking as the scroll affordance. Shared with
+// lib/comingup.js: the Coming-Up left pane excludes exactly what this card
+// shows, so the two widgets never repeat each other.
+const MAX_PER_COLUMN = CARD_MAX_PER_COLUMN;
 // The day-grouped flavor has no columns; cap the flat list instead.
 const MAX_DAY_GROUPED = 18;
 
