@@ -1,6 +1,5 @@
 import { mountClock } from '../widgets/clock.js';
 import { mountWeather } from '../widgets/weather.js';
-import { mountPick } from '../widgets/pick.js';
 import { mountCalendar } from '../widgets/calendar.js';
 import { mountComingUp } from '../widgets/countdown.js';
 import { mountTodos } from '../widgets/todos.js';
@@ -76,10 +75,9 @@ export function renderMorningBriefing(root) {
 
       <section class="card" data-slot="calendar"></section>
 
-      <section class="briefing__duo briefing__duo--updates">
-        <div class="card" data-slot="coming-up"></div>
-        <div class="card" data-slot="headlines"></div>
-      </section>
+      <!-- Atlanta Picks unmounted 2026-07-11 (Tim: bring back later); the
+           widget + curated feed stay in the codebase. Coming Up owns the row. -->
+      <section class="card briefing__updates" data-slot="coming-up"></section>
 
       <section class="briefing__duo briefing__lists">
         <div class="card" data-slot="todos"></div>
@@ -94,9 +92,14 @@ export function renderMorningBriefing(root) {
 
   mountClock(root.querySelector('[data-slot="clock"]'));
   mountWeather(root.querySelector('[data-slot="weather"]'), loc);
-  mountCalendar(root.querySelector('[data-slot="calendar"]'));
+  // Family Calendar flavor: ?calflavor=stacked|rail|days|classic wins and
+  // persists, so a one-time URL tweak survives kiosk reloads.
+  const calFlavor = params.get('calflavor') || localStorage.getItem('calendar:flavor') || undefined;
+  if (params.get('calflavor')) {
+    try { localStorage.setItem('calendar:flavor', params.get('calflavor')); } catch {}
+  }
+  mountCalendar(root.querySelector('[data-slot="calendar"]'), { flavor: calFlavor });
   fitBible(root.querySelector('.bible'));
-  mountPick(root.querySelector('[data-slot="headlines"]'));
   mountComingUp(root.querySelector('[data-slot="coming-up"]'));
 
   const todoActions = tasksConfigured

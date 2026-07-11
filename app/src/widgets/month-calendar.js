@@ -174,9 +174,13 @@ function renderCell(cell) {
 
 function renderChip(ev) {
   const time = ev.allDay ? '' : `<span class="month-cal__chip-time">${chipTime(ev.startsAt)}</span> `;
+  // The 2-line clamp lives on an inner span: clamping the button itself
+  // fights its 44px min-height (content that "fits" the tall box skips the
+  // clamp, then overflow razor-cuts a third line mid-glyph — the smoosh
+  // artifact from the 2026-07-11 wall photo).
   return `
     <button class="month-cal__chip month-cal__chip--${slug(ev.calendar)}" data-event="${escapeHtml(JSON.stringify(ev))}">
-      ${time}${escapeHtml(ev.title)}
+      <span class="month-cal__chip-text">${time}${escapeHtml(ev.title)}</span>
     </button>
   `;
 }

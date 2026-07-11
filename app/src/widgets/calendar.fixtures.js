@@ -51,8 +51,14 @@ export const states = {
     data: { sections: [section('Tim', []), section('Family', [evt('f1', 15, 30, 'Pediatrician — Mabel', 'Northside Pediatrics')]), section('Caroline', [])], nextEventId: 'f1' },
   },
 
-  // The standard demo data the dashboard falls back to.
+  // The standard demo data the dashboard falls back to (default flavor).
   typical: { data: getMockCalendar(NOW) },
+
+  // Same data through each alternate flavor — the 2026-07-11 row-layout
+  // exploration. `flavor` rides the fixture; the harness passes it through.
+  'typical-rail': { data: getMockCalendar(NOW), flavor: 'rail' },
+  'typical-days': { data: getMockCalendar(NOW), flavor: 'days' },
+  'typical-classic': { data: getMockCalendar(NOW), flavor: 'classic' },
 
   // Every column packed — what does the card do when a day is genuinely full?
   overflow: {

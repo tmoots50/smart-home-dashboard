@@ -1,93 +1,87 @@
 import { describe, it, expect } from 'vitest';
 import { renderCountdown } from './countdown.js';
-import { getMockCountdowns } from '../lib/countdown-mock.js';
 
-const NOW = new Date('2026-04-29T08:00:00');
+// Wednesday: this week runs through Sat Jul 18; left pane = Sun Jul 19 → Aug 16.
+const NOW = new Date('2026-07-15T07:30:00');
 
-describe('calendar details', () => {
+const ev = (over) => ({
+  id: over.id ?? `${over.title}|${over.startsAt}`,
+  calendar: 'Family', title: 'Event', sub: '', allDay: false, ...over,
+});
+
+describe('renderCountdown (two panes)', () => {
+  it('places agenda items left and planning items right', () => {
+    const html = renderCountdown([
+      ev({ title: "Aidan's 3rd Birthday", startsAt: '2026-07-20T15:30:00' }),
+      ev({ title: 'Flight to NYC', startsAt: '2026-09-01T08:00:00' }),
+    ], NOW);
+    const [left, right] = html.split('Plan ahead');
+    expect(left).toContain('Aidan');
+    expect(right).toContain('Flight to NYC');
+  });
+
+  it('excludes this-week items from the left pane entirely', () => {
+    const html = renderCountdown([ev({ title: 'This week thing', startsAt: '2026-07-17T10:00:00' })], NOW);
+    expect(html).not.toContain('This week thing');
+  });
+
   it('renders location but omits the old reminder note', () => {
     const html = renderCountdown(
-      [{ name: 'Mom’s birthday', date: '2026-05-19', sub: 'Atlanta', note: 'Get a card this week' }],
+      [{ name: 'Mom’s birthday', date: '2026-07-21', sub: 'Atlanta', note: 'Get a card this week' }],
       NOW,
     );
     expect(html).toContain('Atlanta');
     expect(html).not.toContain('countdown__note');
     expect(html).not.toContain('Get a card this week');
   });
-});
 
-describe('renderCountdown', () => {
-  it('renders up to 10 upcoming events', () => {
-    const html = renderCountdown(getMockCountdowns(), NOW);
-    const items = html.match(/class="countdown__item"/g) || [];
-    expect(items.length).toBeLessThanOrEqual(10);
-    expect(items.length).toBeGreaterThan(0);
-  });
-
-  it('orders by soonest first', () => {
-    const html = renderCountdown(getMockCountdowns(), NOW);
-    expect(html.indexOf('Spring Break')).toBeLessThan(html.indexOf('offsite'));
-  });
-
-  it('drops events that have already passed', () => {
+  it('color-codes categories on the row', () => {
     const html = renderCountdown([
-      { name: 'Past event', date: '2025-01-01', sub: '' },
-      { name: 'Future event', date: '2030-01-01', sub: '' },
+      ev({ title: "Aidan's 3rd Birthday", startsAt: '2026-07-20T15:30:00' }),
+      ev({ title: 'Give Chloe heartworm pill', startsAt: '2026-07-21T08:00:00', recurring: true }),
+      ev({ title: '4 month check up', sub: 'Lighthouse Pediatrics', startsAt: '2026-07-22T09:00:00' }),
+      ev({ title: 'Flight to NYC', startsAt: '2026-09-01T08:00:00' }),
     ], NOW);
-    expect(html).not.toContain('Past event');
-    expect(html).toContain('Future event');
+    for (const cat of ['birthday', 'recurring', 'mabel', 'travel']) {
+      expect(html).toContain(`countdown__item--${cat}`);
+    }
   });
 
-  it('formats today / tomorrow / N days', () => {
-    const items = [
-      { name: 'Today thing', date: '2026-04-29', sub: '' },
-      { name: 'Tomorrow thing', date: '2026-04-30', sub: '' },
-      { name: 'Later thing', date: '2026-05-05', sub: '' },
-    ];
-    const html = renderCountdown(items, NOW);
+  it('formats today / tomorrow on imminent planning items and N days on the agenda', () => {
+    const html = renderCountdown([
+      ev({ title: 'Flight out', startsAt: '2026-07-15T18:00:00' }),
+      ev({ title: 'Flight back', startsAt: '2026-07-16T18:00:00' }),
+      ev({ title: 'Lunch with Sarah', startsAt: '2026-07-20T12:00:00' }),
+    ], NOW);
     expect(html).toContain('today');
     expect(html).toContain('tomorrow');
     expect(html).toMatch(/\d+ days/);
   });
 
   it('renders the absolute date with weekday + ordinal', () => {
-    const html = renderCountdown([
-      { name: 'X', date: '2026-05-05', sub: '' },
-    ], NOW);
-    expect(html).toMatch(/Tue, May 5th/);
+    const html = renderCountdown([ev({ title: 'X', startsAt: '2026-07-21T10:00:00' })], NOW);
+    expect(html).toMatch(/Tue, Jul 21st/);
   });
 
-  it('shows empty state with no upcoming events', () => {
+  it('shows per-pane empty states with no events', () => {
     const html = renderCountdown([], NOW);
     expect(html).toContain('Nothing on the horizon');
-  });
-
-  it('only includes Family calendar events', () => {
-    const html = renderCountdown([
-      { id: 'f', calendar: 'Family', title: 'Family event', startsAt: '2026-05-19', sub: 'Park' },
-      { id: 't', calendar: 'Tim', title: 'Tim event', startsAt: '2026-05-19', sub: 'Office' },
-    ], NOW);
-    expect(html).toContain('Family event');
-    expect(html).not.toContain('Tim event');
+    expect(html).toContain('Nothing needs planning');
   });
 
   it('escapes HTML in names', () => {
-    const html = renderCountdown([{ name: '<x>', date: '2030-01-01', sub: '' }], NOW);
+    const html = renderCountdown([ev({ title: '<x>', startsAt: '2026-07-21T10:00:00' })], NOW);
     expect(html).not.toContain('<x>');
   });
 
-  it('marks completing items done, others untouched', () => {
+  it('hides dismissed items and marks completing items done', () => {
     const items = [
-      { id: 'a', name: 'A', date: '2026-05-05', sub: '' },
-      { id: 'b', name: 'B', date: '2026-05-06', sub: '' },
+      ev({ id: 'a', title: 'A', startsAt: '2026-07-20T10:00:00' }),
+      ev({ id: 'b', title: 'B', startsAt: '2026-07-21T10:00:00' }),
+      ev({ id: 'c', title: 'C', startsAt: '2026-07-22T10:00:00' }),
     ];
-    const html = renderCountdown(items, NOW, new Set(), new Set(['a']));
-    expect(html).toContain('countdown__item--done');
+    const html = renderCountdown(items, NOW, new Set(['b']), new Set(['a']));
+    expect(html).not.toContain('>B<');
     expect((html.match(/countdown__item--done/g) || []).length).toBe(1);
-  });
-
-  it('renders no done rows by default', () => {
-    const html = renderCountdown(getMockCountdowns(), NOW);
-    expect(html).not.toContain('countdown__item--done');
   });
 });

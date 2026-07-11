@@ -1,3 +1,6 @@
+// QA spec — two-pane Coming-Up card. Geometry, the ≥4-rows-per-pane density
+// contract from the 2026-07-11 feedback, rules-engine placement, category
+// colors, and the complete/dismiss touch interactions.
 import { test, expect } from '@playwright/test';
 import { states } from '../../src/widgets/countdown.fixtures.js';
 import { captureArtifact, collectErrors } from './measure.js';
@@ -8,31 +11,64 @@ async function open(page, state) {
 }
 
 for (const state of Object.keys(states)) {
-  test(`countdown/${state}: family-only scroll geometry`, async ({ page }, testInfo) => {
+  test(`countdown/${state}: two-pane geometry`, async ({ page }, testInfo) => {
     const errors = collectErrors(page);
     await open(page, state);
-    const expected = Math.min(10, states[state].filter(e => e.calendar === 'Family').length);
-    await expect(page.locator('.countdown__item')).toHaveCount(expected);
+    await expect(page.locator('.countdown__pane')).toHaveCount(2);
     await expectHarnessGeometry(page);
     await captureArtifact(page, `countdown-${state}`, testInfo);
     expect(errors).toEqual([]);
   });
 }
 
+test('countdown/typical: at least 4 rows fully visible per pane without scrolling', async ({ page }) => {
+  await open(page, 'typical');
+  for (const pane of [0, 1]) {
+    const visible = await page.locator('.countdown__pane').nth(pane).evaluate((el) => {
+      const list = el.querySelector('.countdown__list');
+      const limit = list.getBoundingClientRect().bottom + 1;
+      return [...list.querySelectorAll('.countdown__item')]
+        .filter(item => item.getBoundingClientRect().bottom <= limit).length;
+    });
+    expect(visible, `pane ${pane} shows ${visible} full rows`).toBeGreaterThanOrEqual(4);
+  }
+});
+
+test('countdown/typical: this-week items appear in neither pane', async ({ page }) => {
+  await open(page, 'typical');
+  await expect(page.locator('.countdown')).not.toContainText('This week thing');
+});
+
+test('countdown/typical: plan-ahead pane is importance-ordered and dupe-free', async ({ page }) => {
+  await open(page, 'typical');
+  const names = await page.locator('.countdown__pane').nth(1).locator('.countdown__name').allTextContents();
+  // Travel outranks offsite outranks big-effort outranks vague.
+  expect(names[0]).toMatch(/Flight to NYC|Stay at Hamilton/);
+  expect(names.indexOf('Narvar offsite')).toBeLessThan(names.indexOf('Baby shower for Kate'));
+  expect(new Set(names).size).toBe(names.length);
+});
+
+test('countdown/typical: all four category colors present on row edges', async ({ page }) => {
+  await open(page, 'typical');
+  for (const cat of ['birthday', 'recurring', 'mabel', 'travel']) {
+    await expect(page.locator(`.countdown__item--${cat}`).first()).toBeVisible();
+  }
+});
+
 test('countdown/typical: tap check completes (with linger undo), swipe dismisses with toast undo', async ({ page }) => {
   await open(page, 'typical');
-  const items = page.locator('.countdown__item');
+  const items = page.locator('.countdown__pane').first().locator('.countdown__item');
   const initial = await items.count();
 
   // Tap check → struck but still present; tap again during linger → undone.
-  await page.locator('.countdown__check').first().tap();
+  await items.first().locator('.countdown__check').tap();
   await expect(page.locator('.countdown__item--done')).toHaveCount(1);
   await expect(items).toHaveCount(initial);
-  await page.locator('.countdown__check').first().tap();
+  await items.first().locator('.countdown__check').tap();
   await expect(page.locator('.countdown__item--done')).toHaveCount(0);
 
   // Complete again and let the linger elapse → row clears.
-  await page.locator('.countdown__check').first().tap();
+  await items.first().locator('.countdown__check').tap();
   await page.clock.runFor(3000);
   await expect(items).toHaveCount(initial - 1);
 
@@ -48,7 +84,8 @@ test('countdown/typical: tap check completes (with linger undo), swipe dismisses
   expect(await page.evaluate(() => scrollY)).toBe(0);
 });
 
-test('countdown/overflow: internal scrolling stays inside the card', async ({ page }) => {
+test('countdown/overflow: internal scrolling stays inside each pane', async ({ page }) => {
   await open(page, 'overflow');
-  await expectNestedScrollContained(page, '.countdown__list');
+  await expectNestedScrollContained(page, '.countdown__pane:first-child .countdown__list');
+  await expectNestedScrollContained(page, '.countdown__pane:last-child .countdown__list');
 });

@@ -6,78 +6,83 @@ This doc is the contract for the round: every item below ships or gets an explic
 decision from Tim. Check items off as they land.
 
 ## 1. Phone button — REMOVE
-- [ ] Remove the phone action-bar button entirely (button, PHONE_SVG, LAUNCH_STUBS.phone).
-- Accept: action bar shows mic / music / home / month-calendar only.
+- [x] Removed the phone action-bar button entirely (button, PHONE_SVG, LAUNCH_STUBS).
+- Accept: action bar shows mic / music / home / month-calendar only. ✔ verified in screenshot.
 
 ## 2. Family Calendar card — line items too narrow, smushed
-- [ ] Titles cut off too early; must see more of the event title.
-- [ ] Hard to tell which DAY an event is on — explore color coding, day/time
-      bolding/sizing swaps.
-- [ ] Build 2–3 flavors viewable on localhost for Tim's approval, including at
-      least one idea OUTSIDE the three-column table.
-- Accept: Tim approves a flavor from localhost/screenshots; approved flavor becomes
-  the default.
+- [x] Four flavors built behind `?calflavor=` (persists in localStorage):
+      `stacked` (default) — title-first 2-line rows, day bolded/accented below;
+      `rail` — day/time column leads + proximity rail (accent fades with distance);
+      `days` — day-grouped full-width list, person dots + legend (the outside-the-box one);
+      `classic` — the old layout for comparison.
+- [x] Titles: 2-line wrap in stacked/rail, full-width single line in days.
+- [x] Day identification: bold day, accent when today (stacked); proximity rail (rail);
+      day section headers (days).
+- [ ] **Tim picks the default** — screenshots + `?calflavor=` links delivered; `stacked`
+      is the shipped default until he says otherwise.
 
 ## 3. Family Calendar card — +20% vertical space
-- [ ] Fam Cal widget gets ~20% more height (list area 14.25rem → ~17.1rem),
-      pushing subsequent sections down.
-- Accept: visibly taller card; more rows visible before scroll.
+- [x] List scroll region 14.25rem → 17.1rem (both column list and day-grouped list).
 
 ## 4. "See more" modal (What's ahead overlay)
-- [ ] Show the actual DATE of each event, not just the weekday.
-- [ ] Widen the modal (feels narrow) to make room for the date column.
-- Accept: every row shows weekday + month + day; panel noticeably wider than 42rem.
+- [x] Every row's day cell now stacks weekday over the real date ("Fri / Jul 17").
+- [x] Panel widened 42rem → 58rem.
 
 ## 5. Month calendar overlay
-- [ ] a. Events smooshed together (see photo) — real padding between event blocks.
-- [ ] b. Legend showing which color belongs to which calendar.
-- [ ] c. Tap a legend entry to FILTER the view to that calendar (tap again = all).
-- [ ] d. Month switch repaints twice / flickers — bug. Root cause: nav renders the
-      mock/cached "initial" then live data replaces it a beat later, full-panel
-      innerHTML swap each time. Fix: no mock fallback for uncached months when a
-      token is configured; patch only the grid; skip repaint when data is unchanged.
-- [ ] e. Infinite scroll — scroll down into the next month(s); ‹ › arrows still work.
-- Accept: chips have visible air between them; legend present; filter works; one
-  smooth paint per data change; continuous vertical month scrolling.
+- [x] a. Padding: cell gap 2→5px, chip padding 2→5px, grid gap 3→6px. Also fixed the
+      REAL smoosh artifact from the photo: the 2-line clamp sat on the 44px-min button,
+      so short-but-wrapping titles skipped the clamp and a third line got razor-clipped
+      mid-glyph. Clamp moved to an inner span.
+- [x] b. Legend (Family/Tim/Caroline pills with dots) under the title.
+- [x] c. Legend pills toggle a per-calendar filter (tap again = all).
+- [x] d. Flicker fix: month sections render once and are patched in place only when
+      live data differs; getMonth() no longer serves MOCK months for uncached months
+      when a token is configured (that fake-then-real repaint was the "reloads twice").
+- [x] e. Infinite scroll: months stack in one scroller (next month appends as you
+      approach the end, scroll-snap per month); ‹ › arrows scroll month-by-month and
+      prepend past months. Still clamped to ±12 months.
 
 ## 6. Coming Up module
-- [ ] a. Remove Atlanta Picks module entirely (bring back later — keep the widget
-      code + curated feed, just unmount from the briefing).
-- [ ] b. Coming Up expands to take the full row (both slots).
-- [ ] c. Line items shorter: fit ≥4 in the same real estate, same padding/spacing
-      ratios; wrap location details when needed.
-- [ ] d. Color-code categories: birthdays / recurring (e.g. Chloe heartworm pill) /
-      Mabel / travel.
-- [ ] e. Split panes: LEFT = important items in the next 4 weeks NOT counting this
-      week. RIGHT = next 90 days (no dupes of left) that likely need planning —
-      travel, flights, offsites, anything vague or big-effort. Ordered by importance.
-- [ ] f. "Have Hermes make ordering decisions and follow these rules." v1 ships a
-      deterministic rules engine (category detection + importance scoring) behind a
-      single ranking seam. Live-Hermes ranking (relay round-trip, KV-cached) is an
-      architecture decision for Tim — see Open questions.
-- Accept: Atlanta Picks gone; full-width two-pane Coming Up; ≥4 rows visible per
-  pane; category colors legible; windows + dedupe rules enforced.
+- [x] a. Atlanta Picks unmounted from the briefing (widget + curated feed + harness
+      kept for its return).
+- [x] b. Coming Up owns the full-width row (same 21rem real estate).
+- [x] c. Compact rows: title + countdown/date on one line, location wraps below;
+      ≥4 rows fully visible per pane (QA-asserted), same padding ratios.
+- [x] d. Category colors on the row edge + header legend: birthdays (plum #b07cc6),
+      recurring (gold accent), Mabel (rose #d98a9c), travel (sky #5fa8d3).
+- [x] e. LEFT "Next 4 weeks": chronological, starts AFTER this week (Sun–Sat weeks).
+      RIGHT "Plan ahead · 90 days": planning-worthy only (travel/flight/offsite/
+      big-effort/vague/multi-day stays), importance-ordered, no dupes of left,
+      repeating series collapsed to first occurrence.
+- [x] f. Rules engine = `lib/comingup.js` (pure, unit-tested) — the Hermes seam.
+      API now emits `recurring` from Google's recurringEventId.
+- [ ] **Hermes live ranking** — needs Tim's call (see Open questions).
 
 ## 7. Above the fold: ≥3 Todo + ≥3 Grocery items
-- [ ] Reduce padding around Todo/Groceries card headers and spacing between all
-      widgets on the page.
-- [ ] Do NOT strip row padding / shrink fonts — design-contract bands stay intact
-      (rowPadding ≥20, cardPadding ≥12, font bands).
-- Accept: at 1080×1920, ≥3 todo rows and ≥3 grocery rows fully visible without
-  scrolling, rows not smooshed (contract passes).
+- [x] Inter-widget gap 16→10px; card header margins 16→8px. Row padding, card insets,
+      fonts untouched (design-contract bands all pass).
+- [x] Measured at 1080×1920: 3rd todo/grocery row bottoms at ~1500px vs 1920 fold —
+      the whole Todo/Groceries/Home block is above the fold now. Locked in
+      briefing-layout.spec.js as a permanent fold assertion.
 
 ## Verification
-- QA suite green (`app/tests/qa`), specs updated for changed layouts.
-- Fresh 1080×1920 screenshots reviewed for: briefing layout, calendar (each
-  flavor), countdown, month-calendar, calendar-overlay.
-- Visual sign-off recorded at ship time per CLAUDE.md.
+- [x] 327 unit tests pass (13 new comingup + rewritten countdown/calendar suites).
+- [x] 115 Playwright QA tests pass (canvas profile), incl. new specs: two-pane density,
+      importance ordering, category colors, legend filter, infinite-scroll append,
+      per-section month data, fold assertion.
+- [x] Artifacts visually reviewed: briefing-layout, calendar (all four flavors),
+      countdown, month-calendar, calendar-overlay.
 
 ## Open questions for Tim
-1. Fam Cal flavor pick (localhost/screenshot approval) — blocking only for which
-   variant becomes default.
-2. Hermes live ordering: OK to ship rules-engine ordering now and wire actual
-   Hermes ranking as a follow-up (relay → KV cache, refreshed a few times a day)?
-   Synchronous relay calls per render are too slow/rate-limited (6/min, 20s cap).
+1. **Fam Cal flavor pick** — `stacked` shipped as default. Try on the wall or localhost:
+   `?calflavor=stacked` / `rail` / `days` / `classic` (choice persists per device).
+2. **Hermes live ordering**: rules engine ships now. Wiring actual Hermes ranking means
+   a relay round-trip cached in KV (refreshed a few times/day) — synchronous calls per
+   render are too slow/rate-limited (6/min, 20s cap). Green-light the KV+cron follow-up?
 
 ## Decisions log
-- (fill in as items land)
+- Left pane kept CHRONOLOGICAL (agenda scanning), right pane importance-ordered —
+  reading of "order by importance" as governing the plan-ahead list. Flag if wrong.
+- "Grandma visiting"-style multi-day all-day events classify as travel/planning.
+- Repeating series (daily watering) collapse to first occurrence in Coming Up.
+- Recurring detection: API `recurring` flag first, title patterns as fallback.

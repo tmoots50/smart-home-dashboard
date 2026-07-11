@@ -40,6 +40,19 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 ## Feature backlog — medium priority
 *(post-v1, but architecturally directional — informs how v1 should be structured so they're easy to add)*
 
+- **Hermes live ranking for Coming Up (2026-07-11).** The two-pane Coming-Up card
+  orders via the deterministic rules engine in `app/src/lib/comingup.js` (the seam is
+  `rankComingUp()`). Tim's ask was "have Hermes make ordering decisions" — the real
+  wiring is a Hermes cron on the Old Mac that pulls `/api/calendar/upcoming?days=90`,
+  ranks per the rules in `_audits/2026-07-11-design-feedback.md`, and writes the
+  ordered keys to KV (like the curated-picks flow); the widget prefers the KV ranking
+  and falls back to the rules engine. Synchronous relay calls per render are a
+  non-starter (6/min rate limit, 20s cap). Awaiting Tim's green light.
+- **Atlanta Picks: bring back later (2026-07-11).** Unmounted from the briefing on
+  Tim's request; `widgets/pick.js`, the curated KV feed, harness entry, and QA spec
+  all remain live. Re-mounting is one line in `views/morning-briefing.js` — decide
+  where it lives when it returns (the old slot now belongs to Coming Up).
+
 - **Harness the remaining widgets.** QA-harness coverage (fixtures + spec + harness entry, see `docs/qa-harness.md`) currently spans calendar + calendar-overlay. The coverage report in every `npm run qa` prints the gap. Priority order: home (touch-heavy, mock-first), todos/groceries (shared list engine, undo-toast timing), pick/headlines, weather, event-detail edge states. Per CLAUDE.md convention, any UX-touching change to one of these must add its harness trio as part of that change — so the gap closes organically; this item is for proactively sweeping the rest.
 - **Card empty-columns "next up" fill.** Same pattern the overlay got on 2026-07-10: an empty Tim/Family/Caroline column shows that person's next upcoming event as a muted row instead of "Nothing scheduled." Needs upcoming data plumbed into `mountCalendar` + its own fit derivation (rows that fit without growing the card past the tallest column). *Source: `_audits/2026-07-10-qa-harness-calendar-overlay.md`.*
 

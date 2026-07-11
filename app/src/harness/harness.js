@@ -48,7 +48,7 @@ const WIDGETS = {
           <section class="card" data-slot="calendar"></section>
         </main>`;
       const slot = root.querySelector('[data-slot="calendar"]');
-      slot.innerHTML = renderCalendar(fixture.data, new Date());
+      slot.innerHTML = renderCalendar(fixture.data, new Date(), { flavor: fixture.flavor });
       slot.addEventListener('click', (e) => {
         const row = e.target.closest('[data-event]');
         if (!row) return;
@@ -96,7 +96,8 @@ const WIDGETS = {
     states: countdownStates,
     mount(root, fixture) {
       localStorage.removeItem('coming-up:dismissed:v1');
-      root.innerHTML = `<main class="briefing"><section class="briefing__duo briefing__duo--updates"><section class="card" data-slot="countdown"></section><div></div></section></main>`;
+      // Mirrors morning-briefing.js: Coming Up owns the full-width updates row.
+      root.innerHTML = `<main class="briefing"><section class="card briefing__updates" data-slot="countdown"></section></main>`;
       mountComingUp(root.querySelector('[data-slot="countdown"]'), { initial: fixture, live: Promise.resolve(fixture) });
     },
   },

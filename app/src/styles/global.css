@@ -41,14 +41,16 @@ html.kiosk, html.kiosk body { overscroll-behavior-y: none; }
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--color-muted);
-  margin: 0 0 var(--space-3) 0;
+  /* Header→content spacing trimmed 2026-07-11 to buy above-the-fold rows for
+     the list cards; row padding is untouched (design contract). */
+  margin: 0 0 var(--space-2) 0;
 }
 
 .card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-3);
+  margin-bottom: var(--space-2);
 }
 .card__header .card__title { margin: 0; }
 
@@ -122,11 +124,13 @@ html.kiosk, html.kiosk body { overscroll-behavior-y: none; }
      todos / message
      headlines
 */
+/* Inter-widget gap, trimmed from 16px on 2026-07-11 to pull the list cards
+   above the fold. Card insets and row padding are NOT fair game (contract). */
 .briefing {
   min-height: 100vh;
   padding: var(--space-3);
   display: grid;
-  gap: var(--space-3);
+  gap: 10px;
   max-width: 1080px;
   margin: 0 auto;
   position: relative;
@@ -136,21 +140,20 @@ html.kiosk, html.kiosk body { overscroll-behavior-y: none; }
 .briefing__topbox {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
+  gap: 10px;
 }
 
-/* Two equal cards side by side. Used for the Coming-Up + Headlines row and the
-   Todos + Groceries row. */
+/* Two equal cards side by side (the Todos + Groceries row). */
 .briefing__duo {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-3);
+  gap: 10px;
 }
 
 /* A duo cell holding two stacked cards (groceries + home). */
 .briefing__stack {
   display: grid;
-  gap: var(--space-3);
+  gap: 10px;
   align-content: start;
 }
 
@@ -705,10 +708,16 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   font: 0.72rem/1.25 var(--font-body);
   color: var(--color-fg);
   cursor: pointer;
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+/* Clamp on the inner span, not the 44px button — see renderChip(). */
+.month-cal__chip-text {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-width: 0;
 }
 .month-cal__chip-time { color: var(--color-muted); font-weight: 600; }
 .month-cal__chip--family   { border-color: #6dac8e; background: color-mix(in srgb, #6dac8e 14%, transparent); }
@@ -1184,14 +1193,62 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   text-transform: uppercase;
 }
 
-/* ───── countdown ───── */
+/* ───── coming up (full-width card, two panes) ─────
+   Left: next-4-weeks agenda (this week lives on the calendar card already).
+   Right: 90-day planning radar, importance-ordered. Rows are one line +
+   optional wrapped location; category color rides the row's left edge. */
+.briefing__updates { height: 21rem; min-height: 0; overflow: hidden; }
+/* Legacy duo wrapper — the pick widget's harness mount still uses it. */
 .briefing__duo--updates { height: 21rem; min-height: 0; }
 .briefing__duo--updates > .card { height: 100%; min-height: 0; overflow: hidden; }
 .countdown { height: 100%; display: flex; flex-direction: column; }
+.countdown__header { margin-bottom: var(--space-2); }
+.countdown__legend { display: inline-flex; flex-wrap: wrap; gap: var(--space-3); }
+.countdown__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.countdown__legend-item i { width: 0.55rem; height: 0.55rem; border-radius: 50%; }
+.countdown__legend-item--birthday  i { background: #b07cc6; }
+.countdown__legend-item--recurring i { background: var(--color-accent); }
+.countdown__legend-item--mabel     i { background: #d98a9c; }
+.countdown__legend-item--travel    i { background: #5fa8d3; }
+.countdown__panes {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+.countdown__pane { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.countdown__pane + .countdown__pane {
+  border-left: 1px solid var(--color-border);
+  padding-left: var(--space-4);
+}
+.countdown__pane-label {
+  margin: 0 0 var(--space-1);
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.countdown__empty { margin: var(--space-2) 0 0; font-size: 0.9rem; font-style: italic; }
 .countdown__list {
   list-style: none;
   padding: 0;
   margin: 0;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
@@ -1205,10 +1262,16 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   align-items: center;
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--color-border);
+  /* Category color edge; transparent placeholder keeps rows aligned. */
+  border-left: 3px solid transparent;
   min-height: 2.75rem;
   transition: transform 0.15s, opacity 0.15s;
 }
 .countdown__item:last-child { border-bottom: none; }
+.countdown__item--birthday  { border-left-color: #b07cc6; }
+.countdown__item--recurring { border-left-color: var(--color-accent); }
+.countdown__item--mabel     { border-left-color: #d98a9c; }
+.countdown__item--travel    { border-left-color: #5fa8d3; }
 /* The button holds the 44px touch floor; the visible circle stays modest.
    Grow hit areas, not visuals. */
 .countdown__check {
@@ -1247,31 +1310,42 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 }
 .countdown__item--done .countdown__days { opacity: 0.5; }
 .countdown__body { min-width: 0; }
-.countdown__when {
+.countdown__top {
   display: flex;
   align-items: baseline;
+  justify-content: space-between;
   gap: var(--space-2);
+  min-width: 0;
+}
+.countdown__name {
+  font-size: 0.95rem;
+  color: var(--color-fg);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.countdown__when {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .countdown__days {
   font-family: var(--font-display);
   color: var(--color-accent);
-  font-size: 1rem;
-  white-space: nowrap;
+  font-size: 0.9rem;
 }
 .countdown__date {
   color: var(--color-muted);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-.countdown__name {
-  font-size: 1rem;
-  color: var(--color-fg);
-  margin-top: 2px;
 }
 .countdown__sub {
   color: var(--color-muted);
-  font-size: 0.85rem;
+  font-size: 0.78rem;
+  overflow-wrap: anywhere; /* location details wrap, never clip */
 }
 
 /* ───── calendar (full-width, one column per person) ───── */
@@ -1309,7 +1383,9 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   list-style: none;
   padding: 0;
   margin: 0;
-  max-height: 14.25rem; /* five 44px rows fully visible; a sixth peeks = scroll affordance */
+  /* 14.25rem + the 20% Tim asked for on 2026-07-11 — the card is the page's
+     anchor widget and earns the extra rows. */
+  max-height: 17.1rem;
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
@@ -1361,6 +1437,145 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── flavor: stacked (default) ──
+   Title-first rows: the title owns the full column width and wraps to two
+   lines; the day leads the meta line below and carries the visual weight. */
+.calendar--stacked .calendar__event {
+  display: block;
+  padding: var(--space-2) 0;
+}
+/* Classic's next-up edge uses a negative margin that assumes the grid row;
+   on block rows it drags content out of the card. Indent instead. */
+.calendar--stacked .calendar__event--next {
+  margin-left: 0;
+  padding-left: var(--space-2);
+  border-left: 3px solid var(--color-accent);
+}
+.calendar--stacked .calendar__title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+.calendar--stacked .calendar__sub { font-size: 0.78rem; }
+.calendar__meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  margin-top: 3px;
+}
+.calendar__meta .calendar__date {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-fg);
+}
+.calendar__meta .calendar__date--today { color: var(--color-accent); }
+.calendar__meta-sep { color: var(--color-muted); font-size: 0.78rem; }
+.calendar__meta .calendar__time {
+  font-family: var(--font-body);
+  color: var(--color-muted);
+  font-size: 0.78rem;
+}
+
+/* ── flavor: rail ──
+   Proximity rail on the row edge — accent fades with distance, so "how soon"
+   reads at arm's length without stealing the person hues. Day text leads. */
+.calendar--rail .calendar__event {
+  grid-template-columns: 6rem 1fr;
+  border-left: 3px solid var(--color-border);
+  padding: var(--space-2) 0 var(--space-2) var(--space-2);
+}
+.calendar--rail .calendar__event--d0    { border-left-color: var(--color-accent); }
+.calendar--rail .calendar__event--d1    { border-left-color: color-mix(in srgb, var(--color-accent) 60%, transparent); }
+.calendar--rail .calendar__event--dweek { border-left-color: color-mix(in srgb, var(--color-accent) 32%, transparent); }
+.calendar--rail .calendar__event--next {
+  margin-left: 0; /* rail replaces the classic next-up edge */
+}
+.calendar--rail .calendar__date {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-fg);
+  white-space: nowrap;
+}
+.calendar--rail .calendar__event--d0 .calendar__date { color: var(--color-accent); }
+.calendar--rail .calendar__time {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+.calendar--rail .calendar__title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── flavor: days (day-grouped, no columns) ──
+   Full-width rows under day headers; person = colored dot + header legend. */
+.calendar__daylist {
+  max-height: 17.1rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: none;
+}
+.calendar__daylist::-webkit-scrollbar { display: none; }
+.calendar__daygroup + .calendar__daygroup { margin-top: var(--space-2); }
+.calendar__day-label {
+  margin: 0 0 2px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.calendar__day-label.is-today { color: var(--color-accent); }
+.calendar__list--flat { max-height: none; }
+.calendar__event--flat {
+  grid-template-columns: auto 5.5rem 1fr;
+  align-items: center;
+}
+.calendar__event--flat .calendar__time {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--color-muted);
+}
+.calendar__event--flat .calendar__title { font-size: 0.95rem; }
+.calendar__event--flat .calendar__sub { margin-left: var(--space-2); }
+.calendar__event--flat .calendar__details {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+.calendar__dot {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--color-muted);
+}
+.calendar__dot--family   { background: #6dac8e; }
+.calendar__dot--tim      { background: var(--color-accent); }
+.calendar__dot--caroline { background: #6e8faf; }
+.calendar__legend { display: inline-flex; gap: var(--space-3); }
+.calendar__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 /* ───── photo ───── */

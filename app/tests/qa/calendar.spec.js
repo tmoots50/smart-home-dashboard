@@ -80,11 +80,30 @@ test('calendar/overflow: column scrolling stays inside the card', async ({ page 
   await expectNestedScrollContained(page, '.calendar__list');
 });
 
-test('calendar/overflow: default-view titles stay on one compact line', async ({ page }) => {
+// Stacked (default) titles may wrap — but never past the 2-line clamp.
+test('calendar/overflow: default-view titles stay within the two-line clamp', async ({ page }) => {
   await open(page, 'overflow');
   const heights = await page.locator('.calendar__title').evaluateAll(nodes => nodes.map(node => ({
     height: node.getBoundingClientRect().height,
     lineHeight: parseFloat(getComputedStyle(node).lineHeight),
   })));
+  expect(heights.every(({ height, lineHeight }) => height <= lineHeight * 2 + 1)).toBe(true);
+});
+
+test('calendar/typical-classic: classic-flavor titles stay on one compact line', async ({ page }) => {
+  await open(page, 'typical-classic');
+  const heights = await page.locator('.calendar__title').evaluateAll(nodes => nodes.map(node => ({
+    height: node.getBoundingClientRect().height,
+    lineHeight: parseFloat(getComputedStyle(node).lineHeight),
+  })));
+  expect(heights.length).toBeGreaterThan(0);
   expect(heights.every(({ height, lineHeight }) => height <= lineHeight + 1)).toBe(true);
+});
+
+test('calendar/typical-days: day-grouped flavor shows day headers and a person legend', async ({ page }) => {
+  await open(page, 'typical-days');
+  await expect(page.locator('.calendar--days')).toBeVisible();
+  expect(await page.locator('.calendar__day-label').count()).toBeGreaterThan(0);
+  await expect(page.locator('.calendar__legend-item')).toHaveCount(3);
+  await expect(page.locator('.calendar__day-label').first()).toContainText(/Today/);
 });
