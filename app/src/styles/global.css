@@ -1161,6 +1161,10 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   flex-direction: column;
   align-items: center;
   gap: 1px;
+  /* Exactly 5 slots fill the strip at a time; the rest scrolls into view
+     (touch swipe or wheel) — Tim, 2026-07-11: the data itself still spans
+     the rest of the day / all 7 days, only the visible window is capped. */
+  flex: 0 0 calc((100% - 4 * var(--space-1)) / 5);
   min-width: 2.35rem;
 }
 .weather__hour-label,

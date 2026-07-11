@@ -3,7 +3,7 @@
 
 import { getMockWeather } from './weather-mock.js';
 
-const CACHE_KEY = 'weather:v6'; // v6: fixed 5 hourly / 5 daily entries (was rest-of-day / 7)
+const CACHE_KEY = 'weather:v7'; // v7: back to rest-of-day / 7-day data (v6's fixed 5/5 was wrong — the card now just shows 5 slots at a time and scrolls)
 const CACHE_TTL_MS = 15 * 60 * 1000;
 
 // WMO weather code → short human label. Source: open-meteo.com/en/docs.
@@ -54,16 +54,14 @@ function writeCache(data) {
   catch { /* localStorage full or disabled — fine */ }
 }
 
-// Fixed window sizes (Tim, 2026-07-11): a steady 5/5 reads better at a
-// glance than "however many hours are left today" (1 at 11pm, 24 at 1am).
-const HOURLY_COUNT = 5;
-const DAILY_COUNT = 5;
-
 export function normalizeWeather(api, location) {
   const c = api.current;
   const d = api.daily;
   const h = api.hourly;
   const firstHour = Math.max(0, h.time.findIndex(iso => iso >= c.time.slice(0, 13) + ':00'));
+  const today = c.time.slice(0, 10);
+  let endOfDay = firstHour;
+  while (endOfDay < h.time.length && h.time[endOfDay].startsWith(today)) endOfDay += 1;
   return {
     location,
     current: {
@@ -82,13 +80,13 @@ export function normalizeWeather(api, location) {
       uvMax: d.uv_index_max?.[0] != null ? Math.round(d.uv_index_max[0]) : null,
       rainPct: d.precipitation_probability_max?.[0] ?? null,
     },
-    forecast: d.time.slice(0, DAILY_COUNT).map((iso, i) => ({
+    forecast: d.time.slice(0, 7).map((iso, i) => ({
       label: DOW[new Date(iso + 'T12:00:00').getDay()],
       tempF: Math.round(d.temperature_2m_max[i]),
       code: d.weather_code[i],
       emoji: WMO_EMOJI[d.weather_code[i]] ?? '',
     })),
-    hourly: h.time.slice(firstHour, firstHour + HOURLY_COUNT).map((iso, i) => ({
+    hourly: h.time.slice(firstHour, endOfDay).map((iso, i) => ({
       label: i === 0 ? 'Now' : new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).format(new Date(iso)),
       tempF: Math.round(h.temperature_2m[firstHour + i]),
       code: h.weather_code[firstHour + i],
