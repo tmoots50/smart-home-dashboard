@@ -131,8 +131,11 @@ export function getMonth(year, month) {
       const { at, data } = JSON.parse(raw);
       if (Date.now() - at <= MONTH_TTL_MS) cached = data;
     }
-  } catch { /* fall through to mock */ }
-  const initial = canonicalizeUpcoming(cached ?? getMockMonth(year, month));
+  } catch { /* fall through */ }
+  // Uncached month + real backend: serve an EMPTY initial, not mock. Flashing
+  // fake events until live data landed read as a double page-load on the wall
+  // (2026-07-11 feedback). Mock stays for tokenless dev so the grid isn't blank.
+  const initial = canonicalizeUpcoming(cached ?? (TOKEN ? [] : getMockMonth(year, month)));
   const live = TOKEN
     ? fetchMonth(year, month).catch(() => initial)
     : Promise.resolve(initial);

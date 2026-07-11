@@ -31,7 +31,13 @@ describe('normalizeUpcoming', () => {
       startsAt: '2026-09-10',
       endsAt: '2026-09-14',
       allDay: true,
+      recurring: false,
     });
+  });
+
+  it('marks instances of a repeating series as recurring', () => {
+    const [event] = normalizeUpcoming([{ ...timed, recurringEventId: 'weekly-series' }], 'Family');
+    expect(event.recurring).toBe(true);
   });
 
   it('passes description through to the normalized shape', () => {

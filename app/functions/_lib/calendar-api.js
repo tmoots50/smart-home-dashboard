@@ -123,6 +123,9 @@ export function normalizeUpcoming(events, calendarLabel) {
         startsAt,
         endsAt: e.end?.dateTime || e.end?.date || '',
         allDay,
+        // Instance of a repeating series (weekly watering, monthly meds…) —
+        // the Coming-Up widget uses this to tag/order recurring items.
+        recurring: Boolean(e.recurringEventId || e.recurrence),
       };
     })
     .filter(Boolean);

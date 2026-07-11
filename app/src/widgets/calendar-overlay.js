@@ -155,7 +155,7 @@ function renderPerson(group, now) {
   if (group.events.length) {
     rows = `
       <ul class="cal-day__list">
-        ${group.events.map(ev => renderDatedRow(ev, nearDayLabel(ev, today))).join('')}
+        ${group.events.map(ev => renderDatedRow(ev, dayParts(ev, today))).join('')}
       </ul>`;
   } else if (group.linked === false) {
     rows = '<p class="cal-overlay__unlinked muted">Not linked yet</p>';
@@ -183,19 +183,24 @@ function renderEmpty(later, now) {
     <section class="cal-coming">
       <h3 class="cal-day__label">Coming up</h3>
       <ul class="cal-day__list">
-        ${upNext.map(ev => renderDatedRow(ev, MONTHDAY_FMT.format(parseLocalish(ev.startsAt)), { chip: true })).join('')}
+        ${upNext.map(ev => renderDatedRow(ev, farDayParts(ev), { chip: true })).join('')}
       </ul>
     </section>
   `;
 }
 
-// Shared row for person sections and the Coming-up list: [day] [time] [main]
-// (+ optional calendar chip when the section doesn't already name the person).
-function renderDatedRow(ev, dayText, { chip = false } = {}) {
+// Shared row for person sections and the Coming-up list: [day+date] [time]
+// [main] (+ optional calendar chip when the section doesn't already name the
+// person). The day cell stacks weekday over the actual date — "which day" AND
+// "which date" without widening the column past one word.
+function renderDatedRow(ev, { dow, date }, { chip = false } = {}) {
   const evtJson = escapeHtml(JSON.stringify(ev));
   return `
     <li class="cal-event cal-event--dated" data-event="${evtJson}" role="button" tabindex="0">
-      <span class="cal-event__day">${escapeHtml(dayText)}</span>
+      <span class="cal-event__day">
+        <span class="cal-event__dow">${escapeHtml(dow)}</span>
+        <span class="cal-event__date">${escapeHtml(date)}</span>
+      </span>
       <span class="cal-event__time${ev.allDay ? ' cal-event__time--allday' : ''}">
         ${ev.allDay ? 'All day' : TIME_FMT.format(new Date(ev.startsAt))}
       </span>
@@ -301,12 +306,22 @@ function dayLabel(idx, today) {
   return DAY_FMT.format(d);
 }
 
-// Compact inline label for person-section rows: Today / Tomorrow / "Sat".
-function nearDayLabel(ev, today) {
+// Day cell for person-section rows: weekday word over the real date, so
+// "Sat" is never ambiguous about WHICH Saturday.
+function dayParts(ev, today) {
   const idx = dayIndexOf(ev, today);
-  if (idx === 0) return 'Today';
-  if (idx === 1) return 'Tomorrow';
-  return WEEKDAY_FMT.format(parseLocalish(ev.startsAt));
+  const date = MONTHDAY_FMT.format(parseLocalish(ev.startsAt));
+  if (idx === 0) return { dow: 'Today', date };
+  if (idx === 1) return { dow: 'Tomorrow', date };
+  return { dow: WEEKDAY_FMT.format(parseLocalish(ev.startsAt)), date };
+}
+
+// Beyond-the-horizon rows (empty-week Coming up): always weekday + date.
+function farDayParts(ev) {
+  return {
+    dow: WEEKDAY_FMT.format(parseLocalish(ev.startsAt)),
+    date: MONTHDAY_FMT.format(parseLocalish(ev.startsAt)),
+  };
 }
 
 // All-day events arrive as bare YYYY-MM-DD — parse as LOCAL midnight, not UTC

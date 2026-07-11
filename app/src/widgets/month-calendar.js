@@ -1,9 +1,20 @@
 // Month-view calendar overlay — the Google/iCal-style month grid behind the
 // action bar's calendar button. Read-only on purpose (edits belong to the
-// phone calendar apps): day cells carry up to MAX_CHIPS colored event chips;
-// chip tap → the shared event-detail panel; "+N more" or a day tap → an
-// in-context day-detail sheet reusing the overlay's .cal-event rows; ‹ ›
-// month nav is clamped to now ± NAV_LIMIT_MONTHS (the API serves ± 366 days).
+// phone calendar apps).
+//
+// Layout: header (title tracks the month in view; ‹ › jump a month; ✕ closes)
+// + a calendar legend (tap a calendar to filter the whole view to it, tap
+// again to clear) + one vertical scroller stacking month sections. Scrolling
+// down reveals the next months (sections append as you approach the end);
+// the arrows scroll month-by-month and prepend past months on demand. Chip
+// tap → shared event-detail panel; "+N more" or a day tap → day-detail sheet.
+// Nav stays clamped to now ± NAV_LIMIT_MONTHS (the API serves ± 366 days).
+//
+// Anti-flicker contract (2026-07-11 feedback: month nav "reloads twice"):
+// sections render once and are PATCHED in place when live data lands — and
+// only when it actually differs. There is no full-panel repaint after mount.
+// Paired with lib/calendar.js no longer serving mock months when a token is
+// configured, a fresh month paints once: quiet empty grid → real events.
 //
 // Same overlay conventions as calendar-overlay.js: scrim + panel, close via
 // ✕, scrim tap, or Escape. Note the pre-existing Escape-stack quirk: every
@@ -21,6 +32,9 @@ const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const MAX_CHIPS = 3;
 const NAV_LIMIT_MONTHS = 12;
+// Household roster — legend order and colors stay stable before data loads.
+// Calendars that appear in event data but not here append after, unfiltered.
+const ROSTER = ['Family', 'Tim', 'Caroline'];
 
 // ───── pure grid model ─────
 
@@ -75,24 +89,75 @@ export function buildMonthGrid(year, month, events, now = new Date()) {
 
 // ───── pure render ─────
 
-export function renderMonthCalendar(events, { year, month, now = new Date() } = {}) {
-  const grid = buildMonthGrid(year, month, events, now);
+function filterEvents(events, filter) {
+  if (!filter) return events ?? [];
+  return (events ?? []).filter(ev => slug(ev.calendar) === filter);
+}
+
+// Legend roster: the household three, plus any calendar the data surfaces
+// that we didn't expect (renders with the "other" hue).
+function legendRoster(events) {
+  const known = new Set(ROSTER.map(slug));
+  const extras = [];
+  for (const ev of events ?? []) {
+    const s = slug(ev.calendar);
+    if (!known.has(s)) {
+      known.add(s);
+      extras.push(ev.calendar || 'Other');
+    }
+  }
+  return [...ROSTER, ...extras];
+}
+
+function renderLegend(roster, filter) {
+  return roster.map(name => {
+    const s = slug(name);
+    const state = filter ? (filter === s ? ' is-active' : ' is-dimmed') : '';
+    return `
+      <button class="month-cal__legend-item month-cal__legend-item--${s}${state}"
+              data-filter="${s}" aria-pressed="${filter === s}">
+        <i></i>${escapeHtml(name)}
+      </button>`;
+  }).join('');
+}
+
+function renderMonthSection(year, month, events, { now = new Date(), filter = null } = {}) {
+  const grid = buildMonthGrid(year, month, filterEvents(events, filter), now);
+  return `
+    <section class="month-cal__month" data-ym="${year}-${month}">
+      <h3 class="month-cal__month-label">${escapeHtml(grid.title)}</h3>
+      <div class="month-cal__grid">${grid.cells.map(renderCell).join('')}</div>
+    </section>
+  `;
+}
+
+function panelHtml({ title, legend, sections }) {
   return `
     <div class="overlay__panel month-cal" role="dialog" aria-label="Month calendar">
       <div class="overlay__header">
-        <h2 class="overlay__title" data-month-title>${escapeHtml(grid.title)}</h2>
+        <h2 class="overlay__title" data-month-title>${escapeHtml(title)}</h2>
         <div class="month-cal__nav">
           <button class="overlay__close" data-action="prev" aria-label="Previous month">‹</button>
           <button class="overlay__close" data-action="next" aria-label="Next month">›</button>
           <button class="overlay__close" data-action="close" aria-label="Close">${CLOSE_SVG}</button>
         </div>
       </div>
+      <div class="month-cal__legend" data-legend>${legend}</div>
       <div class="month-cal__dow">${DOW.map(d => `<span>${d}</span>`).join('')}</div>
-      <div class="month-cal__grid">
-        ${grid.cells.map(renderCell).join('')}
-      </div>
+      <div class="month-cal__scroller" data-scroller>${sections}</div>
     </div>
   `;
+}
+
+// Single-month render — the pure view of one month inside the full panel
+// chrome (tests and static previews use this; the interactive overlay builds
+// the same pieces incrementally).
+export function renderMonthCalendar(events, { year, month, now = new Date(), filter = null } = {}) {
+  return panelHtml({
+    title: MONTH_FMT.format(new Date(year, month, 1)),
+    legend: renderLegend(legendRoster(events), filter),
+    sections: renderMonthSection(year, month, events, { now, filter }),
+  });
 }
 
 function renderCell(cell) {
@@ -136,38 +201,142 @@ export function openMonthCalendar(source, { now = new Date() } = {}) {
   document.documentElement.classList.add('has-overlay');
 
   const base = { year: now.getFullYear(), month: now.getMonth() };
-  let view = { ...base };
-  let events = [];
+  const byOff = new Map(); // month offset from base → { year, month, events }
+  let minOff = 0;
+  let maxOff = -1; // no sections yet
+  let activeOff = 0;
+  let filter = null;
+  let scrollRaf = 0;
+  let navTarget = null;
+  let navTimer = null;
 
-  function load() {
-    const requested = { ...view };
-    const { initial, live } = source.getMonth(view.year, view.month);
-    events = initial ?? [];
-    draw();
+  host.innerHTML = panelHtml({
+    title: MONTH_FMT.format(new Date(base.year, base.month, 1)),
+    legend: renderLegend(ROSTER, filter),
+    sections: '',
+  });
+  const scroller = host.querySelector('[data-scroller]');
+  const titleEl = host.querySelector('[data-month-title]');
+  const legendEl = host.querySelector('[data-legend]');
+
+  const dateOf = (off) => new Date(base.year, base.month + off, 1);
+  const offOfYm = (ym) => {
+    const [y, m] = String(ym).split('-').map(Number);
+    return (y - base.year) * 12 + (m - base.month);
+  };
+  const sectionOf = (off) => {
+    const d = dateOf(off);
+    return scroller.querySelector(`[data-ym="${d.getFullYear()}-${d.getMonth()}"]`);
+  };
+
+  function patch(off) {
+    const rec = byOff.get(off);
+    const sec = sectionOf(off);
+    if (!rec || !sec) return;
+    const grid = buildMonthGrid(rec.year, rec.month, filterEvents(rec.events, filter), now);
+    sec.querySelector('.month-cal__grid').innerHTML = grid.cells.map(renderCell).join('');
+  }
+
+  function refreshLegend() {
+    const all = [...byOff.values()].flatMap(rec => rec.events);
+    const next = renderLegend(legendRoster(all), filter);
+    if (legendEl.innerHTML !== next) legendEl.innerHTML = next;
+  }
+
+  function load(off) {
+    const rec = byOff.get(off);
+    const { initial, live } = source.getMonth(rec.year, rec.month);
+    rec.events = initial ?? [];
+    patch(off);
+    refreshLegend();
     live?.then(next => {
-      // Guard against stale responses after further navigation.
-      if (next && requested.year === view.year && requested.month === view.month) {
-        events = next;
-        draw();
-      }
+      // Patch in place, and only if the data actually changed — repainting
+      // identical content is exactly the flicker this widget got flagged for.
+      if (!next || JSON.stringify(next) === JSON.stringify(rec.events)) return;
+      rec.events = next;
+      patch(off);
+      refreshLegend();
     }).catch(() => {});
   }
 
-  function draw() {
-    host.innerHTML = renderMonthCalendar(events, { year: view.year, month: view.month, now });
+  // Add a month section at the edge of the loaded range. Prepending keeps the
+  // viewport stable by compensating scrollTop for the inserted height.
+  function addSection(off) {
+    if (Math.abs(off) > NAV_LIMIT_MONTHS || byOff.has(off)) return false;
+    const d = dateOf(off);
+    const rec = { year: d.getFullYear(), month: d.getMonth(), events: [] };
+    byOff.set(off, rec);
+    const html = renderMonthSection(rec.year, rec.month, [], { now, filter });
+    if (off > maxOff) {
+      scroller.insertAdjacentHTML('beforeend', html);
+      maxOff = Math.max(maxOff, off);
+    } else {
+      const before = scroller.scrollHeight;
+      scroller.insertAdjacentHTML('afterbegin', html);
+      scroller.scrollTop += scroller.scrollHeight - before;
+      minOff = Math.min(minOff, off);
+    }
+    load(off);
+    return true;
+  }
+
+  function setActive(off) {
+    activeOff = off;
+    titleEl.textContent = MONTH_FMT.format(dateOf(off));
   }
 
   function nav(dir) {
-    const delta = (view.year - base.year) * 12 + (view.month - base.month) + dir;
-    if (Math.abs(delta) > NAV_LIMIT_MONTHS) return;
-    const d = new Date(view.year, view.month + dir, 1);
-    view = { year: d.getFullYear(), month: d.getMonth() };
-    load();
+    // During smooth scrolling, the scroll observer may still report the month
+    // we're leaving. Keep arrow intent separate until the target section is
+    // actually observed; otherwise a rapid Next → Previous can become two
+    // Previous actions (July → August → June).
+    const target = (navTarget ?? activeOff) + dir;
+    if (Math.abs(target) > NAV_LIMIT_MONTHS) return;
+    if (!byOff.has(target)) addSection(target);
+    navTarget = target;
+    clearTimeout(navTimer);
+    navTimer = setTimeout(() => { navTarget = null; }, 700);
+    setActive(target);
+    sectionOf(target)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+  }
+
+  // Scroll drives two things: appending the next month as the end approaches,
+  // and keeping the header title on the month occupying the top of the view.
+  function onScroll() {
+    if (scroller.scrollTop + scroller.clientHeight * 2 > scroller.scrollHeight) {
+      addSection(maxOff + 1);
+    }
+    const probe = scroller.getBoundingClientRect().top + Math.min(120, scroller.clientHeight / 3);
+    for (const sec of scroller.children) {
+      const r = sec.getBoundingClientRect();
+      if (r.top <= probe && r.bottom > probe) {
+        const off = offOfYm(sec.dataset.ym);
+        if (navTarget != null && off !== navTarget) break;
+        if (off === navTarget) {
+          navTarget = null;
+          clearTimeout(navTimer);
+        }
+        if (off !== activeOff) setActive(off);
+        break;
+      }
+    }
+  }
+  scroller.addEventListener('scroll', () => {
+    if (scrollRaf || typeof requestAnimationFrame !== 'function') return onScroll();
+    scrollRaf = requestAnimationFrame(() => { scrollRaf = 0; onScroll(); });
+  });
+
+  function toggleFilter(slugName) {
+    filter = filter === slugName ? null : slugName;
+    for (const off of byOff.keys()) patch(off);
+    refreshLegend();
   }
 
   function close() {
     document.removeEventListener('keydown', onKey);
     document.documentElement.classList.remove('has-overlay');
+    if (scrollRaf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(scrollRaf);
+    clearTimeout(navTimer);
     host.remove();
   }
 
@@ -180,22 +349,28 @@ export function openMonthCalendar(source, { now = new Date() } = {}) {
     if (e.target === host) return close(); // scrim tap
     if (e.target.closest('[data-action="prev"]')) return nav(-1);
     if (e.target.closest('[data-action="next"]')) return nav(1);
+    const legendItem = e.target.closest('[data-filter]');
+    if (legendItem) return toggleFilter(legendItem.dataset.filter);
     const chip = e.target.closest('.month-cal__chip');
     if (chip) {
       try { openEventDetail(JSON.parse(chip.dataset.event)); } catch {}
       return;
     }
+    const section = e.target.closest('.month-cal__month');
     const day = e.target.closest('.month-cal__more')?.dataset.date
       ?? e.target.closest('.month-cal__day:not(.is-outside)')?.dataset.date;
-    if (day) {
-      const cell = buildMonthGrid(view.year, view.month, events, now)
+    if (day && section) {
+      const rec = byOff.get(offOfYm(section.dataset.ym));
+      const cell = buildMonthGrid(rec.year, rec.month, filterEvents(rec?.events, filter), now)
         .cells.find(c => c.date === day);
       openDayDetail(day, cell?.events ?? []);
     }
   });
 
   document.addEventListener('keydown', onKey);
-  load();
+  addSection(0);
+  addSection(1); // one month of scroll-ahead so "next" is already there
+  setActive(0);
   return close;
 }
 

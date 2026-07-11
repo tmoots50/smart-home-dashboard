@@ -56,15 +56,48 @@ test('month-calendar/overflow: +N more opens the day sheet; row tap opens event 
   await expect(page.locator('.event-detail')).toBeVisible();
 });
 
-test('month-calendar/adjacent-months: nav swaps title and data', async ({ page }) => {
+test('month-calendar/adjacent-months: nav updates the title; each month section holds its own data', async ({ page }) => {
   await open(page, 'adjacent-months');
-  await expect(page.locator('.month-cal__chip')).toHaveCount(1);
+  // Current month + one scroll-ahead month are both in the stacked scroller.
+  const sections = page.locator('.month-cal__month');
+  await expect(sections).toHaveCount(2);
+  await expect(sections.nth(0).locator('.month-cal__chip')).toHaveCount(1);
+  await expect(sections.nth(1).locator('.month-cal__chip')).toHaveText(/Next month event/);
+
   const before = await page.locator('[data-month-title]').textContent();
   await page.locator('[data-action="next"]').tap();
   expect(await page.locator('[data-month-title]').textContent()).not.toBe(before);
-  await expect(page.locator('.month-cal__chip')).toHaveText(/Next month event/);
   await page.locator('[data-action="prev"]').tap();
   expect(await page.locator('[data-month-title]').textContent()).toBe(before);
+});
+
+test('month-calendar/typical: legend filters chips to one calendar and back', async ({ page }) => {
+  await open(page, 'typical');
+  const timChips = page.locator('.month-cal__month').first().locator('.month-cal__chip--tim');
+  const otherChips = page.locator('.month-cal__month').first()
+    .locator('.month-cal__chip:not(.month-cal__chip--tim)');
+  const timCount = await timChips.count();
+  const otherCount = await otherChips.count();
+  expect(otherCount).toBeGreaterThan(0); // fixture must exercise the filter
+
+  await page.locator('[data-filter="tim"]').tap();
+  await expect(timChips).toHaveCount(timCount);
+  await expect(otherChips).toHaveCount(0);
+  await expect(page.locator('[data-filter="tim"]')).toHaveAttribute('aria-pressed', 'true');
+
+  await page.locator('[data-filter="tim"]').tap(); // tap again = clear
+  await expect(otherChips).toHaveCount(otherCount);
+});
+
+test('month-calendar/typical: scrolling toward the end appends the next month', async ({ page }) => {
+  await open(page, 'typical');
+  await expect(page.locator('.month-cal__month')).toHaveCount(2);
+  await page.evaluate(() => {
+    const s = document.querySelector('[data-scroller]');
+    s.scrollTop = s.scrollHeight; // dive toward the end of the loaded range
+    s.dispatchEvent(new Event('scroll'));
+  });
+  await expect(page.locator('.month-cal__month')).toHaveCount(3);
 });
 
 test('month-calendar/all-day-span: a span running since last month lands on day 1', async ({ page }) => {
