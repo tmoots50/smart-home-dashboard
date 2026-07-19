@@ -61,8 +61,15 @@ You cannot widen the token yourself. Give Tim the exact steps:
 
 ## Anything bind-kv.mjs doesn't cover (env vars, other bindings): additive-PATCH pattern
 
-GET the project, merge into `deployment_configs.{production,preview}`, PATCH **only** the fields you're changing (never resend read-only fields), then **read back and confirm** existing bindings + env-var count survived. Binding shape:
-`"kv_namespaces": { "NAME": { "namespace_id": "<id>" } }`. Additive means: start from the existing map and add your key — never send a bare replacement that drops siblings.
+**Env vars merge PER KEY on PATCH — send ONLY the keys you're changing.** Never GET the env map and PATCH it back wholesale: `secret_text` vars come back from GET **without their values**, so re-sending them valueless **wipes the stored secrets**. This happened on 2026-07-19 (`GOOGLE_REFRESH_TOKEN` + `CF_ACCESS_CLIENT_SECRET` wiped, wall on mock fallback until restored from `.envrc.local` / `app/.dev.vars`). Correct shape:
+
+```json
+{"deployment_configs": {"production": {"env_vars": {"NEW_KEY": {"type": "secret_text", "value": "…"}}}}}
+```
+
+Omitted keys persist; a key set to `null` deletes. After PATCH, **read back and confirm** the env-var count went up by exactly your additions and existing bindings survived. For `kv_namespaces` bindings the same per-field PATCH applies; shape: `"kv_namespaces": { "NAME": { "namespace_id": "<id>" } }`.
+
+Remember the **activation trap** for env vars too: a changed/restored env var only reaches Functions on the **next deployment** — trigger one via `POST …/deployments {"branch":"main"}` if you're not about to push code.
 
 ## Rails
 
