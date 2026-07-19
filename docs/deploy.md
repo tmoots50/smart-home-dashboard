@@ -23,11 +23,25 @@ The Meswao tablet runs **Fully Kiosk Browser** pointed at the Cloudflare Pages U
 | Param | Effect |
 |-------|--------|
 | `?kiosk=1` | Locks scrolling and hides any dev-only affordances. Always set in production. |
-| `?theme=fun` | Swaps the editorial dark theme for the warm light variant. |
+| `?theme=…` | **Dev preview only.** Forces a theme (`fun` light / `cosy` dark) — but only when `?kiosk=1` is *absent*. In kiosk mode it's ignored so the auto schedule + toggle own the theme (see below). |
 | `?scale=0.6` | Shrinks the whole UI proportionally (multiplies root font-size). Useful when a tablet's CSS viewport is small but the physical display is large. |
 | `?lat=…&lon=…&location=…` | Override the default Atlanta weather location. |
 
-Example Fully Kiosk start URL: `https://dashboard.pages.dev/?kiosk=1&theme=fun`.
+Example Fully Kiosk start URL: `https://dashboard.pages.dev/?kiosk=1`.
+
+### Light / dark mode (auto + manual)
+
+The dashboard themes itself **automatically by the sun**: `fun` (warm light)
+between sunrise and sunset for ZIP 30324, `cosy` (warm dark) overnight. Sun
+times are computed locally (`app/src/lib/suntimes.js`) — no API call — and
+re-checked every minute, so the wall crosses sunrise/sunset without a reload.
+
+The **leftmost action-bar button** (sun/moon) manually flips light↔dark. A tap
+**overrides the auto schedule until the next sun event**, then auto resumes —
+so you can force dark for movie night without permanently disabling the
+schedule. The choice persists across reloads (localStorage), so **no URL edit
+is ever needed**. A previously pinned `?theme=fun` in the start URL is now a
+harmless no-op in kiosk mode; you can leave it or drop it.
 
 ## Promoting from preview to production
 

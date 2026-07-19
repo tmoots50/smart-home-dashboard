@@ -16,6 +16,7 @@ import { getHome, actions as homeActions, deviceActions, isConfigured as homeCon
 import { getUpcoming, getMonth } from '../lib/calendar.js';
 import { openHermesChat } from '../lib/telegram.js';
 import { voice } from '../lib/voice.js';
+import { toggleTheme, isDark } from '../lib/theme-mode.js';
 
 import { getMockBibleVerse } from '../lib/bible-mock.js';
 import { getPhotos } from '../lib/photos.js';
@@ -32,6 +33,12 @@ const MIC_SVG = `<svg ${SVG_ATTRS}><rect x="9" y="3" width="6" height="11" rx="3
 const MUSIC_SVG = `<svg ${SVG_ATTRS}><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/><path d="M9 18V5l12-2v12"/></svg>`;
 const HOME_SVG = `<svg ${SVG_ATTRS}><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><rect x="10" y="14" width="4" height="6"/></svg>`;
 const CAL_SVG = `<svg ${SVG_ATTRS}><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="3" y1="9" x2="21" y2="9"/><circle cx="12" cy="15" r="1.5" fill="currentColor" stroke="none"/></svg>`;
+const SUN_SVG = `<svg ${SVG_ATTRS}><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`;
+const MOON_SVG = `<svg ${SVG_ATTRS}><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>`;
+
+// The toggle shows the mode you'll switch TO: a sun while dark (tap → light),
+// a moon while light (tap → dark).
+const themeIcon = (dark) => (dark ? SUN_SVG : MOON_SVG);
 
 
 // Default location. Override at runtime via ?lat=…&lon=…&location=… on the URL.
@@ -59,6 +66,7 @@ export function renderMorningBriefing(root) {
           <hr class="card__divider"/>
           <div data-slot="weather"></div>
           <div class="action-bar">
+            <button class="action-btn" data-launch="theme" aria-label="Toggle light or dark mode">${themeIcon(isDark())}</button>
             <button class="action-btn" data-launch="mic" aria-label="Voice input">${MIC_SVG}</button>
             <button class="action-btn" data-launch="music" aria-label="Music">${MUSIC_SVG}</button>
             <button class="action-btn" data-launch="home" aria-label="Home controls">${HOME_SVG}</button>
@@ -130,8 +138,19 @@ export function renderMorningBriefing(root) {
     root.addEventListener(eventName, () => clearTimeout(micHoldTimer));
   }
 
+  // Keep the toggle glyph in sync when the theme changes for ANY reason —
+  // a tap here, or auto crossing sunrise/sunset while nobody's watching.
+  const themeBtn = root.querySelector('[data-launch="theme"]');
+  const syncThemeIcon = () => { if (themeBtn) themeBtn.innerHTML = themeIcon(isDark()); };
+  document.addEventListener('themechanged', syncThemeIcon);
+
   root.addEventListener('click', (e) => {
     const launch = e.target.closest('[data-launch]')?.dataset.launch;
+    if (launch === 'theme') {
+      toggleTheme();
+      syncThemeIcon();
+      return;
+    }
     if (launch === 'home') {
       openHomeOverlay(getHome(), homeActions);
       return;

@@ -4,7 +4,7 @@
 // remains deterministic.
 import { test, expect } from '@playwright/test';
 import { FIXED_NOW } from './clock.js';
-import { detectOverflow, auditDesignContract, auditTextClipping, captureArtifact, freezeMotion } from './measure.js';
+import { detectOverflow, auditDesignContract, auditTextClipping, captureArtifact, freezeMotion, auditTapTargets } from './measure.js';
 import { contract } from './design-contract.js';
 
 async function openBriefing(page) {
@@ -54,4 +54,37 @@ test('morning briefing: ≥3 todo and ≥3 grocery rows land above the fold', as
     const third = await rows.nth(2).boundingBox();
     expect(third.y + third.height, `${selector} row 3 bottom vs fold`).toBeLessThanOrEqual(fold);
   }
+});
+
+test('action bar: theme toggle is leftmost, meets the tap floor, and flips light↔dark', async ({ page }, testInfo) => {
+  await page.clock.install({ time: FIXED_NOW });
+  await page.route('https://api.open-meteo.com/**', route => route.abort());
+  // Kiosk mode so a pinned ?theme= is ignored and the toggle drives data-theme
+  // (in dev/non-kiosk, ?theme= wins as a preview — see lib/theme-mode.js).
+  await page.goto('/?kiosk=1');
+  await freezeMotion(page);
+
+  const actionBtns = page.locator('.action-bar .action-btn');
+  await expect(actionBtns.first()).toHaveAttribute('data-launch', 'theme');
+
+  // Five buttons now — none may drop below the 44px hit floor and the row must
+  // not widen the page (space-between + fixed 4.4rem targets).
+  const small = await auditTapTargets(page, { selector: '.action-bar .action-btn' });
+  expect(small, `sub-44px action buttons: ${JSON.stringify(small, null, 2)}`).toEqual([]);
+  expect((await detectOverflow(page)).horizontal).toBe(false);
+
+  const html = page.locator('html');
+  const before = await html.getAttribute('data-theme');
+  expect(['fun', 'cosy']).toContain(before);
+
+  await actionBtns.first().click();
+  const after = await html.getAttribute('data-theme');
+  expect(after).not.toBe(before);
+  expect(['fun', 'cosy']).toContain(after);
+
+  // A second tap returns to the starting mode.
+  await actionBtns.first().click();
+  expect(await html.getAttribute('data-theme')).toBe(before);
+
+  await captureArtifact(page, 'action-bar-theme-toggle', testInfo);
 });

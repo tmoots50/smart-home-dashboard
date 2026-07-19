@@ -9,11 +9,13 @@ if (params.has('kiosk')) {
   document.documentElement.classList.add('kiosk');
 }
 
-// Household schedule: `light` from 07:00–22:59, `cosy` from 23:00–06:59.
-// `?theme=` forces a preview. Re-evaluate every five minutes so the always-on
-// kiosk crosses both boundaries without a reload.
+// Theme follows the sun: `fun` (warm light) between sunrise and sunset for ZIP
+// 30324, `cosy` (warm dark) overnight. The action-bar toggle can override this
+// until the next sun event. Re-evaluate every minute so the always-on kiosk
+// crosses sunrise/sunset — and expires any manual override — promptly, without
+// a reload. In kiosk mode a pinned ?theme= is ignored (see lib/theme-mode.js).
 applyTheme();
-setInterval(applyTheme, 5 * 60 * 1000);
+setInterval(applyTheme, 60 * 1000);
 
 // ?scale=0.6 shrinks the whole UI proportionally. Needed for tablets where
 // the CSS viewport is small but the physical screen is large (MESWAO B3 etc.).
