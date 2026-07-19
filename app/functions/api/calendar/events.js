@@ -8,6 +8,7 @@
 import { getAccessToken } from '../../_lib/google-auth.js';
 import { checkAuth, corsHeaders, json } from '../../_lib/auth.js';
 import { calendarIdFor, createEvent } from '../../_lib/calendar-api.js';
+import { icsCalendarFor } from '../../_lib/ics-api.js';
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -26,6 +27,13 @@ export async function onRequest(context) {
   if (!calendar || typeof calendar !== 'string') return json({ error: 'calendar required' }, { status: 400 }, cors);
   if (!summary || typeof summary !== 'string') return json({ error: 'summary required' }, { status: 400 }, cors);
   if (!start || typeof start !== 'string') return json({ error: 'start required' }, { status: 400 }, cors);
+
+  // Read-only ICS feeds (e.g. Caroline's Outlook) are display-only — a publish
+  // URL is one-way. Refuse mutations with a clear 403 rather than a puzzling
+  // 404 (the calendar exists; it just can't be written).
+  if (icsCalendarFor(env, calendar)) {
+    return json({ error: `"${calendar}" is a display-only calendar and cannot be edited.` }, { status: 403 }, cors);
+  }
 
   const calendarId = calendarIdFor(env, calendar);
   if (!calendarId) return json({ error: `unknown calendar "${calendar}"` }, { status: 404 }, cors);

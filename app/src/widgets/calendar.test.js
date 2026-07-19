@@ -2,6 +2,9 @@ import { describe, it, expect } from 'vitest';
 import { renderCalendar } from './calendar.js';
 import { getMockCalendar } from '../lib/calendar-mock.js';
 
+// data-event JSON is HTML-escaped into the attribute; mirror that here.
+const escapeAttr = (s) => s.replace(/"/g, '&quot;');
+
 describe('renderCalendar', () => {
   it('always renders all three labels with Family first', () => {
     const NOW = new Date('2026-04-29T07:00:00');
@@ -103,10 +106,32 @@ describe('renderCalendar', () => {
     expect(html).toContain('Tim');
     expect(html).toContain('Family');
     expect(html).toContain('Caroline');
-    // Family + Tim are connected but past; Caroline is intentionally unlinked.
+    // All three people are connected in the multi-source mock; every event is
+    // in the past at 23:30 → three quiet columns, no unlinked placeholder.
     const placeholders = html.match(/Nothing scheduled/g) || [];
-    expect(placeholders.length).toBe(2);
-    expect(html).toContain('Not linked yet');
+    expect(placeholders.length).toBe(3);
+    expect(html).not.toContain('Not linked yet');
+  });
+
+  it('tags work-calendar events and interleaves them into the person column', () => {
+    const NOW = new Date('2026-04-29T07:00:00');
+    const html = renderCalendar(getMockCalendar(NOW), NOW);
+    // Mock Tim column: personal 14:15 → work 15:00 → personal 16:00.
+    expect(html).toContain('cal-tag--work');
+    const tim = html.split('calendar__column--tim')[1].split('calendar__column--caroline')[0];
+    const order = ['Job-search standup', 'Product review — Track', 'Recruiter call — Tessa']
+      .map(t => tim.indexOf(t));
+    expect(order.every(i => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+
+  it('preserves the true source calendar in data-event (person-keyed sections)', () => {
+    const NOW = new Date('2026-04-29T07:00:00');
+    const html = renderCalendar(getMockCalendar(NOW), NOW);
+    // The work event routes to "Tim (Work)", not the section label "Tim".
+    expect(html).toContain(escapeAttr('"calendar":"Tim (Work)"'));
+    // Personal events still fall back to the section label.
+    expect(html).toContain(escapeAttr('"calendar":"Tim"'));
   });
 
   it('escapes HTML in event titles', () => {

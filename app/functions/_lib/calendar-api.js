@@ -107,10 +107,19 @@ export function repairMojibake(s) {
 
 // Map Google Calendar event → default dashboard shape. Keep all-day events:
 // the default card is now a forward-looking agenda, not a short time window.
-export function normalize(events) {
+//
+// `opts` tags each event with its source: `calendar` (the source label, for
+// event-detail + edit routing), `person` (the wall column it merges into —
+// defaults to calendar), `kind` ('work'|'personal', drives the work tag), and
+// `readOnly`. Defaults keep the pre-multi-source callers unchanged.
+export function normalize(events, { calendar = '', person, kind = 'personal', readOnly = false } = {}) {
   return events
     .map(e => ({
       id: e.id,
+      calendar,
+      person: person || calendar,
+      kind: kind === 'work' ? 'work' : 'personal',
+      readOnly,
       startsAt: e.start?.dateTime || e.start?.date || '',
       endsAt: e.end?.dateTime || e.end?.date || '',
       title: repairMojibake(e.summary || '(no title)'),
@@ -126,7 +135,7 @@ export function normalize(events) {
 // exactly the birthdays/trips/flights a long-horizon view exists for.
 // Note: Google gives all-day events an EXCLUSIVE end.date (a one-day event on
 // Jul 9 ends Jul 10); consumers that render ranges must subtract a day.
-export function normalizeUpcoming(events, calendarLabel) {
+export function normalizeUpcoming(events, calendarLabel, { person, kind = 'personal', readOnly = false } = {}) {
   return events
     .map(e => {
       const allDay = !e.start?.dateTime;
@@ -135,6 +144,12 @@ export function normalizeUpcoming(events, calendarLabel) {
       return {
         id: e.id,
         calendar: calendarLabel,
+        // Wall column / overlay section this event merges into. Work calendars
+        // (e.g. "Tim (Work)") set person "Tim" so they land in Tim's column;
+        // defaults to the calendar label when unsplit.
+        person: person || calendarLabel,
+        kind: kind === 'work' ? 'work' : 'personal',
+        readOnly,
         title: repairMojibake(e.summary || '(no title)'),
         sub: repairMojibake(e.location || ''),
         description: repairMojibake(e.description || ''),

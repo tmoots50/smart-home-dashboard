@@ -69,18 +69,30 @@ export const states = {
 
   single: [evt(0, 2, 10, 'Recruiter call — Tessa')],
 
-  // The standard demo mix: timed + all-day across all three calendars.
-  typical: [
-    ...getMockUpcoming(NOW),
-    evt(150, 3, 9, 'Caroline work-calendar preview', { calendar: 'Caroline', sub: "Carter's HQ" }),
-  ],
+  // The standard demo mix: timed + all-day across all four source calendars
+  // (mock now includes Tim (Work) + Caroline (Work) with person/kind).
+  typical: getMockUpcoming(NOW),
 
   overflow: overflowWeek(),
 
-  // Caroline appears nowhere in the data (her production reality — the API
-  // canonicalizes her label to Family) → her roster section must render
-  // "Not linked yet" instead of vanishing.
-  'caroline-unlinked': getMockUpcoming(NOW).filter(ev => ev.calendar !== 'Caroline'),
+  // A work-heavy week: Tim's section dominated by Work-tagged rows, Caroline's
+  // section fully populated from her Outlook feed — the two new geometry
+  // stressors for the person-grouped view.
+  'work-dense': [
+    ...getMockUpcoming(NOW),
+    ...Array.from({ length: 6 }, (_, i) => evt(300 + i, i, 9 + (i % 3) * 2, `Narvar sync ${i + 1}`, {
+      calendar: 'Tim (Work)', person: 'Tim', kind: 'work', sub: 'Zoom',
+    })),
+    ...Array.from({ length: 4 }, (_, i) => evt(320 + i, i + 1, 10 + (i % 4), `Client workshop ${i + 1}`, {
+      calendar: 'Caroline (Work)', person: 'Caroline', kind: 'work', readOnly: true,
+    })),
+  ],
+
+  // Caroline appears nowhere in the data (her reality until her Outlook feed
+  // is wired in Phase 3) → her roster section must render "Not linked yet"
+  // instead of vanishing. Match on person: her work calendar sets person, and
+  // the roster's linked-set is person-keyed.
+  'caroline-unlinked': getMockUpcoming(NOW).filter(ev => (ev.person ?? ev.calendar) !== 'Caroline'),
 
   // All-day pinning stress: several all-day events stacked on the same days.
   'all-day-heavy': [

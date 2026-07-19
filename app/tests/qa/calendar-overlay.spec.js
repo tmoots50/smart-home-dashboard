@@ -97,6 +97,16 @@ test('overlay/caroline-unlinked: her section renders "Not linked yet" instead of
   await expect(caroline.locator('.cal-overlay__unlinked')).toHaveText('Not linked yet');
 });
 
+// Multi-source model: Tim's section merges personal + Narvar work (tagged);
+// Caroline's section carries her Outlook feed under her own hue.
+test('overlay/work-dense: Work tags in Tim\'s section; Caroline\'s section populated', async ({ page }) => {
+  await open(page, 'work-dense');
+  expect(await page.locator('.cal-person--tim .cal-tag--work').count()).toBeGreaterThan(0);
+  expect(await page.locator('.cal-person--caroline .cal-event').count()).toBeGreaterThan(0);
+  // Work calendars never spawn their own section — person columns only.
+  await expect(page.locator('.cal-person__name').filter({ hasText: '(Work)' })).toHaveCount(0);
+});
+
 test('overlay/overflow: body scrolling stays inside the modal', async ({ page }) => {
   await open(page, 'overflow');
   await expectNestedScrollContained(page, '.cal-overlay__body');

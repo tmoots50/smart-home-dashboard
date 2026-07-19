@@ -107,7 +107,8 @@ function cardVisibleKeys(enriched, now) {
   const perColumn = new Map(CARD_COLUMNS.map(c => [c, 0]));
   const keys = new Set();
   for (const it of enriched) {
-    const col = it.calendar || 'Family';
+    // Card columns are per-person (work + personal merged), so match on person.
+    const col = it.person || it.calendar || 'Family';
     if (!perColumn.has(col)) continue; // calendars the card doesn't show
     if (parseLocalDate(it.startsAt) < now) continue;
     const n = perColumn.get(col);

@@ -112,8 +112,21 @@ function columnBody(column, nextEventId, now, flavor) {
 function rowAttrs(event, label, nextEventId, extraClass = '') {
   const isNext = event.id === nextEventId;
   const cls = `calendar__event${extraClass}${isNext ? ' calendar__event--next' : ''}`;
-  const evtJson = escapeHtml(JSON.stringify({ ...event, calendar: label }));
+  // Sections are person-keyed, so `label` is the person, NOT the source
+  // calendar. Preserve the event's own calendar ("Tim (Work)") — event-detail
+  // and any future edit routing need the true source, not the column name.
+  const evtJson = escapeHtml(JSON.stringify({
+    ...event,
+    calendar: event.calendar || label,
+    person: event.person || label,
+  }));
   return `class="${cls}" data-event="${evtJson}" role="button" tabindex="0"`;
+}
+
+// Small display-only pill on rows from a work calendar. Never a tap target —
+// the row carries the hit area.
+function workTag(event) {
+  return event.kind === 'work' ? '<span class="cal-tag cal-tag--work">Work</span>' : '';
 }
 
 function renderClassicRow(event, label, nextEventId, now) {
@@ -126,6 +139,7 @@ function renderClassicRow(event, label, nextEventId, now) {
       <span class="calendar__details">
         <div class="calendar__title">${escapeHtml(event.title)}</div>
         ${event.sub ? `<div class="calendar__sub">${escapeHtml(event.sub)}</div>` : ''}
+        ${workTag(event)}
       </span>
     </li>
   `;
@@ -133,6 +147,8 @@ function renderClassicRow(event, label, nextEventId, now) {
 
 // Title first (2-line wrap), then a day-led meta line. The day is the element
 // Tim scans for, so it gets weight; today additionally gets the accent.
+// The Work tag rides the meta line — never inside the clamped title (a pill
+// in a -webkit-line-clamp box risks the razor-clip artifact from 2026-07-11).
 function renderStackedRow(event, label, nextEventId, now) {
   const today = dayIndex(event.startsAt, now) === 0;
   return `
@@ -143,6 +159,7 @@ function renderStackedRow(event, label, nextEventId, now) {
         <span class="calendar__date${today ? ' calendar__date--today' : ''}">${formatDay(event.startsAt, now)}</span>
         <span class="calendar__meta-sep">·</span>
         <span class="calendar__time">${eventTime(event)}</span>
+        ${workTag(event)}
       </div>
     </li>
   `;
@@ -162,6 +179,7 @@ function renderRailRow(event, label, nextEventId, now) {
       <span class="calendar__details">
         <div class="calendar__title">${escapeHtml(event.title)}</div>
         ${event.sub ? `<div class="calendar__sub">${escapeHtml(event.sub)}</div>` : ''}
+        ${workTag(event)}
       </span>
     </li>
   `;
@@ -171,7 +189,9 @@ function renderRailRow(event, label, nextEventId, now) {
 
 function renderDayGrouped(data, now) {
   const events = (data.sections ?? [])
-    .flatMap(s => (s.events ?? []).map(e => ({ ...e, calendar: s.label })))
+    // Keep the event's true source calendar; backfill person from the
+    // (person-keyed) section label for legacy events that predate the field.
+    .flatMap(s => (s.events ?? []).map(e => ({ ...e, calendar: e.calendar || s.label, person: e.person || s.label })))
     .filter(e => parseLocalish(e.startsAt) >= now)
     .sort((a, b) => parseLocalish(a.startsAt) - parseLocalish(b.startsAt))
     .slice(0, MAX_DAY_GROUPED);
@@ -190,12 +210,13 @@ function renderDayGrouped(data, now) {
           <h3 class="calendar__day-label${group.idx === 0 ? ' is-today' : ''}">${escapeHtml(group.label)}</h3>
           <ul class="calendar__list calendar__list--flat">
             ${group.events.map(event => `
-              <li ${rowAttrs(event, event.calendar, data.nextEventId, ' calendar__event--flat')}>
-                <i class="calendar__dot calendar__dot--${colSlug(event.calendar)}"></i>
+              <li ${rowAttrs(event, event.person, data.nextEventId, ' calendar__event--flat')}>
+                <i class="calendar__dot calendar__dot--${colSlug(event.person)}"></i>
                 <span class="calendar__time">${eventTime(event)}</span>
                 <span class="calendar__details">
                   <span class="calendar__title">${escapeHtml(event.title)}</span>
                   ${event.sub ? `<span class="calendar__sub">${escapeHtml(event.sub)}</span>` : ''}
+                  ${workTag(event)}
                 </span>
               </li>
             `).join('')}

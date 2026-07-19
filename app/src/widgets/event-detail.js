@@ -69,6 +69,10 @@ export function openEventDetail(event) {
 export function renderEventDetail(event) {
   const { title = '', startsAt = '', endsAt = '', sub = '', description = '', calendar = '', allDay = false } = event;
   const dateLabel = formatDateLabel(startsAt, endsAt, allDay);
+  // Chip TEXT is the true source calendar ("Tim (Work)") — this is the
+  // precision surface. Chip COLOR keys off the person so work calendars keep
+  // their owner's hue instead of falling through to the colorless default.
+  const chipHue = calSlug(event.person || calendar);
 
   return `
     <div class="overlay__panel event-detail" role="dialog" aria-label="${escapeHtml(title)}">
@@ -84,7 +88,7 @@ export function renderEventDetail(event) {
         ${calendar ? `
         <div class="event-detail__row">
           <span class="event-detail__icon event-detail__icon--chip">
-            <span class="cal-chip cal-chip--${calSlug(calendar)}">${escapeHtml(calendar)}</span>
+            <span class="cal-chip cal-chip--${chipHue}">${escapeHtml(calendar)}</span>
           </span>
         </div>` : ''}
         ${sub ? `

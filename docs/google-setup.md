@@ -98,6 +98,43 @@ Returns:
 
 Pick the calendars you want to surface and shape them into a JSON array for the env var (see step 7). The `label` is what shows on the dashboard ("Family", "Tim (Work)", "Caroline (Work)") and is independent of Google's `summary`.
 
+Each entry may also carry two optional fields for the multi-source column model:
+
+- `person` — the wall column the calendar merges into. A work calendar sets the
+  owner's name (`"person":"Tim"`) so work + personal share one column; omitted,
+  it defaults to `label`.
+- `kind` — `"work"` renders the small **Work** tag on each event; defaults to
+  `"personal"`.
+
+```json
+{"label":"Tim (Work)","id":"<shared-cal-id>","person":"Tim","kind":"work"}
+```
+
+### 5c. Shared work calendar (Google Workspace → personal account)
+
+To surface (and write to) a Workspace work calendar without a second OAuth
+stack, share it into the personal account the dashboard's token belongs to:
+
+1. In the **work** Google Calendar (web) → the calendar's **Settings and
+   sharing** → *Share with specific people* → add the personal Gmail with
+   **"Make changes to events"** (edit level — view-only breaks dashboard/Hermes
+   writes).
+2. Accept the share from the personal account, then re-run the step-5b
+   discovery call — the work calendar now appears with its ID and
+   `accessRole: "writer"`.
+3. Add it to `GOOGLE_CALENDARS_JSON` with `person` + `kind` as above. No new
+   token, no scope change — the existing `calendar.events` scope covers shared
+   calendars.
+
+> **Caveat:** some Workspace admins cap external sharing at view-only
+> (`accessRole: "reader"`). Reads still work; writes will 403 at Google. Verify
+> with a live create/delete after wiring, and fall back to treating it
+> read-only if blocked.
+
+For a calendar published from **Outlook** (no Google account involved), see
+[`outlook-setup.md`](./outlook-setup.md) — those go in `ICS_CALENDARS_JSON`
+instead.
+
 ## 6. Find your Drive photos folder ID
 
 Same pattern:
@@ -127,7 +164,8 @@ In the CF Pages dashboard → your project → **Settings → Environment variab
 | `GOOGLE_DRIVE_PHOTOS_FOLDER_ID` | From step 6 |
 | `GOOGLE_TASKS_LIST_TODOS_ID` | From step 5 |
 | `GOOGLE_TASKS_LIST_GROCERIES_ID` | From step 5 |
-| `GOOGLE_CALENDARS_JSON` | JSON array shaped like `[{"label":"Family","id":"abc@group.calendar.google.com"},{"label":"Tim (Work)","id":"primary"}]`. From step 5b. |
+| `GOOGLE_CALENDARS_JSON` | JSON array shaped like `[{"label":"Family","id":"abc@group.calendar.google.com"},{"label":"Tim (Work)","id":"<shared-id>","person":"Tim","kind":"work"}]`. From steps 5b/5c. |
+| `ICS_CALENDARS_JSON` | *(optional)* Published-ICS feeds (e.g. Outlook), always read-only: `[{"label":"Caroline (Work)","url":"https://outlook.office365.com/owa/calendar/.../calendar.ics","person":"Caroline","kind":"work"}]`. See [`outlook-setup.md`](./outlook-setup.md). |
 | `ALLOW_ORIGIN` | Comma-separated origins for CORS, e.g. `https://your-app.pages.dev,http://localhost:5173` |
 | `VITE_DASHBOARD_TOKEN` | **Same string as `DASHBOARD_TOKEN`** — this one ships in the client bundle so the dashboard sends it on every request. |
 

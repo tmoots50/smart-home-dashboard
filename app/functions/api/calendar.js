@@ -9,6 +9,7 @@
 import { getAccessToken } from '../_lib/google-auth.js';
 import { checkAuth, corsHeaders, json } from '../_lib/auth.js';
 import { parseCalendars, listEvents, normalize, pickNextEventId } from '../_lib/calendar-api.js';
+import { fetchIcsEvents } from '../_lib/ics-api.js';
 
 const DAY_MS = 86_400_000;
 const WINDOW_FORWARD_MS = 90 * DAY_MS;
@@ -55,26 +56,37 @@ export async function onRequest(context) {
   const timeMax = new Date(now.getTime() + WINDOW_FORWARD_MS).toISOString();
 
   try {
-    const fetched = await Promise.all(calendars.map(async (c) => ({
-      label: c.label,
-      events: normalize(await listEvents(accessToken, c.id, timeMin, timeMax, { maxResults: MAX_RESULTS_PER_CALENDAR })),
-    })));
-    const sections = mergeSections(fetched);
+    // Google calendars (via the shared token) + ICS feeds (Outlook, read-only)
+    // fetched together, then merged into per-PERSON sections so a person's work
+    // and personal calendars share one wall column. ICS fails soft internally.
+    const [googlePerCal, icsEvents] = await Promise.all([
+      Promise.all(calendars.map(async (c) =>
+        normalize(
+          await listEvents(accessToken, c.id, timeMin, timeMax, { maxResults: MAX_RESULTS_PER_CALENDAR }),
+          { calendar: c.label, person: c.person, kind: c.kind },
+        ))),
+      fetchIcsEvents(env, timeMin, timeMax),
+    ]);
+    const sections = mergeSections([...googlePerCal.flat(), ...icsEvents]);
     return json({ sections, nextEventId: pickNextEventId(sections, now) }, {}, cors);
   } catch (err) {
     return json({ error: err.message }, { status: 502 }, cors);
   }
 }
 
-function mergeSections(input) {
-  const byLabel = new Map();
-  for (const section of input) {
-    const existing = byLabel.get(section.label) ?? [];
-    byLabel.set(section.label, [...existing, ...section.events]);
+// Group every event by the person column it belongs to (work + personal
+// calendars for one person collapse into a single section), chronological,
+// capped per column. Section `label` is the person — matches the card's COLUMNS.
+function mergeSections(events) {
+  const byPerson = new Map();
+  for (const ev of events) {
+    const key = ev.person || ev.calendar || 'Other';
+    if (!byPerson.has(key)) byPerson.set(key, []);
+    byPerson.get(key).push(ev);
   }
-  return [...byLabel].map(([label, events]) => ({
+  return [...byPerson].map(([label, evs]) => ({
     label,
-    events: events.sort((a, b) => String(a.startsAt).localeCompare(String(b.startsAt))).slice(0, MAX_RESULTS_PER_CALENDAR),
+    events: evs.sort((a, b) => String(a.startsAt).localeCompare(String(b.startsAt))).slice(0, MAX_RESULTS_PER_CALENDAR),
   }));
 }
 

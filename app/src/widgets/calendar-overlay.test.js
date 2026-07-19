@@ -79,6 +79,16 @@ describe('groupByPerson', () => {
     ], 7, NOW);
     expect(groups.map(g => g.person)).toEqual(['Tim', 'Zoe']);
   });
+
+  it('merges work + personal calendars into one person section via `person`', () => {
+    const groups = groupByPerson([
+      ev({ id: 'w', calendar: 'Tim (Work)', person: 'Tim', kind: 'work', startsAt: '2026-07-09T09:00:00' }),
+      ev({ id: 'p', calendar: 'Tim', startsAt: '2026-07-08T10:00:00' }),
+    ], 7, NOW);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].person).toBe('Tim');
+    expect(groups[0].events.map(e => e.id)).toEqual(['p', 'w']);
+  });
 });
 
 describe('splitByHorizon', () => {
@@ -129,6 +139,33 @@ describe('renderCalendarOverlay', () => {
     // Tim exists in the data → quiet week; Caroline appears nowhere → unlinked.
     expect(html).toContain('Nothing coming up.');
     expect(html).toContain('Not linked yet');
+  });
+
+  it('a work calendar links its PERSON: Caroline (Work) events mark Caroline linked', () => {
+    const events = [
+      ev({ id: 'cw', calendar: 'Caroline (Work)', person: 'Caroline', kind: 'work', startsAt: '2026-09-01T10:00:00' }),
+      ev({ id: 'f1' }),
+      ev({ id: 't1', calendar: 'Tim', startsAt: '2026-07-09T10:00:00' }),
+    ];
+    const html = renderCalendarOverlay(events, { days: 7, now: NOW });
+    // Her only event is beyond the horizon → quiet week, NOT unlinked.
+    expect(html).not.toContain('Not linked yet');
+  });
+
+  it('tags work-calendar rows with the Work pill', () => {
+    const html = renderCalendarOverlay([
+      ev({ id: 'w', calendar: 'Tim (Work)', person: 'Tim', kind: 'work', title: 'Product review' }),
+    ], { days: 7, now: NOW });
+    expect(html).toContain('cal-tag--work');
+    expect(html).toContain('cal-person--tim'); // grouped under Tim, not "Tim (Work)"
+  });
+
+  it('empty-week Coming-up chips carry the person name and hue for work events', () => {
+    const html = renderCalendarOverlay([
+      ev({ id: 'w', calendar: 'Tim (Work)', person: 'Tim', kind: 'work', startsAt: '2026-08-01T10:00:00' }),
+    ], { days: 7, now: NOW });
+    expect(html).toContain('cal-chip--tim'); // person hue, not colorless tim-work
+    expect(html).not.toContain('cal-chip--tim-work');
   });
 
   it('shows an event-count badge only for sections with events', () => {

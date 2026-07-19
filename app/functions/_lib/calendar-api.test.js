@@ -25,6 +25,9 @@ describe('normalizeUpcoming', () => {
     expect(up[1]).toEqual({
       id: 'e2',
       calendar: 'Family',
+      person: 'Family',
+      kind: 'personal',
+      readOnly: false,
       title: 'Anniversary trip',
       sub: '',
       description: '',
@@ -33,6 +36,14 @@ describe('normalizeUpcoming', () => {
       allDay: true,
       recurring: false,
     });
+  });
+
+  it('carries person/kind/readOnly for split work calendars, defaulting person to the label', () => {
+    const [personal] = normalizeUpcoming([timed], 'Tim');
+    expect(personal).toMatchObject({ calendar: 'Tim', person: 'Tim', kind: 'personal', readOnly: false });
+
+    const [work] = normalizeUpcoming([timed], 'Tim (Work)', { person: 'Tim', kind: 'work' });
+    expect(work).toMatchObject({ calendar: 'Tim (Work)', person: 'Tim', kind: 'work', readOnly: false });
   });
 
   it('marks instances of a repeating series as recurring', () => {
@@ -73,6 +84,14 @@ describe('normalize', () => {
   it('defaults description to empty string when missing', () => {
     const [ev] = normalize([{ ...timed, description: undefined }]);
     expect(ev.description).toBe('');
+  });
+
+  it('tags the card shape with calendar/person/kind/readOnly for the merge model', () => {
+    const [plain] = normalize([timed]);
+    expect(plain).toMatchObject({ calendar: '', person: '', kind: 'personal', readOnly: false });
+
+    const [work] = normalize([timed], { calendar: 'Tim (Work)', person: 'Tim', kind: 'work' });
+    expect(work).toMatchObject({ calendar: 'Tim (Work)', person: 'Tim', kind: 'work', readOnly: false });
   });
 });
 

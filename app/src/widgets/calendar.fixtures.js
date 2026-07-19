@@ -25,8 +25,14 @@ function section(label, events) {
   return { label, events };
 }
 
-function evt(id, h, m, title, sub = '') {
-  return { id, startsAt: at(h, m), endsAt: at(h + 1, m), title, sub, description: '' };
+function evt(id, h, m, title, sub = '', extra = {}) {
+  return { id, startsAt: at(h, m), endsAt: at(h + 1, m), title, sub, description: '', ...extra };
+}
+
+// A work-calendar event: true source calendar + person + kind, like the API
+// emits for the merged person sections.
+function workEvt(id, h, m, title, sub, person) {
+  return evt(id, h, m, title, sub, { calendar: `${person} (Work)`, person, kind: 'work' });
 }
 
 // A column overflowing its share of the card — 8 events apiece.
@@ -63,6 +69,33 @@ export const states = {
   // Every column packed — what does the card do when a day is genuinely full?
   overflow: {
     data: { sections: [section('Tim', []), packedSection('Family', 12), section('Caroline', [])], nextEventId: 'family-0' },
+  },
+
+  // The multi-source geometry stressor: Tim's column dense with work +
+  // personal interleaved (Work tags on most rows), Caroline's column
+  // populated from her Outlook feed. Exercises the 6-row cap under the
+  // heavier tagged rows.
+  'work-dense': {
+    data: {
+      sections: [
+        section('Family', [evt('fam-1', 15, 30, 'Pediatrician — Mabel', 'Northside Pediatrics')]),
+        section('Tim', [
+          workEvt('tw-0', 9, 0, 'Narvar leadership sync', 'Zoom', 'Tim'),
+          workEvt('tw-1', 10, 30, 'Product review — Track with a deliberately long meeting title', 'Zoom', 'Tim'),
+          evt('tp-0', 12, 0, 'Lunch with Dave', 'Midtown'),
+          workEvt('tw-2', 13, 0, '1:1 — eng lead', '', 'Tim'),
+          workEvt('tw-3', 14, 30, 'Roadmap deep-dive', 'Conf Rm 2', 'Tim'),
+          evt('tp-1', 16, 0, 'Recruiter call — Tessa', 'Phone'),
+          workEvt('tw-4', 17, 0, 'Board prep', '', 'Tim'), // 7th event — over the 6-row cap
+        ]),
+        section('Caroline', [
+          workEvt('cw-0', 9, 30, 'Team standup', 'Teams', 'Caroline'),
+          workEvt('cw-1', 11, 0, 'Quarterly planning', 'Conf Rm 4B', 'Caroline'),
+          workEvt('cw-2', 13, 30, 'Client presentation', 'Teams', 'Caroline'),
+        ]),
+      ],
+      nextEventId: 'tw-0',
+    },
   },
 
   // Worst-case distribution: Family flooded, Tim with one LATE event, long

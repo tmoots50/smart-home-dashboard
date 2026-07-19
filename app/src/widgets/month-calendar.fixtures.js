@@ -28,13 +28,15 @@ export const states = {
   typical: { months: { [key(Y, M)]: getMockMonth(Y, M) } },
 
   // Six events stacked on the 10th → 3 chips + "+3 more" → day-detail sheet.
+  // Includes work-calendar events (person + kind) so the day sheet and chips
+  // exercise the person-hue + Work-marker path.
   overflow: {
     months: {
       [key(Y, M)]: [
         evt('o1', 'Family', 'Pediatrician', 10, 8),
-        evt('o2', 'Tim', 'Recruiter call', 10, 10),
+        evt('o2', 'Tim (Work)', 'Product review', 10, 10, { person: 'Tim', kind: 'work' }),
         evt('o3', 'Family', 'Swim lesson', 10, 11),
-        evt('o4', 'Caroline', 'Offsite', 10, 13),
+        evt('o4', 'Caroline (Work)', 'Offsite', 10, 13, { person: 'Caroline', kind: 'work', readOnly: true }),
         evt('o5', 'Tim', 'Dentist', 10, 15),
         evt('o6', 'Family', 'Dinner with the Fregos', 10, 18),
         evt('o7', 'Family', 'Farmers market', 12, 9),

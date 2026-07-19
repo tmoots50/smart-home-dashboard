@@ -26,7 +26,12 @@ function writeCache(data) {
   catch {}
 }
 
-const canonicalLabel = (label) => String(label ?? '').trim().toLowerCase() === 'caroline' ? 'Family' : String(label ?? '').trim();
+// Sections and events are now keyed by PERSON server-side (a person's work +
+// personal calendars merge into one column). The old 'Caroline'→'Family' alias
+// is retired: Caroline is a real, distinct person once her Outlook feed is
+// wired. These canonicalizers now just tidy labels and backfill `person` for
+// any legacy/mock event that predates the field.
+const canonicalLabel = (label) => String(label ?? '').trim();
 
 export function canonicalizeCalendarData(data) {
   const grouped = new Map();
@@ -44,7 +49,13 @@ export function canonicalizeCalendarData(data) {
 }
 
 export function canonicalizeUpcoming(events) {
-  return (events ?? []).map(event => ({ ...event, calendar: canonicalLabel(event.calendar) }));
+  return (events ?? []).map(event => ({
+    ...event,
+    calendar: canonicalLabel(event.calendar),
+    // Overlay/coming-up group by person; default it to the calendar label so
+    // events from before the multi-source split still land in a column.
+    person: canonicalLabel(event.person ?? event.calendar),
+  }));
 }
 
 export async function fetchCalendar() {

@@ -7,6 +7,7 @@
 import { getAccessToken } from '../../../_lib/google-auth.js';
 import { checkAuth, corsHeaders, json } from '../../../_lib/auth.js';
 import { calendarIdFor, deleteEvent, updateEvent } from '../../../_lib/calendar-api.js';
+import { icsCalendarFor } from '../../../_lib/ics-api.js';
 
 export async function onRequest(context) {
   const { request, env, params } = context;
@@ -23,6 +24,11 @@ export async function onRequest(context) {
   const url = new URL(request.url);
   const calendarLabel = url.searchParams.get('calendar');
   if (!calendarLabel) return json({ error: 'calendar query param required' }, { status: 400 }, cors);
+
+  // Read-only ICS feeds (e.g. Caroline's Outlook) can't be mutated — 403, not 404.
+  if (icsCalendarFor(env, calendarLabel)) {
+    return json({ error: `"${calendarLabel}" is a display-only calendar and cannot be edited.` }, { status: 403 }, cors);
+  }
 
   const calendarId = calendarIdFor(env, calendarLabel);
   if (!calendarId) return json({ error: `unknown calendar "${calendarLabel}"` }, { status: 404 }, cors);

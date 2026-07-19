@@ -1,10 +1,21 @@
-// Mock calendar mirrors production reality: Family + Tim are connected;
-// Caroline remains an explicit unlinked placeholder until her work calendar
-// is actually integrated.
+// Mock calendar mirrors production reality: four source calendars merged into
+// three person columns — Family, Tim (personal + Narvar work interleaved,
+// work events tagged), Caroline (Outlook work feed, read-only).
 // Widget highlights the single soonest upcoming event globally.
+//
+// Every mock event carries the full multi-source contract (calendar/person/
+// kind/readOnly) because fixtures feed widgets DIRECTLY — no
+// canonicalizeUpcoming backfill runs on the harness path.
 
-// Mock for expanded/Coming Up views. Mirrors the two calendars actually linked
-// today; Caroline is added only by dedicated stress fixtures.
+// Fill contract defaults for events written before the multi-source split.
+const withMeta = (e) => ({
+  ...e,
+  person: e.person ?? e.calendar,
+  kind: e.kind ?? 'personal',
+  readOnly: e.readOnly ?? false,
+});
+
+// Mock for expanded/Coming Up views.
 export function getMockUpcoming(now = new Date()) {
   const day = (offset) => {
     const d = new Date(now);
@@ -25,6 +36,12 @@ export function getMockUpcoming(now = new Date()) {
     { id: 'u3', calendar: 'Family', title: 'Grandma visiting', sub: '', description: '', startsAt: ymd(day(2)), endsAt: ymd(day(4)), allDay: true },
     { id: 'u5', calendar: 'Family', title: 'Swim lesson — intro', sub: 'Piedmont Aquatic', description: 'Bring swim diaper and towel.', startsAt: at(5, 11, 0), endsAt: at(5, 11, 45), allDay: false },
     { id: 'u6', calendar: 'Tim', title: 'Dentist', sub: 'Midtown Dental', description: 'Cleaning + X-rays. 4615 Peachtree Rd NE, Suite 200.', startsAt: at(6, 14, 0), endsAt: at(6, 15, 0), allDay: false },
+    // Tim's Narvar work calendar — interleaves into his column with a Work tag.
+    { id: 'uw1', calendar: 'Tim (Work)', person: 'Tim', kind: 'work', title: 'Product review — Track', sub: 'Zoom', description: 'Q3 roadmap checkpoint with eng leads.', startsAt: at(0, 13, 0), endsAt: at(0, 14, 0), allDay: false },
+    { id: 'uw2', calendar: 'Tim (Work)', person: 'Tim', kind: 'work', title: 'Narvar leadership sync', sub: 'Zoom', description: '', startsAt: at(2, 11, 0), endsAt: at(2, 11, 45), allDay: false },
+    // Caroline's Outlook work feed — read-only ICS.
+    { id: 'uc1', calendar: 'Caroline (Work)', person: 'Caroline', kind: 'work', readOnly: true, title: 'Quarterly planning', sub: 'Conf Rm 4B', description: '', startsAt: at(1, 9, 0), endsAt: at(1, 11, 0), allDay: false },
+    { id: 'uc2', calendar: 'Caroline (Work)', person: 'Caroline', kind: 'work', readOnly: true, title: 'Client presentation', sub: 'Teams', description: 'Renewal pitch deck run-through.', startsAt: at(4, 13, 30), endsAt: at(4, 14, 30), allDay: false },
     // Dense near-term Family events — these occupy the calendar card's six
     // per-person slots, so the Coming-Up left pane (which excludes whatever
     // the card shows) still has agenda material below. Mirrors the real
@@ -41,14 +58,13 @@ export function getMockUpcoming(now = new Date()) {
     { id: 'u9', calendar: 'Family', title: '4 month check up', sub: 'Lighthouse Pediatrics, 3610 Piedmont Rd NE', description: '', startsAt: at(17, 9, 30), endsAt: at(17, 10, 15), allDay: false },
     { id: 'u10', calendar: 'Tim', title: 'Flight to NYC — Delta 1043', sub: 'ATL → LGA', description: '', startsAt: at(24, 8, 15), endsAt: at(24, 10, 45), allDay: false },
     { id: 'u11', calendar: 'Family', title: 'Stay at Hamilton', sub: 'Hamilton, GA', description: '', startsAt: ymd(day(38)), endsAt: ymd(day(41)), allDay: true },
-    { id: 'u12', calendar: 'Tim', title: 'Narvar team offsite', sub: 'Austin, TX', description: '', startsAt: ymd(day(55)), endsAt: ymd(day(58)), allDay: true },
+    { id: 'u12', calendar: 'Tim (Work)', person: 'Tim', kind: 'work', title: 'Narvar team offsite', sub: 'Austin, TX', description: '', startsAt: ymd(day(55)), endsAt: ymd(day(58)), allDay: true },
     { id: 'u13', calendar: 'Family', title: 'Baby shower for Kate', sub: '', description: '', startsAt: at(70, 14, 0), endsAt: at(70, 16, 0), allDay: false },
-  ];
+  ].map(withMeta);
 }
 
 // Deterministic month of household events for the month-calendar overlay.
-// Family + Tim only (mirrors production linkage). Pure in (year, month) —
-// same input, same events.
+// All four source calendars. Pure in (year, month) — same input, same events.
 export function getMockMonth(year, month) {
   const at = (day, h, m = 0) => new Date(year, month, day, h, m).toISOString();
   const ymd = (day) => {
@@ -70,12 +86,27 @@ export function getMockMonth(year, month) {
       events.push({ id: `m-rec-${day}`, calendar: 'Tim', title: 'Recruiter sync', sub: 'Phone', description: '', startsAt: at(day, 10, 0), endsAt: at(day, 10, 30), allDay: false });
     }
   }
+  // Tim (Work): product sync every Tuesday at 14:00.
+  for (let day = 1; day <= daysInMonth; day++) {
+    if (new Date(year, month, day).getDay() === 2) {
+      events.push({ id: `m-work-${day}`, calendar: 'Tim (Work)', person: 'Tim', kind: 'work', title: 'Narvar product sync', sub: 'Zoom', description: '', startsAt: at(day, 14, 0), endsAt: at(day, 14, 30), allDay: false });
+    }
+  }
+  // Caroline (Work): team standup every Monday at 9:30.
+  for (let day = 1; day <= daysInMonth; day++) {
+    if (new Date(year, month, day).getDay() === 1) {
+      events.push({ id: `m-car-${day}`, calendar: 'Caroline (Work)', person: 'Caroline', kind: 'work', readOnly: true, title: 'Team standup', sub: 'Teams', description: '', startsAt: at(day, 9, 30), endsAt: at(day, 10, 0), allDay: false });
+    }
+  }
   events.push(
     { id: 'm-pedi', calendar: 'Family', title: 'Pediatrician — Mabel', sub: 'Northside Pediatrics', description: 'Check weight, milestones, vaccines.', startsAt: at(12, 15, 30), endsAt: at(12, 16, 15), allDay: false },
     { id: 'm-grandma', calendar: 'Family', title: 'Grandma visiting', sub: '', description: '', startsAt: ymd(14), endsAt: ymd(17), allDay: true },
     { id: 'm-dentist', calendar: 'Tim', title: 'Dentist', sub: 'Midtown Dental', description: 'Cleaning + X-rays.', startsAt: at(20, 14, 0), endsAt: at(20, 15, 0), allDay: false },
+    { id: 'm-offsite', calendar: 'Caroline (Work)', person: 'Caroline', kind: 'work', readOnly: true, title: 'Offsite', sub: 'Downtown', description: '', startsAt: ymd(24), endsAt: ymd(26), allDay: true },
   );
-  return events.sort((a, b) => String(a.startsAt).localeCompare(String(b.startsAt)));
+  return events
+    .map(withMeta)
+    .sort((a, b) => String(a.startsAt).localeCompare(String(b.startsAt)));
 }
 
 export function getMockCalendar(now = new Date()) {
@@ -87,20 +118,30 @@ export function getMockCalendar(now = new Date()) {
     return d.toISOString();
   };
 
+  // Sections are keyed by PERSON (matches /api/calendar's mergeSections) —
+  // Tim's section carries personal AND work events, chronologically.
   const sections = [
     {
       label: 'Tim',
       events: [
-        { id: 'tim-1', startsAt: at(14, 15), endsAt: at(14, 45), title: 'Job-search standup', sub: '30 min · Zoom', description: 'Weekly check-in with recruiter network.' },
-        { id: 'tim-2', startsAt: at(16, 0),  endsAt: at(16, 30), title: 'Recruiter call — Tessa', sub: 'Phone', description: 'Director PM role at fintech startup.' },
-      ],
+        { id: 'tim-1', calendar: 'Tim', startsAt: at(14, 15), endsAt: at(14, 45), title: 'Job-search standup', sub: '30 min · Zoom', description: 'Weekly check-in with recruiter network.' },
+        { id: 'tim-w1', calendar: 'Tim (Work)', person: 'Tim', kind: 'work', startsAt: at(15, 0), endsAt: at(16, 0), title: 'Product review — Track', sub: 'Zoom', description: 'Q3 roadmap checkpoint with eng leads.' },
+        { id: 'tim-2', calendar: 'Tim', startsAt: at(16, 0), endsAt: at(16, 30), title: 'Recruiter call — Tessa', sub: 'Phone', description: 'Director PM role at fintech startup.' },
+      ].map(withMeta),
     },
     {
       label: 'Family',
       events: [
-        { id: 'fam-1', startsAt: at(8, 30), endsAt: at(9, 15), title: 'Pediatrician — Mabel 1mo', sub: 'Northside Pediatrics', description: 'Check weight, milestones, vaccines.' },
-        { id: 'fam-2', startsAt: at(18, 30), endsAt: at(19, 30), title: 'Dinner at home', sub: '', description: '' },
-      ],
+        { id: 'fam-1', calendar: 'Family', startsAt: at(8, 30), endsAt: at(9, 15), title: 'Pediatrician — Mabel 1mo', sub: 'Northside Pediatrics', description: 'Check weight, milestones, vaccines.' },
+        { id: 'fam-2', calendar: 'Family', startsAt: at(18, 30), endsAt: at(19, 30), title: 'Dinner at home', sub: '', description: '' },
+      ].map(withMeta),
+    },
+    {
+      label: 'Caroline',
+      events: [
+        { id: 'car-w1', calendar: 'Caroline (Work)', person: 'Caroline', kind: 'work', readOnly: true, startsAt: at(9, 30), endsAt: at(10, 0), title: 'Team standup', sub: 'Teams', description: '' },
+        { id: 'car-w2', calendar: 'Caroline (Work)', person: 'Caroline', kind: 'work', readOnly: true, startsAt: at(13, 30), endsAt: at(14, 30), title: 'Client presentation', sub: 'Teams', description: 'Renewal pitch deck run-through.' },
+      ].map(withMeta),
     },
   ];
 

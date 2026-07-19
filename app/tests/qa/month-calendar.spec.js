@@ -100,6 +100,22 @@ test('month-calendar/typical: scrolling toward the end appends the next month', 
   await expect(page.locator('.month-cal__month')).toHaveCount(3);
 });
 
+// Multi-source model: work chips take the person hue + is-work marker, and
+// the person legend filter includes that person's work calendar.
+test('month-calendar/overflow: work chips carry person hue + is-work; day sheet shows the Work tag', async ({ page }) => {
+  await open(page, 'overflow');
+  const workChip = page.locator('.month-cal__chip.is-work').first();
+  await expect(workChip).toBeVisible();
+  await expect(workChip).toHaveClass(/month-cal__chip--tim/);
+
+  await page.locator('.month-cal__more').first().tap();
+  const sheet = page.locator('.overlay--day-detail');
+  await expect(sheet).toBeVisible();
+  expect(await sheet.locator('.cal-tag--work').count()).toBeGreaterThan(0);
+  // Day-sheet chips show the person (colored), not a colorless source slug.
+  expect(await sheet.locator('.cal-chip--tim').count()).toBeGreaterThan(0);
+});
+
 test('month-calendar/all-day-span: a span running since last month lands on day 1', async ({ page }) => {
   await open(page, 'all-day-span');
   const firstCell = page.locator('.month-cal__day:not(.is-outside)').first();

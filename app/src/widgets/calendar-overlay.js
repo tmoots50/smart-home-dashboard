@@ -115,7 +115,7 @@ export function renderCalendarOverlay(events, { days = 7, now = new Date(), grou
 function rosterGroups(allEvents, within, days, now, limit) {
   const groups = groupByPerson(within, days, now, limit);
   const byPerson = new Map(groups.map(g => [g.person, g]));
-  const linked = new Set((allEvents ?? []).map(e => e?.calendar).filter(Boolean));
+  const linked = new Set((allEvents ?? []).map(e => personOf(e)).filter(Boolean));
   return [
     ...PERSON_ORDER.map(person =>
       byPerson.get(person) ?? { person, events: [], linked: linked.has(person) }),
@@ -136,10 +136,10 @@ function renderDay(group) {
               ${ev.allDay ? 'All day' : TIME_FMT.format(new Date(ev.startsAt))}
             </span>
             <span class="cal-event__main">
-              <span class="cal-event__title">${escapeHtml(ev.title)}</span>
+              <span class="cal-event__title">${escapeHtml(ev.title)}${workTag(ev)}</span>
               ${ev.sub ? `<span class="cal-event__sub">${escapeHtml(ev.sub)}</span>` : ''}
             </span>
-            <span class="cal-chip cal-chip--${slug(ev.calendar)}">${escapeHtml(ev.calendar || '')}</span>
+            <span class="cal-chip cal-chip--${slug(personOf(ev))}">${escapeHtml(personOf(ev) || '')}</span>
           </li>`;
         }).join('')}
       </ul>
@@ -190,9 +190,10 @@ function renderEmpty(later, now) {
 }
 
 // Shared row for person sections and the Coming-up list: [day+date] [time]
-// [main] (+ optional calendar chip when the section doesn't already name the
+// [main] (+ optional person chip when the section doesn't already name the
 // person). The day cell stacks weekday over the actual date — "which day" AND
-// "which date" without widening the column past one word.
+// "which date" without widening the column past one word. Work-calendar rows
+// carry the Work tag inline after the title (titles don't clamp here).
 function renderDatedRow(ev, { dow, date }, { chip = false } = {}) {
   const evtJson = escapeHtml(JSON.stringify(ev));
   return `
@@ -205,10 +206,10 @@ function renderDatedRow(ev, { dow, date }, { chip = false } = {}) {
         ${ev.allDay ? 'All day' : TIME_FMT.format(new Date(ev.startsAt))}
       </span>
       <span class="cal-event__main">
-        <span class="cal-event__title">${escapeHtml(ev.title)}</span>
+        <span class="cal-event__title">${escapeHtml(ev.title)}${workTag(ev)}</span>
         ${ev.sub ? `<span class="cal-event__sub">${escapeHtml(ev.sub)}</span>` : ''}
       </span>
-      ${chip ? `<span class="cal-chip cal-chip--${slug(ev.calendar)}">${escapeHtml(ev.calendar || '')}</span>` : ''}
+      ${chip ? `<span class="cal-chip cal-chip--${slug(personOf(ev))}">${escapeHtml(personOf(ev) || '')}</span>` : ''}
     </li>`;
 }
 
@@ -253,10 +254,11 @@ export function groupByDay(events, days, now = new Date()) {
     }));
 }
 
-// Bucket within-horizon events by calendar label, household order first
-// (PERSON_ORDER), then A→Z for anything unexpected. Within a person:
-// chronological — all-day events parse to local midnight, so they naturally
-// lead their day.
+// Bucket within-horizon events by PERSON (work + personal calendars for one
+// person share a section; `calendar` fallback covers events that predate the
+// field), household order first (PERSON_ORDER), then A→Z for anything
+// unexpected. Within a person: chronological — all-day events parse to local
+// midnight, so they naturally lead their day.
 export function groupByPerson(events, days, now = new Date(), limit = Infinity) {
   const today = dayStart(now);
   const groups = new Map(); // person → events
@@ -264,7 +266,7 @@ export function groupByPerson(events, days, now = new Date(), limit = Infinity) 
   for (const ev of events ?? []) {
     if (!ev?.startsAt) continue;
     if (dayIndexOf(ev, today) >= days) continue;
-    const person = ev.calendar || 'Other';
+    const person = personOf(ev) || 'Other';
     if (!groups.has(person)) groups.set(person, []);
     groups.get(person).push(ev);
   }
@@ -277,6 +279,19 @@ export function groupByPerson(events, days, now = new Date(), limit = Infinity) 
   return [...groups.entries()]
     .sort(([a], [b]) => (rank(a) - rank(b)) || a.localeCompare(b))
     .map(([person, evs]) => ({ person, events: evs.sort(byStart).slice(0, limit) }));
+}
+
+// ───── shared row helpers ─────
+
+// Column/section identity: person when the event carries it, else the raw
+// calendar label (mock/legacy events from before the multi-source split).
+function personOf(ev) {
+  return ev?.person || ev?.calendar || '';
+}
+
+// Display-only Work pill for rows from a work calendar (kind === 'work').
+function workTag(ev) {
+  return ev?.kind === 'work' ? ' <span class="cal-tag cal-tag--work">Work</span>' : '';
 }
 
 // ───── date helpers ─────

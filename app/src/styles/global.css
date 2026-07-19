@@ -580,6 +580,23 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .cal-chip--tim { color: var(--color-accent); }
 .cal-chip--family { color: #6dac8e; }
 .cal-chip--caroline { color: #6e8faf; }
+/* Work-calendar marker: a quiet uppercase pill after the title / on the meta
+   line. Display-only — the ROW carries the 44px hit area; this never grows a
+   tap target and never lives inside a line-clamped box. */
+.cal-tag {
+  display: inline-block;
+  vertical-align: middle;
+  padding: 0 0.5em 1px;
+  border: 1px solid color-mix(in srgb, var(--color-muted) 55%, transparent);
+  border-radius: 999px;
+  font: 600 0.6rem/1.6 var(--font-body);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.cal-event__title .cal-tag,
+.calendar__meta .cal-tag { margin-left: 0.35em; }
 .cal-overlay__empty { text-align: center; padding: var(--space-4) 0; }
 /* Wider than the 42rem overlay default — the stacked day+date column plus
    full titles need the room; the panel felt narrow on the wall. */
@@ -738,6 +755,9 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .month-cal__chip--tim      { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
 .month-cal__chip--caroline { border-color: #6e8faf; background: color-mix(in srgb, #6e8faf 14%, transparent); }
 .month-cal__chip--other    { border-color: var(--color-muted); background: color-mix(in srgb, var(--color-muted) 12%, transparent); }
+/* Work events keep the person hue; the dashed edge is the subtle "work"
+   marker (a text pill won't fit a month chip). */
+.month-cal__chip.is-work   { border-left-style: dashed; }
 .month-cal__more {
   min-height: 2.75rem;
   border: 0;

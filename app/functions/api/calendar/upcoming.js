@@ -20,6 +20,7 @@
 import { getAccessToken } from '../../_lib/google-auth.js';
 import { checkAuth, corsHeaders, json } from '../../_lib/auth.js';
 import { parseCalendars, listEvents, normalizeUpcoming, resolveRange } from '../../_lib/calendar-api.js';
+import { fetchIcsEvents } from '../../_lib/ics-api.js';
 
 const MAX_RESULTS = 250; // per calendar; a household calendar won't exceed this in 90 days
 const CACHE_TTL_S = 300;
@@ -54,9 +55,21 @@ export async function onRequest(context) {
   const { timeMin, timeMax, maxPages } = resolveRange(url.searchParams, new Date());
 
   try {
-    const perCalendar = await Promise.all(calendars.map(async (c) =>
-      normalizeUpcoming(await listEvents(accessToken, c.id, timeMin, timeMax, { maxResults: MAX_RESULTS, maxPages }), c.label)));
-    const events = perCalendar.flat().sort((a, b) => String(a.startsAt).localeCompare(String(b.startsAt)));
+    // Google calendars + read-only ICS feeds (Outlook), merged into one
+    // start-sorted stream. Every event carries person + kind so the overlay
+    // groups work calendars under their person and tags work events. The ?all=1
+    // agent path expands ICS recurrences across the same wide window.
+    const [googlePerCal, icsEvents] = await Promise.all([
+      Promise.all(calendars.map(async (c) =>
+        normalizeUpcoming(
+          await listEvents(accessToken, c.id, timeMin, timeMax, { maxResults: MAX_RESULTS, maxPages }),
+          c.label,
+          { person: c.person, kind: c.kind },
+        ))),
+      fetchIcsEvents(env, timeMin, timeMax),
+    ]);
+    const events = [...googlePerCal.flat(), ...icsEvents]
+      .sort((a, b) => String(a.startsAt).localeCompare(String(b.startsAt)));
     // The uncapped agent path (maxPages > 1) must be fresh — it backs mutating
     // find/delete/update, where a stale 5-min cache would hide a just-created
     // event or resurrect a just-deleted one. UI/cron windows stay edge-cached.

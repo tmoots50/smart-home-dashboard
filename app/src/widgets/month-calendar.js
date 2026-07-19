@@ -89,21 +89,24 @@ export function buildMonthGrid(year, month, events, now = new Date()) {
 
 // ───── pure render ─────
 
+// Filter + legend + chip colors all key off the PERSON (a person's work and
+// personal calendars share one hue and one legend entry; tapping "Tim"
+// filters to both). `calendar` fallback covers pre-multi-source events.
 function filterEvents(events, filter) {
   if (!filter) return events ?? [];
-  return (events ?? []).filter(ev => slug(ev.calendar) === filter);
+  return (events ?? []).filter(ev => slug(personOf(ev)) === filter);
 }
 
-// Legend roster: the household three, plus any calendar the data surfaces
+// Legend roster: the household three, plus any person the data surfaces
 // that we didn't expect (renders with the "other" hue).
 function legendRoster(events) {
   const known = new Set(ROSTER.map(slug));
   const extras = [];
   for (const ev of events ?? []) {
-    const s = slug(ev.calendar);
+    const s = slug(personOf(ev));
     if (!known.has(s)) {
       known.add(s);
-      extras.push(ev.calendar || 'Other');
+      extras.push(personOf(ev) || 'Other');
     }
   }
   return [...ROSTER, ...extras];
@@ -178,8 +181,11 @@ function renderChip(ev) {
   // fights its 44px min-height (content that "fits" the tall box skips the
   // clamp, then overflow razor-cuts a third line mid-glyph — the smoosh
   // artifact from the 2026-07-11 wall photo).
+  // Work events keep the person hue + gain the is-work marker (dashed edge) —
+  // a text pill won't fit a month chip.
+  const work = ev.kind === 'work' ? ' is-work' : '';
   return `
-    <button class="month-cal__chip month-cal__chip--${slug(ev.calendar)}" data-event="${escapeHtml(JSON.stringify(ev))}">
+    <button class="month-cal__chip month-cal__chip--${slug(personOf(ev))}${work}" data-event="${escapeHtml(JSON.stringify(ev))}">
       <span class="month-cal__chip-text">${time}${escapeHtml(ev.title)}</span>
     </button>
   `;
@@ -396,10 +402,10 @@ function openDayDetail(dateStr, events) {
               ${ev.allDay ? 'All day' : TIME_FMT.format(new Date(ev.startsAt))}
             </span>
             <span class="cal-event__main">
-              <span class="cal-event__title">${escapeHtml(ev.title)}</span>
+              <span class="cal-event__title">${escapeHtml(ev.title)}${ev.kind === 'work' ? ' <span class="cal-tag cal-tag--work">Work</span>' : ''}</span>
               ${ev.sub ? `<span class="cal-event__sub">${escapeHtml(ev.sub)}</span>` : ''}
             </span>
-            <span class="cal-chip cal-chip--${slug(ev.calendar)}">${escapeHtml(ev.calendar || '')}</span>
+            <span class="cal-chip cal-chip--${slug(personOf(ev))}">${escapeHtml(personOf(ev) || '')}</span>
           </li>`).join('')}
       </ul>`
     : '<p class="muted">Nothing scheduled.</p>';
@@ -456,6 +462,11 @@ function ymd(d) {
 
 function slug(s) {
   return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'other';
+}
+
+// Person the event belongs to; raw calendar label for pre-multi-source events.
+function personOf(ev) {
+  return ev?.person || ev?.calendar || '';
 }
 
 function escapeHtml(s) {

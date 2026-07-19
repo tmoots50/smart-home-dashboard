@@ -93,6 +93,27 @@ describe('renderMonthCalendar', () => {
     expect(html).toContain('7:30p');
     expect(html).toMatch(/AllDayThing/);
   });
+
+  it('work events chip in the person hue with the is-work marker', () => {
+    const html = renderMonthCalendar([
+      ev({ calendar: 'Tim (Work)', person: 'Tim', kind: 'work' }),
+    ], { year: YEAR, month: JULY, now: NOW });
+    expect(html).toContain('month-cal__chip--tim is-work');
+    expect(html).not.toContain('month-cal__chip--tim-work');
+    // The legend stays the household three — no separate work entry.
+    expect(html).not.toContain('legend-item--tim-work');
+  });
+
+  it('the person filter covers that person\'s work AND personal calendars', () => {
+    const events = [
+      ev({ id: 'w', calendar: 'Tim (Work)', person: 'Tim', kind: 'work' }),
+      ev({ id: 'p', calendar: 'Tim', title: 'Personal thing' }),
+      ev({ id: 'f', calendar: 'Family' }),
+    ];
+    const html = renderMonthCalendar(events, { year: YEAR, month: JULY, now: NOW, filter: 'tim' });
+    expect((html.match(/month-cal__chip--tim/g) || [])).toHaveLength(2); // work + personal
+    expect(html).not.toContain('month-cal__chip--family');
+  });
 });
 
 describe('openMonthCalendar', () => {

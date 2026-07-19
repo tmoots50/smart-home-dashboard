@@ -52,6 +52,24 @@ test('calendar/uneven: no connected column with events is starved by another', a
   await expect(page.locator('.calendar__column--tim .calendar__event')).toHaveCount(1);
 });
 
+// Multi-source model: work events interleave into the person's column with a
+// Work tag; Caroline's column renders her Outlook feed.
+test('calendar/work-dense: Work tags render in Tim\'s column; Caroline\'s column is populated', async ({ page }) => {
+  await open(page, 'work-dense');
+  const timTags = page.locator('.calendar__column--tim .cal-tag--work');
+  expect(await timTags.count()).toBeGreaterThan(0);
+  await expect(page.locator('.calendar__column--tim .calendar__event')).toHaveCount(6); // 7 events → 6-row cap holds
+  await expect(page.locator('.calendar__column--caroline .calendar__event')).toHaveCount(3);
+  expect(await page.locator('.calendar__column--caroline .cal-tag--work').count()).toBeGreaterThan(0);
+});
+
+test('calendar/work-dense: tapping a work row opens detail with the true source calendar', async ({ page }) => {
+  await open(page, 'work-dense');
+  await page.locator('.calendar__column--tim .calendar__event').first().tap();
+  await expect(page.locator('.event-detail')).toBeVisible();
+  await expect(page.locator('.event-detail .cal-chip')).toHaveText('Tim (Work)');
+});
+
 test('calendar/typical: tapping an event row opens the detail panel', async ({ page }) => {
   await open(page, 'typical');
   await page.locator('.calendar__event').first().tap();
