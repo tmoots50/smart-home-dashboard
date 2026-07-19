@@ -67,7 +67,7 @@ And confirm a write is refused (expect **403 read-only**):
 
 ```bash
 curl -X POST -H "Authorization: Bearer $DASHBOARD_TOKEN" -H 'content-type: application/json' \
-  -d '{"calendar":"Caroline (Work)","title":"nope","start":"2026-08-01T10:00:00-04:00","end":"2026-08-01T11:00:00-04:00"}' \
+  -d '{"calendar":"Caroline (Work)","summary":"nope","start":"2026-08-01T10:00:00-04:00","end":"2026-08-01T11:00:00-04:00"}' \
   "https://<your-app>.pages.dev/api/calendar/events"
 ```
 

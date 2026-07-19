@@ -73,7 +73,7 @@ Every normalized calendar event (both `/api/calendar` and `/api/calendar/upcomin
   exclusive end. Throwaway files removed.
 - **Conclusion:** library path viable — no hand-rolled RRULE engine needed.
 
-### Phase 1 — Dashboard backend + frontend 🔄 IN PROGRESS
+### Phase 1 — Dashboard backend + frontend ✅ DONE (shipped 2026-07-19, commit `2784686`)
 
 **Backend — DONE, 61 unit tests green** (`npx vitest run functions/_lib/`):
 - `app/functions/_lib/ics-api.js` (NEW) — `parseIcsCalendars`, `icsCalendarFor`,
@@ -99,42 +99,33 @@ Every normalized calendar event (both `/api/calendar` and `/api/calendar/upcomin
 - `app/src/lib/calendar.test.js` — updated for the retired alias + `person` field.
 - `app/src/lib/comingup.js` — `cardVisibleKeys` now matches the card on `person`.
 
-**Frontend — REMAINING (resume here):**
-- [ ] `app/src/lib/calendar-mock.js` — add `Tim (Work)` (person `Tim`, kind `work`) and
-      `Caroline (Work)` (person `Caroline`, kind `work`) mock events across
-      `getMockUpcoming`, `getMockMonth`, `getMockCalendar`; give every mock event
-      `calendar`/`person`/`kind` so tokenless dev + fixtures render the merge model.
-      (For `getMockCalendar`, add a `Caroline` section and a work event inside the `Tim`
-      section — sections are person-keyed.)
-- [ ] `app/src/widgets/calendar.js` — render a small **"Work" tag** on rows where
-      `kind==='work'` (stacked/rail/classic + days flavors); in `rowAttrs`, preserve
-      `event.calendar` (currently overwritten with the section label) so event-detail/edit
-      routes to the true source; day-flavor dots keyed by `person`.
-- [ ] `app/src/widgets/calendar-overlay.js` — `groupByPerson` groups by `ev.person`
-      (fallback `ev.calendar`); `rosterGroups` `linked` set uses `person`; add the Work tag
-      to `renderDatedRow`/`renderDay`; chips colored by `slug(ev.person)`.
-- [ ] `app/src/widgets/month-calendar.js` — chip color, `filterEvents`, `legendRoster`,
-      and day-detail chip all key off `slug(ev.person)`; add a subtle `is-work` chip
-      marker.
-- [ ] `app/src/styles/global.css` — add `.cal-tag--work` (small uppercase pill, subtle;
-      **do NOT shrink fonts or strip padding** to fit — touch floors via hit area only,
-      per CLAUDE.md) and a minimal `.month-cal__chip.is-work` marker. Person colors already
-      exist (family=sage `#6dac8e`, tim=coral `--color-accent`, caroline=blue `#6e8faf`) —
-      reused, no new color classes needed.
-- [ ] Fixtures: `calendar.fixtures.js`, `calendar-overlay.fixtures.js`,
-      `month-calendar.fixtures.js` — add states with a **work-dense Tim column** and a
-      **populated Caroline column** (the two are the new geometry stressors).
-- [ ] Harness registry (`app/src/harness/harness.js`) + QA specs
-      (`app/tests/qa/calendar.spec.js`, `calendar-overlay.spec.js`, `month-calendar.spec.js`)
-      — cover the Work tag rendering + the Caroline column.
-- [ ] `npx vitest run` (all) green, then `npm run qa:ship` gate, **review the artifact
-      PNGs** for `calendar`, `calendar-overlay`, `month-calendar`, `briefing-layout`
-      (watch the dense-Tim-column density — the 6-row cap can crowd; chronological
-      interleave is intended, revisit if it reads badly), then ship with a concrete
-      `VISUAL_SIGNOFF="…"`.
-- Ship: `scripts/ship.sh "feat: multi-source calendars (Tim Work + Caroline Outlook)"`.
-  Backend/functions-only changes skip the QA gate; the `app/src/` frontend changes require
-  the visual sign-off.
+**Frontend — DONE (2026-07-19).** All items below landed; 387 unit tests + 124 QA
+gate tests green; artifact PNGs reviewed (card, overlay, month, briefing-layout) and
+shipped with a concrete `VISUAL_SIGNOFF`:
+- `calendar-mock.js` — all three mocks carry `calendar`/`person`/`kind`/`readOnly` on
+  every event (`withMeta` helper); `Tim (Work)` + `Caroline (Work)` events across
+  upcoming/month/card; card mock has a Caroline section + work event inside Tim's.
+- `calendar.js` — Work tag in all four flavors (meta line on stacked — never inside the
+  2-line clamp; details block on rail/classic; inline on days); `rowAttrs` AND
+  `renderDayGrouped` preserve the true source `calendar` + backfill `person` (the
+  day-grouped flatMap had the same overwrite bug the plan flagged only in `rowAttrs`);
+  day-flavor dots keyed by person.
+- `calendar-overlay.js` — `groupByPerson`/`rosterGroups` key on `personOf(ev)`
+  (`person || calendar` — fixtures bypass `canonicalizeUpcoming`, so the fallback is
+  load-bearing); Work tag inline after titles (no clamp there); chips by person.
+- `month-calendar.js` — filter/legend/chip/day-sheet all keyed by person;
+  `.is-work` chip = dashed left edge in the person hue (a text pill won't fit a chip).
+- **Chip rule locked:** chip *color* + *text* = person everywhere; work-ness = the
+  uniform `.cal-tag--work` pill; **event-detail** shows the full true calendar label
+  ("Tim (Work)") colored by person (was silently colorless via `cal-chip--tim-work`).
+- `global.css` — `.cal-tag` quiet uppercase pill (display-only, row keeps the 44px hit
+  area); `.month-cal__chip.is-work` dashed edge.
+- Fixtures: `work-dense` states on card + overlay; month `overflow` day carries work
+  events; `caroline-unlinked` filters by person. Harness registry needed **zero
+  changes** — states flow through automatically.
+- QA specs: work-tag + Caroline-column + true-source-routing coverage on all three
+  widgets (new states auto-enter the geometry/tap/clipping loops).
+- Also: `app/.wrangler/` untracked + gitignored (was committed by the first ship).
 
 ### Phase 2 — Hermes helpers ✅ CODE DONE (deploy pending, in Phase 3)
 Edited in the hermes-setup repo (`deploy/`), **NOT deployed** (no scp/ssh/launchctl):
@@ -153,11 +144,10 @@ Edited in the hermes-setup repo (`deploy/`), **NOT deployed** (no scp/ssh/launch
 - `deploy/config.yaml` — no change (wildcard `mfb-calendar-*` allowlist already matches).
 - Verified: all helpers + test script pass `bash -n`; short-circuit exit-68 tested live.
 
-**⚠ Risk flagged by the subagent to check in Phase 3:** the `Tim (Work)` write round-trip
-skip guard greps the create response for `40[34]|unknown calendar|not found|no such calendar`.
-If the dashboard's *unknown-calendar* error is worded differently, D3 hard-fails instead of
-skipping. The contract only fixes the 403 (read-only) body, not the 404 (unknown) body —
-sanity-check the real "unknown calendar" response once Phase 3 wiring lands.
+**✅ Risk resolved (2026-07-19, live-probed):** the deployed unknown-calendar response is
+`404 {"error":"unknown calendar \"<label>\""}` — the D3 skip-guard grep
+(`40[34]|unknown calendar|…`) matches, so an unwired `Tim (Work)` skips cleanly instead of
+hard-failing.
 
 **Deploy in Phase 3:** review diff → scp helpers → `chmod +x ~/.hermes/bin/mfb-calendar-*` →
 `launchctl kill SIGTERM user/501/ai.hermes.gateway` → `deploy/tests/smoke-from-laptop.sh`.
@@ -188,26 +178,39 @@ sanity-check the real "unknown calendar" response once Phase 3 wiring lands.
   exit 68 (Hermes). **If Narvar blocks external edit-sharing, writes to Tim (Work) will
   silently fail** — confirm write actually works, fall back to read-only + tell Tim if not.
 
-### Phase 4 — Verify existing + full test pass ⏳
-- Live-probe existing **Family + Tim personal** calendars still return real events
-  (`/api/calendar/upcoming?days=1`) after the refactor.
-- Full suites: dashboard `npx vitest run` + `npm run qa:gate`; Hermes
-  `calendar-crud-test.sh`.
-- Docs: update `docs/google-setup.md`; add `docs/outlook-setup.md` (Caroline publish steps +
-  Tim share steps + the freshness caveat).
+### Phase 4 — Verify existing + full test pass 🔄 MOSTLY DONE (2026-07-19)
+- ✅ Live-probed **before AND after** the deploy: Family + Tim personal both return real
+  events (`?days=7`: 1 Family + 1 Tim, identical pre/post); post-deploy events carry the
+  new `person`/`kind`/`readOnly` fields; `/api/calendar` sections person-keyed. Zero
+  regression.
+- ✅ Dashboard suites: `npx vitest run` (387) + `qa:ship` gate (124) green.
+- ✅ Docs: `docs/google-setup.md` updated (§5c shared-work-calendar flow, `person`/`kind`
+  fields, `ICS_CALENDARS_JSON` row); `docs/outlook-setup.md` written (publish steps,
+  wiring, verify commands, freshness + failure behavior). Pulled forward from Phase 4 —
+  they're the artifact that unblocks Phase 3.
+- ⏳ Remaining (needs Phase 3 wiring first): Hermes `calendar-crud-test.sh` Parts A–D
+  against the live gateway (Part E passes already — wiring-independent).
 
 ---
 
 ## Verification criteria (definition of done)
-- [ ] Dashboard wall card shows Tim's work meetings (Work-tagged) in Tim's column and
+- [x] Dashboard wall card shows work meetings (Work-tagged) in Tim's column and
       Caroline's work events in Caroline's column; Family/Tim personal unchanged.
-- [ ] Expanded overlay + month view show all four calendars, grouped by person, work-tagged.
+      *(Proven at mock/QA level 2026-07-19; live confirmation once Phase 3 wires the
+      real feeds.)*
+- [x] Expanded overlay + month view show all four calendars, grouped by person,
+      work-tagged. *(Same caveat.)*
 - [ ] `POST/PATCH/DELETE` to `Caroline (Work)` → 403; to `Tim (Work)` → success.
+      *(403 path unit-tested + guard live-probed via unknown-calendar; needs real wiring.)*
 - [ ] Hermes: `show` includes both new calendars; write to `Tim (Work)` works; write to
-      `Caroline (Work)` → exit 68, nothing created.
-- [ ] Existing Family + Tim personal calendars verified healthy (live probe).
-- [ ] All dashboard unit tests + QA gate green; Hermes `calendar-crud-test.sh` green.
-- [ ] ICS feed fails soft (one dead feed never blanks the card or breaks the endpoint).
+      `Caroline (Work)` → exit 68, nothing created. *(Exit-68 short-circuit already
+      passes; rest needs Phase 3.)*
+- [x] Existing Family + Tim personal calendars verified healthy (live probe, pre + post
+      deploy, 2026-07-19).
+- [x] All dashboard unit tests (387) + QA gate (124) green; Hermes
+      `calendar-crud-test.sh` full pass pending Phase 3 deploy.
+- [x] ICS feed fails soft (one dead feed never blanks the card or breaks the endpoint) —
+      unit-tested; live once a real feed exists.
 
 ## Success metrics
 - Zero regressions to existing calendars.
@@ -239,6 +242,13 @@ sanity-check the real "unknown calendar" response once Phase 3 wiring lands.
 - QA gate: `cd app && npm run qa:ship`
 - Ship: `scripts/ship.sh "feat: …"` (+ `VISUAL_SIGNOFF="…"` when `app/src/` changed)
 
-## Session task IDs (for resume)
-1 Phase 1 (in_progress) · 2 Phase 0 (done) · 3 Phase 2 · 4 Phase 3 · 5 Phase 4.
-Hermes background subagent: `a0be52fe5029160ce`.
+## Session log
+- **2026-07-19 (session 2):** Phase 1 completed + shipped (`2784686`); docs written;
+  Phase 4 dashboard-side verification done; Phase 2 skip-guard risk resolved by live
+  probe. Everything agent-side is now done — **the only remaining blockers are the two
+  external inputs at the top of Phase 3** (Tim: share Narvar cal + send ID; Caroline:
+  publish ICS + send URL). Once those arrive: agent wires env vars + `ICS_CACHE` KV via
+  cf-pages-infra, does the coordinated stopgap-Caroline/alias cleanup, deploys the Hermes
+  helpers, and runs the Phase 3/4 live smokes.
+- **2026-07-19 (session 1):** Phases 0/2 done; Phase 1 backend done; frontend partial.
+  Hermes background subagent: `a0be52fe5029160ce`.
