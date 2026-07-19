@@ -164,8 +164,10 @@ hard-failing.
 **Then (agent-owned, via CF API / cf-pages-infra — no browser needed):**
 - Read current `GOOGLE_CALENDARS_JSON`; add `{"label":"Tim (Work)","id":"<id>","person":"Tim","kind":"work"}`.
 - Set `ICS_CALENDARS_JSON = [{"label":"Caroline (Work)","url":"<url>","person":"Caroline","kind":"work"}]`.
-- Create + bind a `ICS_CACHE` KV namespace (code fails open without it, so this is an
-  optimization, not a hard dependency).
+- ✅ `ICS_CACHE` KV namespace created + bound (2026-07-19, id `0597…6898`, production +
+  preview, additive — CURATED/HOME_DEVICES/HOME_LOCKOUT preserved). Activates on the
+  next deployment; harmless meanwhile since no ICS calls happen until
+  `ICS_CALENDARS_JSON` is set.
 - **Coordinated cleanup:** if the current config still has the stopgap `{"label":"Caroline",
   "id":"<family-feed>"}` entry, remove it AND retire the backend
   `canonicalCalendarLabel` `caroline→Family` alias in `calendar-api.js` (+ update its test).
@@ -228,8 +230,7 @@ hard-failing.
   Tim's column. Interleave is chronological (intended). Revisit after QA screenshots; option
   to add a per-kind sub-cap later.
 - **Outlook publish refresh is hours, not real-time** (inherent to ICS-publish; documented).
-- **`ICS_CACHE` KV not yet created** — code fails open (direct fetch each request) until
-  Phase 3 creates it. No ICS calls happen at all until `ICS_CALENDARS_JSON` is set.
+- ~~`ICS_CACHE` KV not yet created~~ — created + bound 2026-07-19 (see Phase 3).
 - **Backend `canonicalCalendarLabel` caroline→Family alias still present** — intentional;
   retire only in the Phase 3 coordinated config change.
 - `wrangler` was added as a dev dependency (useful for local functions smoke); keep unless
