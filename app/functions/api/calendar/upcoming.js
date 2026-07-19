@@ -59,13 +59,23 @@ export async function onRequest(context) {
     // start-sorted stream. Every event carries person + kind so the overlay
     // groups work calendars under their person and tags work events. The ?all=1
     // agent path expands ICS recurrences across the same wide window.
+    // Calendars on a NAMED token (work account — revocable by its admin) fail
+    // soft; default-token calendars stay loud (see api/calendar.js).
     const [googlePerCal, icsEvents] = await Promise.all([
-      Promise.all(calendars.map(async (c) =>
-        normalizeUpcoming(
-          await listEvents(accessToken, c.id, timeMin, timeMax, { maxResults: MAX_RESULTS, maxPages }),
-          c.label,
-          { person: c.person, kind: c.kind },
-        ))),
+      Promise.all(calendars.map(async (c) => {
+        try {
+          const token = c.token ? await getAccessToken(env, c.token) : accessToken;
+          return normalizeUpcoming(
+            await listEvents(token, c.id, timeMin, timeMax, { maxResults: MAX_RESULTS, maxPages }),
+            c.label,
+            { person: c.person, kind: c.kind, readOnly: c.readOnly },
+          );
+        } catch (err) {
+          if (!c.token) throw err;
+          console.error(`calendar "${c.label}" (token: ${c.token}) failed: ${err.message}`);
+          return [];
+        }
+      })),
       fetchIcsEvents(env, timeMin, timeMax),
     ]);
     const events = [...googlePerCal.flat(), ...icsEvents]

@@ -48,11 +48,17 @@ import { spawn } from 'node:child_process';
 // Platform → Data Access → + Add Scopes, search "calendar", add
 // ".../auth/calendar.events", Update → Save. Then revoke at
 // myaccount.google.com/permissions and re-run this script.
-const SCOPES = [
+// GOOGLE_SCOPES env var (space- or comma-separated) overrides the default
+// scope set — used e.g. to mint a calendar-only token for a work account
+// (least privilege: never ask an employer account for Drive/Tasks access).
+const DEFAULT_SCOPES = [
   'https://www.googleapis.com/auth/drive.readonly',
   'https://www.googleapis.com/auth/tasks',
   'https://www.googleapis.com/auth/calendar.events',
 ];
+const SCOPES = process.env.GOOGLE_SCOPES
+  ? process.env.GOOGLE_SCOPES.split(/[\s,]+/).filter(Boolean)
+  : DEFAULT_SCOPES;
 
 const rl = createInterface({ input, output });
 
@@ -71,6 +77,8 @@ function buildAuthUrl(clientId, redirectUri) {
     access_type: 'offline',
     prompt: 'consent', // forces refresh_token return even on re-auth
   });
+  // Preselect the account (e.g. a work address) in Google's account chooser.
+  if (process.env.GOOGLE_LOGIN_HINT) params.set('login_hint', process.env.GOOGLE_LOGIN_HINT);
   return `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
 

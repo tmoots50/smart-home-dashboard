@@ -14,12 +14,20 @@
 const cache = new Map(); // refresh_token → { token, expiresAt }
 const SAFETY_MS = 60_000; // refresh 1min before actual expiry
 
-export async function getAccessToken(env) {
-  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.GOOGLE_REFRESH_TOKEN) {
-    throw new Error('Google OAuth env vars not set (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN)');
+// `tokenName` selects between multiple Google accounts: undefined → the
+// default GOOGLE_REFRESH_TOKEN (Tim's personal account, used by photos/tasks/
+// most calendars); a name like "work" → GOOGLE_REFRESH_TOKEN_WORK (Tim's
+// Narvar account, calendar.readonly only — external sharing is admin-blocked,
+// so that calendar is reached by its own token instead).
+export async function getAccessToken(env, tokenName) {
+  const refreshVar = tokenName
+    ? `GOOGLE_REFRESH_TOKEN_${String(tokenName).replace(/[^a-z0-9_]/gi, '').toUpperCase()}`
+    : 'GOOGLE_REFRESH_TOKEN';
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env[refreshVar]) {
+    throw new Error(`Google OAuth env vars not set (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, ${refreshVar})`);
   }
 
-  const key = env.GOOGLE_REFRESH_TOKEN;
+  const key = env[refreshVar];
   const cached = cache.get(key);
   if (cached && cached.expiresAt > Date.now() + SAFETY_MS) return cached.token;
 
@@ -29,7 +37,7 @@ export async function getAccessToken(env) {
     body: new URLSearchParams({
       client_id: env.GOOGLE_CLIENT_ID,
       client_secret: env.GOOGLE_CLIENT_SECRET,
-      refresh_token: env.GOOGLE_REFRESH_TOKEN,
+      refresh_token: key,
       grant_type: 'refresh_token',
     }),
   });

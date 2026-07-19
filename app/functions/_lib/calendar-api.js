@@ -7,6 +7,13 @@
 //
 // JSON because the labels are user-arbitrary (need quoting) and adding a fourth
 // section shouldn't require a code change.
+//
+// Optional per-entry fields:
+//   person   — wall column the calendar merges into (defaults to label)
+//   kind     — 'work' renders the Work tag (defaults 'personal')
+//   token    — named Google token, e.g. "work" → GOOGLE_REFRESH_TOKEN_WORK
+//              (a second account whose calendar can't be shared cross-account)
+//   readOnly — writes 403 like an ICS feed (set when the token is read-scoped)
 
 export function parseCalendars(env) {
   const raw = env.GOOGLE_CALENDARS_JSON;
@@ -210,13 +217,20 @@ export function resolveRange(searchParams, now = new Date()) {
   return { timeMin: now.toISOString(), timeMax: new Date(+now + days * RANGE_DAY_MS).toISOString(), maxPages: 1 };
 }
 
-// Look up calendarId from a human label (case-insensitive, after canonicalization).
-// Returns null when no match exists — caller should 404.
-export function calendarIdFor(env, label) {
+// Look up the full calendar entry from a human label (case-insensitive, after
+// canonicalization). Returns null when no match exists — caller should 404.
+// Write endpoints need the whole entry: `id` to route, `readOnly` to refuse
+// (a work calendar reached via a read-only scoped token can't be written any
+// more than an ICS feed can), and `token` to pick the right Google account.
+export function googleCalendarFor(env, label) {
   const calendars = parseCalendars(env);
   const normalLabel = String(label).trim().toLowerCase();
-  const match = calendars.find(c => c.label.toLowerCase() === normalLabel);
-  return match ? match.id : null;
+  return calendars.find(c => c.label.toLowerCase() === normalLabel) ?? null;
+}
+
+// Back-compat id-only lookup.
+export function calendarIdFor(env, label) {
+  return googleCalendarFor(env, label)?.id ?? null;
 }
 
 const GCAL_BASE = 'https://www.googleapis.com/calendar/v3/calendars';

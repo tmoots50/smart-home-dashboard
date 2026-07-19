@@ -38,10 +38,14 @@ export async function onRequest(context) {
 
   const url = new URL(request.url);
 
-  // Discovery: list every calendar Tim has access to. One-time use to populate
-  // GOOGLE_CALENDARS_JSON.
+  // Discovery: list every calendar an account has access to. One-time use to
+  // populate GOOGLE_CALENDARS_JSON. ?_lists=work lists the "work" token's
+  // account instead of the default.
   if (url.searchParams.has('_lists')) {
-    return discoverCalendars(accessToken, cors);
+    const name = url.searchParams.get('_lists');
+    const token = name && name !== '1' ? await getAccessToken(env, name).catch(() => null) : accessToken;
+    if (!token) return json({ error: `no token for "${name}"` }, { status: 500 }, cors);
+    return discoverCalendars(token, cors);
   }
 
   const calendars = parseCalendars(env);
@@ -56,15 +60,27 @@ export async function onRequest(context) {
   const timeMax = new Date(now.getTime() + WINDOW_FORWARD_MS).toISOString();
 
   try {
-    // Google calendars (via the shared token) + ICS feeds (Outlook, read-only)
-    // fetched together, then merged into per-PERSON sections so a person's work
-    // and personal calendars share one wall column. ICS fails soft internally.
+    // Google calendars + ICS feeds (Outlook, read-only) fetched together, then
+    // merged into per-PERSON sections so a person's work and personal calendars
+    // share one wall column. ICS fails soft internally; a calendar on a NAMED
+    // token (e.g. the Narvar account, revocable by its admin at any time) also
+    // fails soft — a dead work token must never blank the family wall. Default-
+    // token calendars stay loud: their shared failure mode is the token itself,
+    // and a silent all-empty wall would mask it.
     const [googlePerCal, icsEvents] = await Promise.all([
-      Promise.all(calendars.map(async (c) =>
-        normalize(
-          await listEvents(accessToken, c.id, timeMin, timeMax, { maxResults: MAX_RESULTS_PER_CALENDAR }),
-          { calendar: c.label, person: c.person, kind: c.kind },
-        ))),
+      Promise.all(calendars.map(async (c) => {
+        try {
+          const token = c.token ? await getAccessToken(env, c.token) : accessToken;
+          return normalize(
+            await listEvents(token, c.id, timeMin, timeMax, { maxResults: MAX_RESULTS_PER_CALENDAR }),
+            { calendar: c.label, person: c.person, kind: c.kind, readOnly: c.readOnly },
+          );
+        } catch (err) {
+          if (!c.token) throw err;
+          console.error(`calendar "${c.label}" (token: ${c.token}) failed: ${err.message}`);
+          return [];
+        }
+      })),
       fetchIcsEvents(env, timeMin, timeMax),
     ]);
     const sections = mergeSections([...googlePerCal.flat(), ...icsEvents]);

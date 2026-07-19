@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { normalizeUpcoming, normalize, parseCalendars, repairMojibake, resolveRange, calendarIdFor, createEvent, deleteEvent, updateEvent, listEvents } from './calendar-api.js';
+import { normalizeUpcoming, normalize, parseCalendars, repairMojibake, resolveRange, calendarIdFor, googleCalendarFor, createEvent, deleteEvent, updateEvent, listEvents } from './calendar-api.js';
 
 const timed = {
   id: 'e1',
@@ -176,6 +176,32 @@ describe('calendarIdFor', () => {
   it('returns null for an unknown label', () => {
     expect(calendarIdFor(env, 'Work')).toBeNull();
     expect(calendarIdFor({}, 'Family')).toBeNull();
+  });
+});
+
+describe('googleCalendarFor', () => {
+  const env = {
+    GOOGLE_CALENDARS_JSON: JSON.stringify([
+      { label: 'Family', id: 'family@group.calendar.google.com' },
+      { label: 'Tim (Work)', id: 'primary', person: 'Tim', kind: 'work', token: 'work', readOnly: true },
+    ]),
+  };
+
+  it('returns the full entry — token + readOnly ride along for write routing', () => {
+    expect(googleCalendarFor(env, 'Tim (Work)')).toEqual({
+      label: 'Tim (Work)', id: 'primary', person: 'Tim', kind: 'work', token: 'work', readOnly: true,
+    });
+  });
+
+  it('is case-insensitive and null for unknown labels', () => {
+    expect(googleCalendarFor(env, 'tim (work)')?.token).toBe('work');
+    expect(googleCalendarFor(env, 'Nope')).toBeNull();
+  });
+
+  it('entries without the optional fields have them undefined (default token, writable)', () => {
+    const fam = googleCalendarFor(env, 'Family');
+    expect(fam.token).toBeUndefined();
+    expect(fam.readOnly).toBeUndefined();
   });
 });
 
