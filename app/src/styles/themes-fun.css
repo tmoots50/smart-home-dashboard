@@ -2,6 +2,7 @@
    Overrides only — falls back to defaults from tokens.css when no theme set. */
 
 :root[data-theme="fun"] {
+  color-scheme: light; /* opt out of WebView force-dark; this is our light theme */
   --color-bg: #fdf6ee;
   --color-fg: #2a2520;
   --color-muted: #8c7a68;

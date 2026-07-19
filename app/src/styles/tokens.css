@@ -1,5 +1,8 @@
 /* MIRROR of src/lib/theme.js. Change values in lockstep — see lib/theme.test.js. */
 :root {
+  /* We own theming via data-theme — tell the UA/WebView so it never applies
+     its own force-dark inversion. Overridden per theme (light for fun/light). */
+  color-scheme: dark;
   --color-bg: #0c0c0d;
   --color-fg: #f3f1ec;
   --color-muted: #8a8782;

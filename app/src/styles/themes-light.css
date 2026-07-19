@@ -4,6 +4,7 @@
    Activate via ?theme=light. Independent of themes-fun.css so they don't conflict. */
 
 :root[data-theme="light"] {
+  color-scheme: light; /* opt out of WebView force-dark; this is a light theme */
   --color-bg: #fdf6ee;
   --color-fg: #2a2520;
   --color-muted: #8c7a68;

@@ -7,7 +7,7 @@ const NIGHT = new Date('2026-06-22T05:00:00Z');   // ~1:00am EDT — sun well do
 const OVERRIDE_KEY = 'theme:override';
 
 beforeEach(() => {
-  window.history.replaceState(null, '', '/');
+  window.location.href = 'http://localhost/'; // dev host by default
   localStorage.clear();
   delete document.documentElement.dataset.theme;
 });
@@ -36,14 +36,15 @@ describe('resolveTheme precedence', () => {
     expect(resolveTheme(NIGHT)).toBe('cosy');
   });
 
-  it('honors ?theme= as a dev preview when NOT in kiosk mode', () => {
+  it('honors ?theme= as a dev preview on localhost', () => {
     window.history.replaceState(null, '', '/?theme=cosy');
     expect(resolveTheme(DAYTIME)).toBe('cosy'); // overrides daytime auto
   });
 
-  it('ignores a pinned ?theme= in kiosk mode (auto + toggle own the theme)', () => {
-    window.history.replaceState(null, '', '/?theme=fun&kiosk=1');
-    expect(resolveTheme(NIGHT)).toBe('cosy'); // auto wins, pin ignored
+  it('lets a live manual override WIN over ?theme= (the toggle always takes control)', () => {
+    window.history.replaceState(null, '', '/?theme=cosy');
+    localStorage.setItem(OVERRIDE_KEY, JSON.stringify({ theme: 'fun', until: DAYTIME.getTime() + 3_600_000 }));
+    expect(resolveTheme(DAYTIME)).toBe('fun'); // override beats the URL param
   });
 
   it('applies a live manual override over auto', () => {
@@ -55,6 +56,13 @@ describe('resolveTheme precedence', () => {
     localStorage.setItem(OVERRIDE_KEY, JSON.stringify({ theme: 'cosy', until: DAYTIME.getTime() - 1 }));
     expect(resolveTheme(DAYTIME)).toBe('fun'); // back to daytime auto
     expect(localStorage.getItem(OVERRIDE_KEY)).toBeNull();
+  });
+
+  it('IGNORES a pinned ?theme= on the deployed tablet (off-localhost)', () => {
+    // Reproduces Tim's Fully Kiosk URL: ?theme=cosy, no ?kiosk=1. On the
+    // deployed host the pin must not block auto or the toggle.
+    window.location.href = 'https://smart-home-dashboard-de0.pages.dev/?theme=cosy';
+    expect(resolveTheme(DAYTIME)).toBe('fun'); // auto wins, pin ignored
   });
 });
 
@@ -82,5 +90,13 @@ describe('toggleTheme', () => {
     document.documentElement.dataset.theme = 'cosy';
     expect(toggleTheme()).toBe('fun');
     expect(document.documentElement.dataset.theme).toBe('fun');
+  });
+
+  it('overrides a pinned ?theme= on the deployed tablet', () => {
+    // The exact failure Tim hit: pinned ?theme=cosy, no kiosk. Tapping must flip.
+    window.location.href = 'https://smart-home-dashboard-de0.pages.dev/?theme=cosy';
+    document.documentElement.dataset.theme = 'cosy';
+    expect(toggleTheme()).toBe('fun');
+    expect(resolveTheme()).toBe('fun'); // and it sticks through a re-resolve
   });
 });

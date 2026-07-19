@@ -5,6 +5,7 @@
    background that clashes with the rim. */
 
 :root[data-theme="cosy"] {
+  color-scheme: dark; /* our dark theme — declared so the WebView won't re-darken it */
   --color-bg: #0c0c0d;
   --color-fg: #f5ede0;
   --color-muted: #a89a86;

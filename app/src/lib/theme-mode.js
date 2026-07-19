@@ -11,10 +11,11 @@
 //      the automatic schedule — the override always expires into the auto value
 //      at the next boundary, so there's never a jarring flip.
 //
-// Precedence: URL ?theme= (dev preview, NON-kiosk only) > manual override
-// (until it expires) > auto. In production the kiosk always loads with
-// ?kiosk=1, so a pinned ?theme= in the start URL is intentionally ignored —
-// the toggle + auto own the theme and Tim never edits the URL.
+// Precedence: manual override (until it expires) > URL ?theme= (dev preview,
+// localhost only) > auto. The override wins over EVERYTHING so the toggle can
+// always take control, and ?theme= is honored only on a dev host — so a pinned
+// ?theme= in the production kiosk URL is fully neutralized (with or without
+// ?kiosk=1) and the toggle + auto own the theme. Tim never edits the URL.
 
 import { sunrise, sunset, isDaytime } from './suntimes.js';
 
@@ -58,18 +59,29 @@ function readOverride() {
 function writeOverride(o) { try { localStorage.setItem(OVERRIDE_KEY, JSON.stringify(o)); } catch {} }
 function clearOverride() { try { localStorage.removeItem(OVERRIDE_KEY); } catch {} }
 
+// A dev host is where ?theme= previews are allowed. Off-localhost (i.e. the
+// deployed wall tablet) a pinned ?theme= is ignored so it can never block the
+// toggle or the auto schedule — no URL edit is ever needed on the tablet.
+function isPreviewHost() {
+  const h = window.location.hostname;
+  return h === 'localhost' || h === '127.0.0.1' || h === '[::1]' || h === '';
+}
+
 // The theme to display right now. Expires a stale override as a side effect so
 // auto silently resumes at the next sun event.
 export function resolveTheme(now = new Date()) {
-  const params = new URLSearchParams(window.location.search);
-  const urlTheme = params.get('theme');
-  if (urlTheme && !params.has('kiosk')) return urlTheme; // dev preview only
-
+  // 1. Manual override (the toggle) wins over everything, until it expires.
   const ov = readOverride();
   if (ov) {
     if (now.getTime() < ov.until) return ov.theme;
     clearOverride();
   }
+  // 2. ?theme= — dev preview only (localhost). Ignored on the deployed tablet.
+  if (isPreviewHost()) {
+    const urlTheme = new URLSearchParams(window.location.search).get('theme');
+    if (urlTheme) return urlTheme;
+  }
+  // 3. Auto — follow the sun.
   return autoTheme(now);
 }
 

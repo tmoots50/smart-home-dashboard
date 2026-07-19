@@ -3,6 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Declaring color-scheme opts the page OUT of Android WebView / Fully
+         Kiosk "algorithmic darkening": with the system in dark mode the WebView
+         would otherwise force-dark (invert) our light theme regardless of
+         data-theme. We own theming, so the WebView must not second-guess us.
+         Per-theme color-scheme is set in the CSS; this is the initial-paint
+         default. -->
+    <meta name="color-scheme" content="light dark" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
