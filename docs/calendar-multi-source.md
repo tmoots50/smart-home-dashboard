@@ -11,13 +11,22 @@ improve the calendar read/write test suite.
 
 ---
 
-## Decisions (locked with Tim, 2026-07-19)
+## Decisions (locked with Tim, 2026-07-19; #1–2 REVISED same day — see below)
 
-1. **Use case:** Display + **write to Tim's own work cal**. Caroline's stays **read-only**.
-2. **Tim work cal connection:** Share the Narvar calendar into `tim.moots@gmail.com`; it
-   flows through the dashboard's **existing** Google token — one new entry in
-   `GOOGLE_CALENDARS_JSON`. No new auth stack, **no OAuth re-mint** (the existing
-   `calendar.events` scope already covers writes to shared calendars).
+1. **Use case:** Display + ~~write to Tim's own work cal~~ → **read-only** (revised).
+   Caroline's stays **read-only**.
+2. **Tim work cal connection (REVISED 2026-07-19):** Narvar's Workspace admin caps
+   external sharing at free/busy AND hides the secret-iCal address, so neither sharing
+   nor ICS works. Instead: a **second OAuth refresh token minted by the work account
+   itself** against the dashboard's existing OAuth app (consent tested live — Narvar
+   does not block the app). Scope deliberately `calendar.readonly` (least privilege on
+   an employer account); config entry
+   `{"label":"Tim (Work)","id":"primary","token":"work","person":"Tim","kind":"work","readOnly":true}`
+   + env var `GOOGLE_REFRESH_TOKEN_WORK`. Backend supports per-calendar named tokens
+   (`google-auth.js getAccessToken(env, name)`); named-token calendars **fail soft** on
+   reads (an admin-revoked work token must never blank the family wall) and 403 writes
+   like ICS. Stability note: durable until Narvar IT revokes or Tim changes jobs;
+   re-wiring at a future employer = re-mint (or their secret-iCal URL if not blocked).
 3. **Caroline Outlook connection:** She publishes her Outlook calendar as an **ICS URL**;
    a new dashboard function fetches + parses it directly (NOT subscribed-in-Google, which
    lags 8–24h).
@@ -152,18 +161,29 @@ hard-failing.
 **Deploy in Phase 3:** review diff → scp helpers → `chmod +x ~/.hermes/bin/mfb-calendar-*` →
 `launchctl kill SIGTERM user/501/ai.hermes.gateway` → `deploy/tests/smoke-from-laptop.sh`.
 
-### Phase 3 — Wire real calendars ⏳ NEEDS TIM + CAROLINE
-**Blocking external inputs (only Tim/Caroline can produce these):**
-1. **Tim:** share the Narvar calendar into `tim.moots@gmail.com` with **"Make changes to
-   events"** (edit) so writes work; then get the shared **calendar ID** (via
-   `curl -H "Authorization: Bearer $DASHBOARD_TOKEN" ".../api/calendar?_lists=1"` once
-   shared, or Google Calendar settings → Integrate calendar → Calendar ID).
-2. **Caroline:** publish her Outlook calendar (Outlook Web → Settings → Calendar → Shared
-   calendars → Publish a calendar → **ICS** link) and share the **ICS URL**.
+### Phase 3 — Wire real calendars 🔄 TIM'S HALF DONE (2026-07-19); NEEDS CAROLINE
+**✅ Tim (Work) — LIVE.** Sharing was admin-blocked (see revised Decision 2), so it went
+in via a work-account `calendar.readonly` token instead: token minted (consent passed),
+stored as `GOOGLE_REFRESH_TOKEN_WORK` (secret, prod + preview), config entry added,
+multi-token backend shipped (`f7e44cd`), live-smoked: reads return titled events with
+`person/kind/readOnly`; POST + DELETE both 403 "display-only".
+
+**⚠ Incident during wiring (2026-07-19, resolved):** the first env-var PATCH re-sent the
+full env map as returned by GET — but CF never returns `secret_text` VALUES, so
+re-sending those keys valueless **wiped `GOOGLE_REFRESH_TOKEN` and
+`CF_ACCESS_CLIENT_SECRET`** on prod + preview (~10 min of wall-on-fallback). Both
+restored (from `.envrc.local` / `app/.dev.vars`) via **per-key PATCH** — the correct
+additive pattern: send ONLY the keys you're changing; never round-trip a GET'd env map
+containing secrets.
+
+**Remaining blocking external input:**
+1. **Caroline:** publish her Outlook calendar (Outlook Web → Settings → Calendar → Shared
+   calendars → Publish a calendar → **ICS** link, "Can view all details") and share the
+   **ICS URL**. Full steps: `docs/outlook-setup.md`.
 
 **Then (agent-owned, via CF API / cf-pages-infra — no browser needed):**
-- Read current `GOOGLE_CALENDARS_JSON`; add `{"label":"Tim (Work)","id":"<id>","person":"Tim","kind":"work"}`.
-- Set `ICS_CALENDARS_JSON = [{"label":"Caroline (Work)","url":"<url>","person":"Caroline","kind":"work"}]`.
+- Set `ICS_CALENDARS_JSON = [{"label":"Caroline (Work)","url":"<url>","person":"Caroline","kind":"work"}]`
+  (**per-key PATCH only** — see incident above), then trigger a redeploy.
 - ✅ `ICS_CACHE` KV namespace created + bound (2026-07-19, id `0597…6898`, production +
   preview, additive — CURATED/HOME_DEVICES/HOME_LOCKOUT preserved). Activates on the
   next deployment; harmless meanwhile since no ICS calls happen until
@@ -174,11 +194,15 @@ hard-failing.
   *(Left in place through Phase 1 on purpose — it protects the current stopgap config until
   the real config lands. Don't retire it before the config change or Family events will
   duplicate under a Caroline column.)*
-- Deploy Hermes helpers (see Phase 2 deploy steps).
-- **Live smoke:** both new calendars read on the dashboard + through Hermes; `Tim (Work)`
-  write round-trip (create/read/update/delete); `Caroline (Work)` write → 403 (dashboard) /
-  exit 68 (Hermes). **If Narvar blocks external edit-sharing, writes to Tim (Work) will
-  silently fail** — confirm write actually works, fall back to read-only + tell Tim if not.
+- Deploy Hermes helpers (see Phase 2 deploy steps). **⚠ Before deploying, update
+  `deploy/AGENTS.md` + the routing table: `Tim (Work)` is now READ-ONLY** (the Phase 2
+  edits assumed writable — capture routing must refuse writes to BOTH work calendars).
+  Runtime behavior is already correct without edits (dashboard 403 → helpers' exit-68
+  branch; test D3's skip-guard greps `40[34]` so it skips) — only the *docs/routing
+  guidance* is stale.
+- **Live smoke:** both new calendars read on the dashboard + through Hermes;
+  `Tim (Work)` + `Caroline (Work)` writes → 403 (dashboard) / exit 68 (Hermes).
+  *(Tim (Work) dashboard-side smoke already done 2026-07-19.)*
 
 ### Phase 4 — Verify existing + full test pass 🔄 MOSTLY DONE (2026-07-19)
 - ✅ Live-probed **before AND after** the deploy: Family + Tim personal both return real

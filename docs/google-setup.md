@@ -131,6 +131,34 @@ stack, share it into the personal account the dashboard's token belongs to:
 > with a live create/delete after wiring, and fall back to treating it
 > read-only if blocked.
 
+### 5d. When sharing is admin-blocked entirely: a named per-calendar token
+
+If the Workspace admin caps external sharing at **free/busy** (and hides the
+secret-iCal address — Google removes that field under the same policy), the
+work calendar can still come in via **its own OAuth token**, minted by the work
+account against this same OAuth app (this is how Tim's Narvar calendar is wired):
+
+1. Mint with a narrow scope — never ask an employer account for Drive/Tasks:
+   ```bash
+   GOOGLE_SCOPES="https://www.googleapis.com/auth/calendar.readonly" node scripts/mint-google-token.mjs
+   ```
+   Sign in with the **work** account. If the org blocks unverified apps you'll
+   hit a block page at consent — that's the definitive no.
+2. Store it as `GOOGLE_REFRESH_TOKEN_WORK` (secret) — the suffix is the token
+   *name*; `getAccessToken(env, "work")` resolves it.
+3. Config entry: `{"label":"Tim (Work)","id":"primary","token":"work","person":"Tim","kind":"work","readOnly":true}` —
+   `id` is relative to the token's account, so `primary` = the work calendar;
+   `readOnly: true` makes writes 403 cleanly (the token is read-scoped).
+
+Named-token calendars fail soft on reads (a revoked work token never blanks the
+other calendars). Expect this token to die when the org's IT audits third-party
+grants or the account is offboarded — re-mint or drop the entry then.
+
+> **⚠ Env-var PATCH footgun (learned 2026-07-19):** when setting env vars via
+> the CF API, PATCH **only the keys you're changing**. Never GET the env map
+> and PATCH it back: `secret_text` values come back empty and re-sending them
+> **wipes the stored secrets**.
+
 For a calendar published from **Outlook** (no Google account involved), see
 [`outlook-setup.md`](./outlook-setup.md) — those go in `ICS_CALENDARS_JSON`
 instead.
