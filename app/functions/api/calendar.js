@@ -1,8 +1,8 @@
 // GET /api/calendar          → { sections: [{ label, events: [{id, startsAt, title, sub}] }], nextEventId }
 // GET /api/calendar?_lists=1 → { calendars: [{ id, summary, primary }] } (one-time discovery)
 //
-// Window: now to 90 days. The default card renders five events per connected
-// calendar (10 total with the currently linked Family + Tim calendars).
+// Window: now to 90 days. The card caps rows per person column client-side
+// (CARD_MAX_PER_COLUMN); this endpoint caps per calendar at MAX_RESULTS_PER_CALENDAR.
 //
 // Configuration via GOOGLE_CALENDARS_JSON env var — see calendar-api.js header.
 
@@ -63,9 +63,10 @@ export async function onRequest(context) {
     // Google calendars + ICS feeds (Outlook, read-only) fetched together, then
     // merged into per-PERSON sections so a person's work and personal calendars
     // share one wall column. ICS fails soft internally; a calendar on a NAMED
-    // token (e.g. the Narvar account, revocable by its admin at any time) also
-    // fails soft — a dead work token must never blank the family wall. Default-
-    // token calendars stay loud: their shared failure mode is the token itself,
+    // token or marked `optional` (e.g. the Instacart calendar, whose public
+    // visibility its admin can revoke at any time) also fails soft — a dead
+    // work calendar must never blank the family wall. Other default-token
+    // calendars stay loud: their shared failure mode is the token itself,
     // and a silent all-empty wall would mask it.
     const [googlePerCal, icsEvents] = await Promise.all([
       Promise.all(calendars.map(async (c) => {
@@ -76,8 +77,8 @@ export async function onRequest(context) {
             { calendar: c.label, person: c.person, kind: c.kind, readOnly: c.readOnly },
           );
         } catch (err) {
-          if (!c.token) throw err;
-          console.error(`calendar "${c.label}" (token: ${c.token}) failed: ${err.message}`);
+          if (!c.token && !c.optional) throw err;
+          console.error(`calendar "${c.label}" failed: ${err.message}`);
           return [];
         }
       })),

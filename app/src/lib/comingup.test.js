@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rankComingUp, classify, weekEnd, normalizeItem } from './comingup.js';
+import { rankComingUp, classify, weekEnd, normalizeItem, CARD_MAX_PER_COLUMN } from './comingup.js';
 
 // Wednesday 2026-07-15 → "this week" runs through Sat Jul 18; the left pane
 // window is [Sun Jul 19, Sun Aug 16).
@@ -10,11 +10,11 @@ const ev = (over) => normalizeItem({
   calendar: 'Family', title: 'Event', sub: '', allDay: false, ...over,
 });
 
-// Six near-term Family events that occupy the calendar card's six slots
+// Near-term Family events that occupy ALL of the calendar card's slots
 // (CARD_MAX_PER_COLUMN), so window/dedupe tests exercise the rules on the
 // events they actually target. Mirrors reality: the family calendar is dense
 // in the near term, so the card's slots fill within a day or two.
-const cardFillers = (day = '2026-07-15') => Array.from({ length: 6 }, (_, i) =>
+const cardFillers = (day = '2026-07-15') => Array.from({ length: CARD_MAX_PER_COLUMN }, (_, i) =>
   ev({ id: `fill-${i}`, title: `Card filler ${i}`, startsAt: `${day}T${String(8 + i).padStart(2, '0')}:00:00` }));
 
 describe('weekEnd', () => {
@@ -86,13 +86,14 @@ describe('rankComingUp', () => {
     expect(left.map(i => i.name)).toEqual(['Tuesday thing']);
   });
 
-  it('left pane never repeats what the calendar card is showing (first 6 per person)', () => {
-    // Eight in-window Family events: the card shows the first six, so only
-    // the last two belong here.
-    const events = Array.from({ length: 8 }, (_, i) =>
+  it('left pane never repeats what the calendar card is showing (first CARD_MAX_PER_COLUMN per person)', () => {
+    // Two more in-window Family events than the card holds: the card shows
+    // the first CARD_MAX_PER_COLUMN, so only the last two belong here.
+    const total = CARD_MAX_PER_COLUMN + 2;
+    const events = Array.from({ length: total }, (_, i) =>
       ev({ id: `w-${i}`, title: `Window event ${i}`, startsAt: `2026-07-${20 + i}T10:00:00` }));
     const { left } = rankComingUp(events, { now: NOW });
-    expect(left.map(i => i.name)).toEqual(['Window event 6', 'Window event 7']);
+    expect(left.map(i => i.name)).toEqual([`Window event ${total - 2}`, `Window event ${total - 1}`]);
   });
 
   it('right pane keeps only planning-worthy items, ordered by importance', () => {

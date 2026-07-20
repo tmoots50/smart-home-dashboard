@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { renderCountdown } from './countdown.js';
+import { CARD_MAX_PER_COLUMN } from '../lib/comingup.js';
 
 // Wednesday: this week runs through Sat Jul 18; left pane = Sun Jul 19 → Aug 16.
 const NOW = new Date('2026-07-15T07:30:00');
@@ -9,10 +10,10 @@ const ev = (over) => ({
   calendar: 'Family', title: 'Event', sub: '', allDay: false, ...over,
 });
 
-// Occupy the calendar card's six per-person slots so the events under test
+// Occupy ALL the calendar card's per-person slots so the events under test
 // actually reach the left pane (the card-dupe rule would swallow them in a
 // sparse feed). Near-term, so the left window never shows them either.
-const cardFillers = () => Array.from({ length: 6 }, (_, i) =>
+const cardFillers = () => Array.from({ length: CARD_MAX_PER_COLUMN }, (_, i) =>
   ev({ id: `fill-${i}`, title: `Card filler ${i}`, startsAt: `2026-07-15T${String(8 + i).padStart(2, '0')}:00:00` }));
 
 describe('renderCountdown (two panes)', () => {

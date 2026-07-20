@@ -16,9 +16,10 @@ const SAFETY_MS = 60_000; // refresh 1min before actual expiry
 
 // `tokenName` selects between multiple Google accounts: undefined → the
 // default GOOGLE_REFRESH_TOKEN (Tim's personal account, used by photos/tasks/
-// most calendars); a name like "work" → GOOGLE_REFRESH_TOKEN_WORK (Tim's
-// Narvar account, calendar.readonly only — external sharing is admin-blocked,
-// so that calendar is reached by its own token instead).
+// all current calendars); a name like "work" → GOOGLE_REFRESH_TOKEN_WORK.
+// (No calendar uses a named token today — the Instacart work calendar is
+// public at free/busy level, so the default token reads it directly. The
+// mechanism stays for any future account whose calendar can't be shared.)
 export async function getAccessToken(env, tokenName) {
   const refreshVar = tokenName
     ? `GOOGLE_REFRESH_TOKEN_${String(tokenName).replace(/[^a-z0-9_]/gi, '').toUpperCase()}`

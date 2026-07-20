@@ -1425,9 +1425,9 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   list-style: none;
   padding: 0;
   margin: 0;
-  /* 14.25rem + the 20% Tim asked for on 2026-07-11 — the card is the page's
-     anchor widget and earns the extra rows. */
-  max-height: 17.1rem;
+  /* 14.25rem + the 20% Tim asked for on 2026-07-11, + one --list-row
+     (3.65rem) on 2026-07-19 — one more event row, same row height. */
+  max-height: 20.75rem;
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;
@@ -1448,6 +1448,16 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .calendar__date { color: var(--color-muted); font-size: 0.72rem; white-space: nowrap; }
 .calendar__details { min-width: 0; line-height: 1.2; }
 .calendar__event:last-child { border-bottom: none; }
+/* Work-calendar rows: a slate left edge replaces the old "Work" text pill
+   (2026-07-19) — same edge-marks-the-source convention as the month
+   calendar's chips. Slate is deliberately outside the person hues (coral/
+   sage/blue). Declared BEFORE --next so the next-up accent wins the edge
+   when a work row is also the next event. */
+.calendar__event--work {
+  border-left: 3px solid #8e99a8;
+  padding-left: var(--space-3);
+  margin-left: calc(-1 * var(--space-3));
+}
 .calendar__event--next {
   border-left: 3px solid var(--color-accent);
   padding-left: var(--space-3);
@@ -1488,8 +1498,14 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   display: block;
   padding: var(--space-2) 0;
 }
-/* Classic's next-up edge uses a negative margin that assumes the grid row;
-   on block rows it drags content out of the card. Indent instead. */
+/* Classic's next-up/work edges use a negative margin that assumes the grid
+   row; on block rows it drags content out of the card. Indent instead.
+   (--work first; --next wins the edge color on a row that is both.) */
+.calendar--stacked .calendar__event--work {
+  margin-left: 0;
+  padding-left: var(--space-2);
+  border-left: 3px solid #8e99a8;
+}
 .calendar--stacked .calendar__event--next {
   margin-left: 0;
   padding-left: var(--space-2);
@@ -1538,6 +1554,12 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .calendar--rail .calendar__event--next {
   margin-left: 0; /* rail replaces the classic next-up edge */
 }
+/* The proximity rail owns the edge color here; dashed marks work rows
+   (month-cal convention). Undo the classic --work negative margin. */
+.calendar--rail .calendar__event--work {
+  margin-left: 0;
+  border-left-style: dashed;
+}
 .calendar--rail .calendar__date {
   font-size: 0.85rem;
   font-weight: 600;
@@ -1561,7 +1583,8 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 /* ── flavor: days (day-grouped, no columns) ──
    Full-width rows under day headers; person = colored dot + header legend. */
 .calendar__daylist {
-  max-height: 17.1rem;
+  /* Tracks .calendar__list — grew one --list-row on 2026-07-19. */
+  max-height: 20.75rem;
   overflow-y: auto;
   overscroll-behavior: contain;
   touch-action: pan-y;

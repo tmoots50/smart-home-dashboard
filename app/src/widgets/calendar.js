@@ -30,13 +30,15 @@ const REFRESH_MS = 5 * 60 * 1000; // re-fetch every 5min — events can be added
 const DAY_FMT = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' });
 const DAY_LONG_FMT = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 // Per-column cap. Columns fill independently — a packed Family week must not
-// starve Tim's column (the old global top-10 did exactly that). Six rows means
-// five fully visible + the sixth peeking as the scroll affordance. Shared with
-// lib/comingup.js: the Coming-Up left pane excludes exactly what this card
-// shows, so the two widgets never repeat each other.
+// starve Tim's column (the old global top-10 did exactly that). Seven rows
+// means six fully visible + the seventh peeking as the scroll affordance
+// (card grew one row on 2026-07-19). Shared with lib/comingup.js: the
+// Coming-Up left pane excludes exactly what this card shows, so the two
+// widgets never repeat each other.
 const MAX_PER_COLUMN = CARD_MAX_PER_COLUMN;
-// The day-grouped flavor has no columns; cap the flat list instead.
-const MAX_DAY_GROUPED = 18;
+// The day-grouped flavor has no columns; cap the flat list instead (3×
+// the per-column cap, matching the three columns it replaces).
+const MAX_DAY_GROUPED = 21;
 
 // Column order + labels for the family calendar. Each column pulls its events
 // from the data section whose `label` matches. A column with no matching
@@ -111,7 +113,11 @@ function columnBody(column, nextEventId, now, flavor) {
 
 function rowAttrs(event, label, nextEventId, extraClass = '') {
   const isNext = event.id === nextEventId;
-  const cls = `calendar__event${extraClass}${isNext ? ' calendar__event--next' : ''}`;
+  // Work rows carry a colored left edge (--work) instead of the old text
+  // pill — matches the month calendar's edge-marks-the-source convention.
+  // --next comes last so the next-up accent wins when a work row is next.
+  const work = event.kind === 'work' ? ' calendar__event--work' : '';
+  const cls = `calendar__event${extraClass}${work}${isNext ? ' calendar__event--next' : ''}`;
   // Sections are person-keyed, so `label` is the person, NOT the source
   // calendar. Preserve the event's own calendar ("Tim (Work)") — event-detail
   // and any future edit routing need the true source, not the column name.
@@ -121,12 +127,6 @@ function rowAttrs(event, label, nextEventId, extraClass = '') {
     person: event.person || label,
   }));
   return `class="${cls}" data-event="${evtJson}" role="button" tabindex="0"`;
-}
-
-// Small display-only pill on rows from a work calendar. Never a tap target —
-// the row carries the hit area.
-function workTag(event) {
-  return event.kind === 'work' ? '<span class="cal-tag cal-tag--work">Work</span>' : '';
 }
 
 function renderClassicRow(event, label, nextEventId, now) {
@@ -139,7 +139,6 @@ function renderClassicRow(event, label, nextEventId, now) {
       <span class="calendar__details">
         <div class="calendar__title">${escapeHtml(event.title)}</div>
         ${event.sub ? `<div class="calendar__sub">${escapeHtml(event.sub)}</div>` : ''}
-        ${workTag(event)}
       </span>
     </li>
   `;
@@ -147,8 +146,6 @@ function renderClassicRow(event, label, nextEventId, now) {
 
 // Title first (2-line wrap), then a day-led meta line. The day is the element
 // Tim scans for, so it gets weight; today additionally gets the accent.
-// The Work tag rides the meta line — never inside the clamped title (a pill
-// in a -webkit-line-clamp box risks the razor-clip artifact from 2026-07-11).
 function renderStackedRow(event, label, nextEventId, now) {
   const today = dayIndex(event.startsAt, now) === 0;
   return `
@@ -159,7 +156,6 @@ function renderStackedRow(event, label, nextEventId, now) {
         <span class="calendar__date${today ? ' calendar__date--today' : ''}">${formatDay(event.startsAt, now)}</span>
         <span class="calendar__meta-sep">·</span>
         <span class="calendar__time">${eventTime(event)}</span>
-        ${workTag(event)}
       </div>
     </li>
   `;
@@ -179,7 +175,6 @@ function renderRailRow(event, label, nextEventId, now) {
       <span class="calendar__details">
         <div class="calendar__title">${escapeHtml(event.title)}</div>
         ${event.sub ? `<div class="calendar__sub">${escapeHtml(event.sub)}</div>` : ''}
-        ${workTag(event)}
       </span>
     </li>
   `;
@@ -216,7 +211,6 @@ function renderDayGrouped(data, now) {
                 <span class="calendar__details">
                   <span class="calendar__title">${escapeHtml(event.title)}</span>
                   ${event.sub ? `<span class="calendar__sub">${escapeHtml(event.sub)}</span>` : ''}
-                  ${workTag(event)}
                 </span>
               </li>
             `).join('')}

@@ -48,19 +48,21 @@ for (const state of Object.keys(states)) {
 // mean a packed Family week can never evict Tim's few events.
 test('calendar/uneven: no connected column with events is starved by another', async ({ page }) => {
   await open(page, 'uneven');
-  await expect(page.locator('.calendar__column--family .calendar__event')).toHaveCount(6);
+  await expect(page.locator('.calendar__column--family .calendar__event')).toHaveCount(7);
   await expect(page.locator('.calendar__column--tim .calendar__event')).toHaveCount(1);
 });
 
-// Multi-source model: work events interleave into the person's column with a
-// Work tag; Caroline's column renders her Outlook feed.
-test('calendar/work-dense: Work tags render in Tim\'s column; Caroline\'s column is populated', async ({ page }) => {
+// Multi-source model: work events interleave into the person's column with
+// the --work left edge (the old text pill is gone); Caroline's column
+// renders her Outlook feed.
+test('calendar/work-dense: work edges render in Tim\'s column; Caroline\'s column is populated', async ({ page }) => {
   await open(page, 'work-dense');
-  const timTags = page.locator('.calendar__column--tim .cal-tag--work');
-  expect(await timTags.count()).toBeGreaterThan(0);
-  await expect(page.locator('.calendar__column--tim .calendar__event')).toHaveCount(6); // 7 events → 6-row cap holds
+  const timWorkRows = page.locator('.calendar__column--tim .calendar__event--work');
+  expect(await timWorkRows.count()).toBeGreaterThan(0);
+  await expect(page.locator('.calendar__column--tim .cal-tag--work')).toHaveCount(0);
+  await expect(page.locator('.calendar__column--tim .calendar__event')).toHaveCount(7); // 8 events → 7-row cap holds
   await expect(page.locator('.calendar__column--caroline .calendar__event')).toHaveCount(3);
-  expect(await page.locator('.calendar__column--caroline .cal-tag--work').count()).toBeGreaterThan(0);
+  expect(await page.locator('.calendar__column--caroline .calendar__event--work').count()).toBeGreaterThan(0);
 });
 
 test('calendar/work-dense: tapping a work row opens detail with the true source calendar', async ({ page }) => {

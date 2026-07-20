@@ -69,15 +69,15 @@ describe('renderCalendar', () => {
     expect(html).toContain('calendar__event--next');
   });
 
-  it('caps each column at 6 events', () => {
+  it('caps each column at 7 events', () => {
     const NOW = new Date('2026-04-29T07:00:00');
-    const events = Array.from({ length: 8 }, (_, i) => ({
+    const events = Array.from({ length: 9 }, (_, i) => ({
       id: `e-${i}`, startsAt: new Date(NOW.getTime() + (i + 1) * 60_000).toISOString(), title: `Family Event ${i}`, sub: '',
     }));
     const html = renderCalendar({ sections: [{ label: 'Family', events }] }, NOW);
-    expect((html.match(/class="calendar__event/g) || [])).toHaveLength(6);
-    expect(html).not.toContain('Family Event 6');
+    expect((html.match(/class="calendar__event/g) || [])).toHaveLength(7);
     expect(html).not.toContain('Family Event 7');
+    expect(html).not.toContain('Family Event 8');
   });
 
   it('columns fill independently — a packed column never starves another', () => {
@@ -94,7 +94,7 @@ describe('renderCalendar', () => {
       { label: 'Family', events: familyEvents },
       { label: 'Tim', events: timEvents },
     ] }, NOW);
-    expect((html.match(/class="calendar__event/g) || [])).toHaveLength(9); // 6 + 3
+    expect((html.match(/class="calendar__event/g) || [])).toHaveLength(10); // 7 + 3
     expect(html).toContain('Tim Event 0');
     expect(html).toContain('Tim Event 2');
   });
@@ -113,11 +113,13 @@ describe('renderCalendar', () => {
     expect(html).not.toContain('Not linked yet');
   });
 
-  it('tags work-calendar events and interleaves them into the person column', () => {
+  it('marks work-calendar events with the --work edge and interleaves them into the person column', () => {
     const NOW = new Date('2026-04-29T07:00:00');
     const html = renderCalendar(getMockCalendar(NOW), NOW);
     // Mock Tim column: personal 14:15 → work 15:00 → personal 16:00.
-    expect(html).toContain('cal-tag--work');
+    expect(html).toContain('calendar__event--work');
+    // The old text pill is gone from the card (left edge replaced it).
+    expect(html).not.toContain('cal-tag--work');
     const tim = html.split('calendar__column--tim')[1].split('calendar__column--caroline')[0];
     const order = ['Job-search standup', 'Product review — Track', 'Recruiter call — Tessa']
       .map(t => tim.indexOf(t));

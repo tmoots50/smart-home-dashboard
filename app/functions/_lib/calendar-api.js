@@ -10,10 +10,18 @@
 //
 // Optional per-entry fields:
 //   person   — wall column the calendar merges into (defaults to label)
-//   kind     — 'work' renders the Work tag (defaults 'personal')
+//   kind     — 'work' marks work-calendar events (defaults 'personal')
 //   token    — named Google token, e.g. "work" → GOOGLE_REFRESH_TOKEN_WORK
 //              (a second account whose calendar can't be shared cross-account)
-//   readOnly — writes 403 like an ICS feed (set when the token is read-scoped)
+//   readOnly — writes 403 like an ICS feed (set when access is read-only)
+//   optional — fail soft when this calendar errors (for calendars whose
+//              access an outside admin controls, e.g. Tim's public Instacart
+//              calendar read as freeBusyReader on the default token)
+//
+// Current work calendar: tim.moots@instacart.com, public at free/busy level —
+// events arrive WITHOUT titles (summary absent) and render as "Busy". If Tim
+// ever raises the calendar's public sharing to "see all event details", real
+// titles flow through with zero code change.
 
 export function parseCalendars(env) {
   const raw = env.GOOGLE_CALENDARS_JSON;
@@ -120,16 +128,19 @@ export function repairMojibake(s) {
 // defaults to calendar), `kind` ('work'|'personal', drives the work tag), and
 // `readOnly`. Defaults keep the pre-multi-source callers unchanged.
 export function normalize(events, { calendar = '', person, kind = 'personal', readOnly = false } = {}) {
+  const isWork = kind === 'work';
   return events
     .map(e => ({
       id: e.id,
       calendar,
       person: person || calendar,
-      kind: kind === 'work' ? 'work' : 'personal',
+      kind: isWork ? 'work' : 'personal',
       readOnly,
       startsAt: e.start?.dateTime || e.start?.date || '',
       endsAt: e.end?.dateTime || e.end?.date || '',
-      title: repairMojibake(e.summary || '(no title)'),
+      // Free/busy-level work calendars omit summary entirely — "Busy" reads
+      // better on the wall than "(no title)" on every work row.
+      title: repairMojibake(e.summary || (isWork ? 'Busy' : '(no title)')),
       sub: repairMojibake(e.location || ''),
       description: repairMojibake(e.description || ''),
       allDay: !e.start?.dateTime,
@@ -143,6 +154,7 @@ export function normalize(events, { calendar = '', person, kind = 'personal', re
 // Note: Google gives all-day events an EXCLUSIVE end.date (a one-day event on
 // Jul 9 ends Jul 10); consumers that render ranges must subtract a day.
 export function normalizeUpcoming(events, calendarLabel, { person, kind = 'personal', readOnly = false } = {}) {
+  const isWork = kind === 'work';
   return events
     .map(e => {
       const allDay = !e.start?.dateTime;
@@ -155,9 +167,9 @@ export function normalizeUpcoming(events, calendarLabel, { person, kind = 'perso
         // (e.g. "Tim (Work)") set person "Tim" so they land in Tim's column;
         // defaults to the calendar label when unsplit.
         person: person || calendarLabel,
-        kind: kind === 'work' ? 'work' : 'personal',
+        kind: isWork ? 'work' : 'personal',
         readOnly,
-        title: repairMojibake(e.summary || '(no title)'),
+        title: repairMojibake(e.summary || (isWork ? 'Busy' : '(no title)')),
         sub: repairMojibake(e.location || ''),
         description: repairMojibake(e.description || ''),
         startsAt,

@@ -72,21 +72,23 @@ export const states = {
   },
 
   // The multi-source geometry stressor: Tim's column dense with work +
-  // personal interleaved (Work tags on most rows), Caroline's column
-  // populated from her Outlook feed. Exercises the 6-row cap under the
-  // heavier tagged rows.
+  // personal interleaved (work left-edges on most rows), Caroline's column
+  // populated from her Outlook feed. Exercises the 7-row cap under the
+  // heavier edged rows. Work rows titled "Busy" mirror the Instacart
+  // free/busy feed (titles hidden at that sharing level).
   'work-dense': {
     data: {
       sections: [
         section('Family', [evt('fam-1', 15, 30, 'Pediatrician — Mabel', 'Northside Pediatrics')]),
         section('Tim', [
-          workEvt('tw-0', 9, 0, 'Narvar leadership sync', 'Zoom', 'Tim'),
-          workEvt('tw-1', 10, 30, 'Product review — Track with a deliberately long meeting title', 'Zoom', 'Tim'),
+          workEvt('tw-0', 9, 0, 'Busy', 'Zoom', 'Tim'),
+          workEvt('tw-1', 10, 30, 'Product review — a deliberately long meeting title for wrap testing', 'Zoom', 'Tim'),
           evt('tp-0', 12, 0, 'Lunch with Dave', 'Midtown'),
-          workEvt('tw-2', 13, 0, '1:1 — eng lead', '', 'Tim'),
+          workEvt('tw-2', 13, 0, 'Busy', '', 'Tim'),
           workEvt('tw-3', 14, 30, 'Roadmap deep-dive', 'Conf Rm 2', 'Tim'),
           evt('tp-1', 16, 0, 'Recruiter call — Tessa', 'Phone'),
-          workEvt('tw-4', 17, 0, 'Board prep', '', 'Tim'), // 7th event — over the 6-row cap
+          workEvt('tw-4', 17, 0, 'Busy', '', 'Tim'),
+          workEvt('tw-5', 18, 0, 'Board prep', '', 'Tim'), // 8th event — over the 7-row cap
         ]),
         section('Caroline', [
           workEvt('cw-0', 9, 30, 'Team standup', 'Teams', 'Caroline'),

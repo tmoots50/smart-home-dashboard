@@ -30,8 +30,9 @@ const LEFT_MIN_LEAD_DAYS = 3;
 
 // Mirror of the Family Calendar card's display rule (widgets/calendar.js:
 // MAX_PER_COLUMN over COLUMNS) — an event the card already shows is a dupe
-// here. Keep both constants in sync.
-export const CARD_MAX_PER_COLUMN = 6;
+// here. Keep both constants in sync. 6 → 7 on 2026-07-19 when the card
+// grew one visible row.
+export const CARD_MAX_PER_COLUMN = 7;
 const CARD_COLUMNS = ['Family', 'Tim', 'Caroline'];
 
 // Signal patterns run against "title sub". Deliberately loose — a false
