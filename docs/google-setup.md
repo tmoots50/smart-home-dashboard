@@ -236,6 +236,21 @@ To rotate the OAuth credentials (e.g. someone saw `GOOGLE_REFRESH_TOKEN`):
 2. Re-run step 4 to mint a new refresh token.
 3. Update CF Pages env var, redeploy.
 
+> **Rule — every mint updates `.envrc.local` too, in the same sitting.**
+> `.envrc.local` is the designated restore source when a CF secret gets wiped
+> (it happened twice on 2026-07-19; secrets can't be read back out of CF).
+> The Jul 11 `calendar.events` re-mint skipped this step, so the Jul 19 wipe
+> was "restored" with a stale `calendar.readonly` token and Hermes calendar
+> writes silently broke for a week. CF Pages + `.envrc.local` move together
+> or the backup is a downgrade in waiting. After both are updated, run
+> `scripts/smoke-live.sh` once the redeploy lands.
+
+> **`GOOGLE_REFRESH_TOKEN_WORK` is vestigial (since 2026-07-20).** It was the
+> named token for the Narvar work calendar (§5d). The Instacart calendar is
+> read as public free/busy on the *default* token — no named token involved.
+> The key still exists (empty) on CF Pages; ignore it unless a future employer
+> needs the §5d pattern again.
+
 To rotate `DASHBOARD_TOKEN`:
 
 1. Generate a new token: `openssl rand -hex 32`.

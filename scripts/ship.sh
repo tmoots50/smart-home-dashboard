@@ -84,3 +84,58 @@ git push
 echo ""
 echo "✓ Pushed. CF Pages redeploy in ~1-2 min."
 echo "  https://smart-home-dashboard-de0.pages.dev/"
+
+# ── Post-push: wait for the CF deploy, then smoke the live site ─────────
+# A green push is not a green deploy (2026-07-20: a deploy died at the
+# initialize stage, the prior build had a wiped env baked in, and the wall
+# sat on mock fallback overnight). Poll the CF API for THIS commit's
+# deployment, then probe the live Google-backed endpoints.
+COMMIT_SHA="$(git rev-parse HEAD)"
+if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] && [ -f "$REPO_ROOT/.envrc.local" ]; then
+  # shellcheck disable=SC1091
+  source "$REPO_ROOT/.envrc.local"
+fi
+if [ -n "${CLOUDFLARE_API_TOKEN:-}" ] && [ -n "${CLOUDFLARE_ACCOUNT_ID:-}" ] && [ -n "${CLOUDFLARE_PAGES_PROJECT:-}" ]; then
+  echo "▶ Waiting for CF Pages deploy of ${COMMIT_SHA:0:7}…"
+  DEPLOY_STATE=""
+  for _ in $(seq 1 36); do # ~6 min at 10s
+    DEPLOY_STATE="$(curl -s -m 15 \
+      -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+      "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$CLOUDFLARE_PAGES_PROJECT/deployments?per_page=15" \
+      | COMMIT_SHA="$COMMIT_SHA" python3 -c '
+import json, os, sys
+sha = os.environ["COMMIT_SHA"]
+try:
+    deploys = json.load(sys.stdin)["result"]
+except Exception:
+    print("pending"); sys.exit()
+for d in deploys:
+    meta = d.get("deployment_trigger", {}).get("metadata", {})
+    if meta.get("commit_hash") == sha and d.get("environment") == "production":
+        stage = d.get("latest_stage", {})
+        if stage.get("status") == "failure":
+            print(f"failure:{stage.get('name')}")
+        elif stage.get("name") == "deploy" and stage.get("status") == "success":
+            print("success")
+        else:
+            print("pending")
+        sys.exit()
+print("pending")
+')"
+    [ "$DEPLOY_STATE" != "pending" ] && break
+    sleep 10
+  done
+  case "$DEPLOY_STATE" in
+    success) echo "✓ Deploy live." ;;
+    failure:*)
+      echo "✗ CF Pages deploy FAILED at stage '${DEPLOY_STATE#failure:}' — the previous build is still serving."
+      echo "  Retry: push again, or use the CF API deployments retry endpoint."
+      exit 1 ;;
+    *)
+      echo "⚠ Deploy not confirmed after ~6 min — smoking whatever is live." ;;
+  esac
+else
+  echo "⚠ CF API creds unavailable — sleeping 150s for the build, then smoking."
+  sleep 150
+fi
+"$REPO_ROOT/scripts/smoke-live.sh"

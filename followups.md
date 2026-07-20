@@ -40,6 +40,16 @@ The dumping ground for everything that isn't on the v1 critical path. Active bac
 ## Feature backlog — medium priority
 *(post-v1, but architecturally directional — informs how v1 should be structured so they're easy to add)*
 
+- **Visible "live data unavailable" indicator instead of silent mock fallback (parked
+  2026-07-20, Tim's call).** When a Google-backed endpoint fails, the frontend silently
+  serves mock events / empty month grids (`app/src/lib/calendar.js`), which made the
+  2026-07-20 secret-wipe outage read as "the dashboard reverted to an old build" — a
+  misdiagnosis a one-word badge would have prevented. Add a subtle per-card indicator
+  (and/or a corner dot on the briefing) when a widget is rendering fallback data.
+  app/src UI change → QA harness trio + design-contract check + visual sign-off. Design
+  constraint: must be glanceable-but-quiet on the wall (kiosk, family-facing — not an
+  error banner).
+
 - **✅ Hermes Coming-Up override channel (2026-07-11, BOTH sides done).** Rules engine
   stays the baseline order; Tim ad-hoc adjusts through Hermes. Dashboard: `GET/POST
   /api/comingup` (bearer) stores `{match, score?, pane?, hide?}` in the CURATED KV

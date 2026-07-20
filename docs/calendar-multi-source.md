@@ -176,6 +176,25 @@ restored (from `.envrc.local` / `app/.dev.vars`) via **per-key PATCH** — the c
 additive pattern: send ONLY the keys you're changing; never round-trip a GET'd env map
 containing secrets.
 
+**⚠ Incident #2 — same mechanism, second strike (2026-07-19 evening, resolved
+2026-07-20):** during the Instacart calendar wiring (`08fc170`), the pre-fix script ran
+the full-map PATCH once more and wiped the same two secrets again. This time the broken
+env got **baked into a successful deploy** (`08fc170`, 00:57Z), the follow-up deploy of
+the script fix (`d277eb7`) **failed at the initialize stage** unnoticed, and no restore
+followed — so the wall sat on mock/empty fallback overnight, which read as "the dashboard
+reverted to an old build". Three compounding lessons beyond incident #1:
+1. **A wiped env only bites at the next deploy** (CF binds env at deploy time), so the
+   wipe and the outage can be hours apart — always run `scripts/smoke-live.sh` after any
+   env change *and* after the deploy that binds it. `ship.sh` now does this automatically
+   (deploy-status poll + live smoke).
+2. **The restore source must track rotations.** `.envrc.local` still held the pre-Jul-11
+   `calendar.readonly` token, so incident #1's "restore" silently downgraded Hermes
+   calendar writes. Resolution: re-minted `calendar.events` token (2026-07-20), CF and
+   `.envrc.local` updated together — see the rotation rule in `docs/google-setup.md`.
+3. `GOOGLE_REFRESH_TOKEN_WORK` is **vestigial** since the Narvar→Instacart switch: the
+   Instacart calendar is read as public free/busy on the *default* token (no `token`
+   field in its `GOOGLE_CALENDARS_JSON` entry). The wiped WORK key needs no restore.
+
 **Remaining blocking external input:**
 1. **Caroline:** publish her Outlook calendar (Outlook Web → Settings → Calendar → Shared
    calendars → Publish a calendar → **ICS** link, "Can view all details") and share the
