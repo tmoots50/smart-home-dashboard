@@ -36,21 +36,33 @@ ENDPOINTS=(
   "api/tasks/todos|todos list"
 )
 
-FAILED=0
-for entry in "${ENDPOINTS[@]}"; do
-  path="${entry%%|*}"
-  label="${entry##*|}"
-  body="$(curl -s -m 20 -w $'\n%{http_code}' -H "Authorization: Bearer $HERMES_TOKEN" "$ORIGIN/$path")"
-  status="${body##*$'\n'}"
-  payload="${body%$'\n'*}"
-  if [ "$status" = "200" ] && ! grep -q '"error"' <<<"$payload"; then
-    echo "✓ $path — $label"
-  else
-    FAILED=1
-    echo "✗ $path — $label (HTTP $status)"
-    echo "    $(head -c 200 <<<"$payload")"
-  fi
-done
+probe_all() {
+  FAILED=0
+  for entry in "${ENDPOINTS[@]}"; do
+    path="${entry%%|*}"
+    label="${entry##*|}"
+    body="$(curl -s -m 20 -w $'\n%{http_code}' -H "Authorization: Bearer $HERMES_TOKEN" "$ORIGIN/$path")"
+    status="${body##*$'\n'}"
+    payload="${body%$'\n'*}"
+    if [ "$status" = "200" ] && ! grep -q '"error"' <<<"$payload"; then
+      echo "✓ $path — $label"
+    else
+      FAILED=1
+      echo "✗ $path — $label (HTTP $status)"
+      echo "    $(head -c 200 <<<"$payload")"
+    fi
+  done
+}
+
+probe_all
+# Right after a deploy flips live, edges can briefly serve the previous
+# build's responses (seen 2026-07-20: two endpoints 500'd on the first probe,
+# clean seconds later). One retry separates propagation lag from real breakage.
+if [ "$FAILED" = "1" ]; then
+  echo "… retrying once in 20s (edge propagation right after a deploy can lag)"
+  sleep 20
+  probe_all
+fi
 
 if [ "$FAILED" = "1" ]; then
   echo ""
