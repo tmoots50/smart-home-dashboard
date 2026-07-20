@@ -88,10 +88,12 @@ const newVars = {
   CF_ACCESS_CLIENT_ID: { type: 'plain_text', value: st.client_id },
   ...(clientSecret ? { CF_ACCESS_CLIENT_SECRET: { type: 'secret_text', value: clientSecret } } : {}),
 };
+// Send ONLY the new vars — PATCH merges env_vars by key. Never spread the
+// existing map back in: GET omits secret_text values, so echoing existing
+// entries rewrites every secret as empty (see set-cf-env-var.mjs header).
 const update = {};
 for (const env of ['production', 'preview']) {
-  const existing = project?.deployment_configs?.[env]?.env_vars || {};
-  update[env] = { env_vars: { ...existing, ...newVars } };
+  update[env] = { env_vars: { ...newVars } };
 }
 const patch = await fetch(projBase, { method: 'PATCH', headers, body: JSON.stringify({ deployment_configs: update }) });
 if (!patch.ok) throw new Error(`Pages PATCH failed: ${patch.status} ${await patch.text()}`);
