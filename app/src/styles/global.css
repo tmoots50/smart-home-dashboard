@@ -195,8 +195,16 @@ html.kiosk, html.kiosk body { overscroll-behavior-y: none; }
   margin-top: var(--space-4);
 }
 .action-btn {
+  /* Square-by-construction: when the action bar is narrower than five full
+     buttons (the wall tablet's CSS viewport — not the 1080 canvas), flex
+     shrink compresses WIDTH only, so a fixed height turns circles into eggs.
+     Height follows width via aspect-ratio: they shrink as smaller circles,
+     floored at the 44px touch minimum. */
   width: 4.4rem;
-  height: 4.4rem;
+  min-width: 2.75rem;
+  height: auto;
+  aspect-ratio: 1;
+  align-self: center;
   border-radius: 999px;
   background: transparent;
   border: 1px solid rgba(201, 169, 106, 0.4);
