@@ -7,18 +7,23 @@
 //
 // state values match HA's lock domain: 'locked' | 'unlocked' | 'jammed' | 'unknown'.
 
+// Mirrors the real Home Assistant surface (verified 2026-07-25 off the live HA):
+// the Aqara U100 deadbolt (entity lock.aqara_smart_lock_u100, shown as "Front
+// Door") and four lamp switches. HA doesn't expose a battery level for the lock,
+// so battery is null. Keep this in sync with HA_ENTITIES_JSON when devices change.
 export function getMockHome() {
   return {
     lock: {
-      id: 'lock.front_door',
+      id: 'lock.aqara_smart_lock_u100',
       name: 'Front Door',
       state: 'locked',
-      battery: 87,
+      battery: null,
     },
     plugs: [
-      { id: 'switch.living_room_lamp',      name: 'Living Room Lamp',      on: true },
-      { id: 'switch.nursery_sound_machine', name: 'Nursery Sound Machine', on: false },
-      { id: 'switch.coffee_maker',          name: 'Coffee Maker',          on: false },
+      { id: 'switch.living_room_side_lamp', name: 'Side Lamp',  on: true },
+      { id: 'switch.den_left_lamp',         name: 'Left Lamp',  on: true },
+      { id: 'switch.den_right_lamp',        name: 'Right Lamp', on: true },
+      { id: 'switch.den_den_lamp',          name: 'Den Lamp',   on: true },
     ],
   };
 }

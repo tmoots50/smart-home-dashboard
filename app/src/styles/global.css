@@ -1011,6 +1011,67 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .home-btn--lock { color: var(--color-muted); }
 .home-btn--lock:hover { color: var(--color-fg); border-color: var(--color-accent); }
 
+/* scene modes */
+.home__modes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.home-mode {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 4.75rem;
+  padding: var(--space-3) var(--space-2);
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-fg);
+  cursor: pointer;
+}
+.home-mode:active { background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+.home-mode__icon { display: inline-flex; color: var(--color-accent); }
+.home-mode__icon svg { width: 26px; height: 26px; }
+.home-mode__label { font-size: 0.9rem; font-weight: 600; }
+
+/* collapsible devices list */
+.home__devices {
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.home__devices-toggle {
+  width: 100%;
+  min-height: 3.4rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-3);
+  background: transparent;
+  border: none;
+  color: var(--color-fg);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.home__devices-title { flex: 1; text-align: left; }
+.home__devices-count {
+  min-width: 1.5rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+.home__devices-chev { display: inline-flex; color: var(--color-muted); transition: transform 0.18s ease; }
+.home__devices.is-open .home__devices-chev { transform: rotate(180deg); }
+.home__devices .home__plugs { padding: 0 var(--space-2) var(--space-2); }
+
 /* plug tiles */
 .home__plugs {
   display: grid;
@@ -1053,36 +1114,6 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 .home-tile--plug.is-on .home-tile__knob { transform: translateX(1.35rem); }
-
-/* PIN pad */
-.pinpad { width: 100%; display: flex; flex-direction: column; align-items: center; gap: var(--space-3); }
-.pinpad__prompt { font-size: 0.9rem; color: var(--color-muted); }
-.pinpad.has-error .pinpad__prompt { color: #d08770; }
-.pinpad__dots { display: flex; gap: var(--space-2); }
-.pinpad__dot {
-  width: 0.75rem; height: 0.75rem; border-radius: 999px;
-  border: 1.5px solid var(--color-muted);
-}
-.pinpad__dot.is-filled { background: var(--color-accent); border-color: var(--color-accent); }
-.pinpad__keys {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-2);
-  width: 100%;
-}
-.pinpad__key {
-  min-height: 3.75rem;
-  border-radius: 14px;
-  border: 1px solid var(--color-border);
-  background: var(--color-bg);
-  color: var(--color-fg);
-  font-size: 1.4rem;
-  font-family: var(--font-body);
-  cursor: pointer;
-}
-.pinpad__key:active { background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
-.pinpad__key--text { font-size: 0.95rem; color: var(--color-muted); }
-.pinpad__submit { width: 100%; margin-top: var(--space-1); }
 
 /* ───── clock ───── */
 .clock { font-family: var(--font-display); }

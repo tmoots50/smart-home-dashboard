@@ -1,7 +1,7 @@
 // Inline Home card (sits under Groceries) — the always-visible face of the
 // smart home. Lock status at a glance, one-tap plug toggles, and an inline
 // "add device" flow that grows the registry as new smart stuff arrives.
-// The full overlay (PIN pad, bigger tiles) stays behind the lock row / the
+// The full overlay (scene modes, bigger tiles) stays behind the lock row / the
 // action-bar ⌂ button; this card is the ambient summary.
 
 import { openHomeOverlay } from './home.js';

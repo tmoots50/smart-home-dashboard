@@ -9,8 +9,8 @@
 //
 // Until VITE_HOME_LIVE is set the widgets run against a PERSISTED mock: toggle
 // and lock state stick in localStorage (a demo lamp that resets itself reads as
-// broken), and unlock accepts any PIN of valid length. `actions` is therefore
-// never null — mock mode just routes them to localStorage instead of the API.
+// broken). `actions` is therefore never null — mock mode just routes them to
+// localStorage instead of the API.
 //
 // The device registry ("add smart stuff I buy") is real even before HA lives:
 // with a token, adds go to the HOME_DEVICES KV via /api/home/devices, so staged
@@ -27,7 +27,6 @@ const CACHE_KEY = 'home:v1';
 const CACHE_TTL_MS = 30 * 1000; // device state goes stale fast; short TTL
 const MOCK_STATE_KEY = 'home:mock-state:v1';
 const LOCAL_DEVICES_KEY = 'home:devices:v1';
-const PIN_MIN = 4;
 
 function readJson(key) {
   try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
@@ -79,11 +78,10 @@ export async function setPlug(id, on) {
   return request('/api/home/plug', { method: 'POST', body: JSON.stringify({ id, on }) });
 }
 
-// Lock (no PIN) or unlock (PIN required, verified server-side). `pin` is sent in
-// the body over HTTPS and never stored client-side.
-export async function setLock(action, pin) {
-  const body = action === 'unlock' ? { action, pin } : { action };
-  return request('/api/home/lock', { method: 'POST', body: JSON.stringify(body) });
+// Lock or unlock the deadbolt. No PIN — the door is reachable only from the home
+// network (wall tablet / HA over Cloudflare Tunnel), so unlock is a plain action.
+export async function setLock(action) {
+  return request('/api/home/lock', { method: 'POST', body: JSON.stringify({ action }) });
 }
 
 // ───── mock layer (persisted demo state until HA is live) ─────
@@ -118,12 +116,7 @@ const mockActions = {
     writeJson(MOCK_STATE_KEY, { ...state, plugs: { ...state.plugs, [id]: on } });
     return { ok: true, id, on };
   },
-  async setLock(action, pin) {
-    if (action === 'unlock' && String(pin ?? '').length < PIN_MIN) {
-      const err = new Error('mock: bad pin');
-      err.reason = 'invalid pin';
-      throw err;
-    }
+  async setLock(action) {
     writeJson(MOCK_STATE_KEY, { ...mockState(), lock: action === 'unlock' ? 'unlocked' : 'locked' });
     return { state: action === 'unlock' ? 'unlocked' : 'locked' };
   },

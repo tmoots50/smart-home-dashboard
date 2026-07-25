@@ -1,23 +1,43 @@
 // Home control overlay — the smart-home surface. Opened from the action-bar
-// "home" button. Shows the Aqara U100 lock (state + battery, PIN-gated unlock)
-// and smart-plug toggle tiles.
+// "home" button. Shows the Aqara U100 lock (one-tap lock/unlock), four scene
+// modes that set the lamps in one tap, and a collapsed list of the individual
+// plug toggles.
 //
 // `actions` (optional) wires mutations to the backend (lib/home.js → /api/home*).
 // When passed, plug toggles + lock/unlock persist and revert the optimistic
-// update on failure. When null (HA not live yet), the overlay mutates local
-// state only — a full interactive demo with no backend. Mirrors the todos widget.
+// update on failure. When null (pure demo), the overlay mutates local state only.
 //
-// Security note: unlock requires a PIN. In live mode the PIN is verified
-// server-side (never in the bundle) and rate-limited. In local-mock mode any
-// 4+ digit PIN "succeeds" so the UX can be felt without a backend.
-
-const PIN_MIN = 4;
+// The lock is a plain toggle — no PIN. Unlock is treated like any other device
+// action: optimistic, and reverted if the backend rejects it.
+//
+// Scenes only touch LAMP devices (see isLamp); a non-lamp plug added later (a
+// coffee maker, say) is never changed by a scene. Targets are matched on the
+// device's display name, case-insensitively, so renaming a lamp in Home
+// Assistant keeps the scenes working. Reorder/retune MODES freely.
 
 const SVG = 'viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"';
 const LOCK_CLOSED = `<svg ${SVG}><rect x="4.5" y="11" width="15" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>`;
 const LOCK_OPEN   = `<svg ${SVG}><rect x="4.5" y="11" width="15" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-1.9"/></svg>`;
 const PLUG_SVG    = `<svg ${SVG}><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0V8zM12 16v6"/></svg>`;
 const CLOSE_SVG   = `<svg ${SVG}><path d="M6 6l12 12M18 6L6 18"/></svg>`;
+const CHEV_SVG    = `<svg ${SVG}><path d="M6 9l6 6 6-6"/></svg>`;
+
+// Scene icons.
+const SUN_SVG    = `<svg ${SVG}><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>`;
+const DUSK_SVG   = `<svg ${SVG}><path d="M3 18h18M6.5 18a5.5 5.5 0 0 1 11 0M12 3v3M4 9l1.5 1.5M20 9l-1.5 1.5"/></svg>`;
+const MOON_SVG   = `<svg ${SVG}><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>`;
+const BOTTLE_SVG = `<svg ${SVG}><path d="M9.5 6.5l1-2h3l1 2M9 6.5h6M10 6.5v12a2 2 0 0 0 4 0v-12M10 10h4M10 13h4"/></svg>`;
+
+const isLamp  = (p) => /lamp|light/i.test(p.id) || /lamp|light/i.test(p.name);
+const nameHas = (p, kw) => new RegExp(kw, 'i').test(p.name);
+
+// Each scene returns the desired `on` state for a given lamp.
+const MODES = [
+  { id: 'morning', label: 'Morning', icon: SUN_SVG,    want: () => true },
+  { id: 'evening', label: 'Evening', icon: DUSK_SVG,   want: (p) => !nameHas(p, 'den') }, // all lamps on except Den
+  { id: 'baby',    label: 'Baby',    icon: BOTTLE_SVG, want: (p) => nameHas(p, 'left') }, // only Left lamp on
+  { id: 'night',   label: 'Night',   icon: MOON_SVG,   want: () => false },
+];
 
 export function openHomeOverlay(source, actions = null) {
   const host = document.createElement('div');
@@ -25,13 +45,10 @@ export function openHomeOverlay(source, actions = null) {
   document.body.appendChild(host);
 
   let data = clone(source.initial);
-  let pinMode = false;     // lock tile showing the PIN pad
-  let pin = '';
-  let lockError = '';      // shown under the pad after a failed unlock
-  let busy = false;        // a lock/unlock request is in flight
+  const ui = { plugsOpen: false };  // the individual-toggle list starts collapsed
 
   function draw() {
-    host.innerHTML = render(data, { pinMode, pin, lockError, busy });
+    host.innerHTML = render(data, ui);
   }
 
   function close() {
@@ -40,19 +57,7 @@ export function openHomeOverlay(source, actions = null) {
   }
 
   function onKey(e) {
-    if (e.key === 'Escape') { if (pinMode) { exitPin(); draw(); } else close(); }
-    if (pinMode && /^[0-9]$/.test(e.key)) { pushDigit(e.key); }
-    if (pinMode && e.key === 'Backspace') { pin = pin.slice(0, -1); draw(); }
-    if (pinMode && e.key === 'Enter') { submitUnlock(); }
-  }
-
-  function exitPin() { pinMode = false; pin = ''; lockError = ''; }
-
-  function pushDigit(d) {
-    if (pin.length >= 8) return;
-    pin += d;
-    lockError = '';
-    draw();
+    if (e.key === 'Escape') close();
   }
 
   // Optimistic plug toggle: flip now, revert if the backend rejects.
@@ -64,52 +69,48 @@ export function openHomeOverlay(source, actions = null) {
     actions?.setPlug(id, next.on).catch(() => { data = before; draw(); });
   }
 
-  // Lock is safe — no PIN, optimistic.
-  function lockDoor() {
-    if (busy) return;
+  // Lock/unlock: one-tap, optimistic, revert on failure. No PIN.
+  function setLock(next) {
     const before = clone(data);
-    data.lock = { ...data.lock, state: 'locked' };
+    data.lock = { ...data.lock, state: next };
     draw();
-    actions?.setLock('lock').catch(() => { data = before; draw(); });
+    actions?.setLock(next === 'locked' ? 'lock' : 'unlock')
+      .catch(() => { data = before; draw(); });
   }
 
-  function submitUnlock() {
-    if (busy || pin.length < PIN_MIN) return;
-    const entered = pin;
-    if (!actions) {
-      // Local-mock mode: any PIN of valid length opens the door.
-      data.lock = { ...data.lock, state: 'unlocked' };
-      exitPin();
-      draw();
-      return;
+  // Apply a scene: set every lamp to its wanted state in one shot, optimistic.
+  // Non-lamp plugs are left alone. Reverts the whole set if any call fails.
+  function applyMode(mode) {
+    if (!mode) return;
+    const before = clone(data);
+    const changed = [];
+    data.plugs = data.plugs.map(p => {
+      if (!isLamp(p)) return p;
+      const want = mode.want(p);
+      if (want !== p.on) changed.push({ id: p.id, on: want });
+      return { ...p, on: want };
+    });
+    draw();
+    if (actions && changed.length) {
+      Promise.all(changed.map(c => actions.setPlug(c.id, c.on)))
+        .catch(() => { data = before; draw(); });
     }
-    busy = true; draw();
-    actions.setLock('unlock', entered)
-      .then(() => { data.lock = { ...data.lock, state: 'unlocked' }; busy = false; exitPin(); draw(); })
-      .catch((err) => {
-        busy = false;
-        pin = '';
-        lockError = friendlyLockError(err);
-        draw();
-      });
   }
 
   host.addEventListener('click', (e) => {
     const t = e.target.closest('[data-action]');
     if (!t) {
       // Click on the backdrop (outside the panel) closes.
-      if (e.target === host && !pinMode) close();
+      if (e.target === host) close();
       return;
     }
     const action = t.dataset.action;
     if (action === 'close') return close();
     if (action === 'toggle-plug') return togglePlug(t.dataset.id);
-    if (action === 'lock') return lockDoor();
-    if (action === 'ask-unlock') { pinMode = true; pin = ''; lockError = ''; return draw(); }
-    if (action === 'pin-cancel') { exitPin(); return draw(); }
-    if (action === 'pin-digit') return pushDigit(t.dataset.digit);
-    if (action === 'pin-back') { pin = pin.slice(0, -1); lockError = ''; return draw(); }
-    if (action === 'pin-submit') return submitUnlock();
+    if (action === 'toggle-plugs') { ui.plugsOpen = !ui.plugsOpen; return draw(); }
+    if (action === 'mode') return applyMode(MODES.find(m => m.id === t.dataset.mode));
+    if (action === 'lock') return setLock('locked');
+    if (action === 'unlock') return setLock('unlocked');
   });
 
   document.addEventListener('keydown', onKey);
@@ -122,22 +123,21 @@ export function openHomeOverlay(source, actions = null) {
 // ───── pure render ─────
 
 export function render(data, ui = {}) {
-  const { pinMode = false, pin = '', lockError = '', busy = false } = ui;
+  const { plugsOpen = false } = ui;
   return `
     <div class="home-panel" role="dialog" aria-label="Home controls">
       <div class="home__header">
         <h2 class="home__title">Home</h2>
         <button class="home__close" data-action="close" aria-label="Close">${CLOSE_SVG}</button>
       </div>
-      ${renderLock(data.lock, { pinMode, pin, lockError, busy })}
-      <div class="home__plugs">
-        ${data.plugs.map(renderPlug).join('')}
-      </div>
+      ${renderLock(data.lock)}
+      ${renderModes()}
+      ${renderDevices(data.plugs, plugsOpen)}
     </div>
   `;
 }
 
-function renderLock(lock, { pinMode, pin, lockError, busy }) {
+function renderLock(lock) {
   const locked = lock.state === 'locked';
   const jammed = lock.state === 'jammed';
   const stateLabel = jammed ? 'Jammed' : locked ? 'Locked' : lock.state === 'unlocked' ? 'Unlocked' : 'Unknown';
@@ -152,34 +152,37 @@ function renderLock(lock, { pinMode, pin, lockError, busy }) {
           <span class="home-tile__state">${stateLabel}${battery(lock.battery)}</span>
         </div>
       </div>
-      ${pinMode ? renderPinpad(pin, lockError, busy) : `
-        <div class="home-tile__control">
-          ${locked
-            ? `<button class="home-btn home-btn--unlock" data-action="ask-unlock">Unlock</button>`
-            : `<button class="home-btn home-btn--lock" data-action="lock" ${busy ? 'disabled' : ''}>Lock</button>`}
-        </div>
-      `}
+      <div class="home-tile__control">
+        ${locked
+          ? `<button class="home-btn home-btn--unlock" data-action="unlock">Unlock</button>`
+          : `<button class="home-btn home-btn--lock" data-action="lock">Lock</button>`}
+      </div>
     </div>
   `;
 }
 
-function renderPinpad(pin, lockError, busy) {
-  const dots = Array.from({ length: 6 }, (_, i) =>
-    `<span class="pinpad__dot ${i < pin.length ? 'is-filled' : ''}"></span>`).join('');
-  const keys = ['1','2','3','4','5','6','7','8','9'].map(d =>
-    `<button class="pinpad__key" data-action="pin-digit" data-digit="${d}">${d}</button>`).join('');
+function renderModes() {
   return `
-    <div class="pinpad ${lockError ? 'has-error' : ''}">
-      <div class="pinpad__prompt">${lockError ? escapeHtml(lockError) : 'Enter PIN to unlock'}</div>
-      <div class="pinpad__dots">${dots}</div>
-      <div class="pinpad__keys">
-        ${keys}
-        <button class="pinpad__key pinpad__key--text" data-action="pin-cancel">Cancel</button>
-        <button class="pinpad__key" data-action="pin-digit" data-digit="0">0</button>
-        <button class="pinpad__key pinpad__key--text" data-action="pin-back" aria-label="Delete">⌫</button>
-      </div>
-      <button class="home-btn home-btn--unlock pinpad__submit" data-action="pin-submit"
-        ${pin.length < PIN_MIN || busy ? 'disabled' : ''}>${busy ? 'Unlocking…' : 'Unlock'}</button>
+    <div class="home__modes">
+      ${MODES.map(m => `
+        <button class="home-mode home-mode--${m.id}" data-action="mode" data-mode="${m.id}">
+          <span class="home-mode__icon">${m.icon}</span>
+          <span class="home-mode__label">${escapeHtml(m.label)}</span>
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+
+function renderDevices(plugs, open) {
+  return `
+    <div class="home__devices ${open ? 'is-open' : ''}">
+      <button class="home__devices-toggle" data-action="toggle-plugs" aria-expanded="${open}">
+        <span class="home__devices-title">Devices</span>
+        <span class="home__devices-count">${plugs.length}</span>
+        <span class="home__devices-chev">${CHEV_SVG}</span>
+      </button>
+      ${open ? `<div class="home__plugs">${plugs.map(renderPlug).join('')}</div>` : ''}
     </div>
   `;
 }
@@ -200,13 +203,6 @@ function battery(pct) {
   if (pct == null) return '';
   const low = pct <= 20 ? ' home-tile__battery--low' : '';
   return ` · <span class="home-tile__battery${low}">${pct}%</span>`;
-}
-
-function friendlyLockError(err) {
-  const r = (err && err.reason) || '';
-  if (/locked out|too many|rate/i.test(r)) return 'Too many tries — locked out. Wait and retry.';
-  if (/pin|unauthor|invalid/i.test(r)) return 'Wrong PIN.';
-  return 'Unlock failed. Try again.';
 }
 
 function clone(x) { return JSON.parse(JSON.stringify(x)); }

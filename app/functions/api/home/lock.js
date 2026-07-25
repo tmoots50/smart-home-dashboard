@@ -1,21 +1,18 @@
-// POST /api/home/lock  body { action, pin? }
-//   action 'lock'   → locks the deadbolt. No PIN (locking your own door is safe).
-//   action 'unlock' → requires PIN. Verified server-side (salted SHA-256,
-//                     constant-time) + KV-backed lockout. The PIN is the real
-//                     secret; the shared bearer token ships in the public bundle.
+// POST /api/home/lock  body { action }
+//   action 'lock'   → locks the deadbolt.
+//   action 'unlock' → unlocks the deadbolt. No PIN — the door is only reachable
+//                     from the home network (wall tablet / HA over Cloudflare
+//                     Tunnel), gated by the shared bearer token like every other
+//                     device action.
 //
 //   → 200 { ok: true, state }
-//   → 401 { error: 'wrong pin' }          (records a failed attempt)
-//   → 429 { error: 'locked out' }         (too many fails; try later)
+//   → 400 { error: 'action must be "lock" or "unlock"' }
 //   → 501 { error: 'HA not configured' }
 //
 // Every attempt is logged with outcome + client IP for auditability.
 
 import { checkAuth, corsHeaders, json } from '../../_lib/auth.js';
-import {
-  haConfigured, callService, isLockEntity, parseEntities,
-  verifyPin, isLockedOut, recordFail, clearFails,
-} from '../../_lib/ha.js';
+import { haConfigured, callService, parseEntities } from '../../_lib/ha.js';
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -42,42 +39,15 @@ export async function onRequest(context) {
   const body = await request.json().catch(() => ({}));
   const action = (body.action || '').toString();
 
-  if (action === 'lock') {
-    try {
-      await callService(env, 'lock', 'lock', lock.id);
-      log('lock', ip, 'ok');
-      return json({ ok: true, state: 'locked' }, {}, cors);
-    } catch (err) {
-      return json({ error: err.message }, { status: 502 }, cors);
-    }
-  }
-
-  if (action !== 'unlock') {
+  if (action !== 'lock' && action !== 'unlock') {
     return json({ error: 'action must be "lock" or "unlock"' }, { status: 400 }, cors);
   }
 
-  // ── unlock: lockout → PIN → actuate ──
-  if (!env.HOME_UNLOCK_PIN_HASH) {
-    return json({ error: 'unlock PIN not configured' }, { status: 501 }, cors);
-  }
-  if (await isLockedOut(env, ip)) {
-    log('unlock', ip, 'locked-out');
-    return json({ error: 'locked out — too many attempts' }, { status: 429 }, cors);
-  }
-
-  const pin = (body.pin || '').toString();
-  const ok = await verifyPin(env, pin);
-  if (!ok) {
-    await recordFail(env, ip);
-    log('unlock', ip, 'wrong-pin');
-    return json({ error: 'wrong pin' }, { status: 401 }, cors);
-  }
-
+  const state = action === 'lock' ? 'locked' : 'unlocked';
   try {
-    await callService(env, 'lock', 'unlock', lock.id);
-    await clearFails(env, ip);
-    log('unlock', ip, 'ok');
-    return json({ ok: true, state: 'unlocked' }, {}, cors);
+    await callService(env, 'lock', action, lock.id);
+    log(action, ip, 'ok');
+    return json({ ok: true, state }, {}, cors);
   } catch (err) {
     return json({ error: err.message }, { status: 502 }, cors);
   }
