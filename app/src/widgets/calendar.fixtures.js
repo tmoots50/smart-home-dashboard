@@ -41,7 +41,46 @@ function packedSection(label, count) {
     evt(`${label.toLowerCase()}-${i}`, 8 + i, (i * 7) % 60, `${label} event ${i + 1}`, i % 3 === 0 ? 'Somewhere nearby' : '')));
 }
 
+// Week-grid helpers: events on arbitrary offset days (the `at`/`evt` helpers
+// above are today-only). endsAt is explicit so blocks size proportionally.
+function dayAt(offset, h, m = 0) {
+  const d = new Date(NOW); d.setDate(d.getDate() + offset); d.setHours(h, m, 0, 0);
+  return d.toISOString();
+}
+function dayYmd(offset) {
+  const d = new Date(NOW); d.setDate(d.getDate() + offset);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function tevt(id, offset, sh, sm, eh, em, title) {
+  return { id, startsAt: dayAt(offset, sh, sm), endsAt: dayAt(offset, eh, em), title, sub: '', description: '' };
+}
+
+// A representative family week for the time grid: a same-morning overlap (lane
+// splitting), an early and a late event (proving the 5 AM–midnight scroll),
+// and two multi-day all-day events (the pinned spanning band).
+const weekData = {
+  sections: [{ label: 'Family', events: [
+    { id: 'w-camp', title: 'Camping Trip', allDay: true, startsAt: dayYmd(0), endsAt: dayYmd(2), sub: '', description: '' },
+    { id: 'w-bday', title: "Emma's Birthday", allDay: true, startsAt: dayYmd(3), endsAt: dayYmd(4), sub: '', description: '' },
+    tevt('w1', 0, 9, 0, 10, 0, 'Grocery Run'),
+    tevt('w2', 0, 10, 45, 12, 0, 'Coffee with Diane'), // overlaps w3
+    tevt('w3', 0, 11, 0, 11, 30, "Dog's bath"),
+    tevt('w4', 0, 19, 30, 20, 30, 'Dinner with Mom'),  // late → scroll proof
+    tevt('w5', 1, 6, 30, 7, 15, 'Early gym'),          // early → scroll proof
+    tevt('w6', 1, 12, 0, 13, 0, 'Lunch with Mom'),
+    tevt('w7', 2, 9, 0, 10, 0, 'Stroller walk'),
+    tevt('w8', 3, 11, 30, 12, 0, 'Dentist'),
+    tevt('w9', 4, 13, 30, 14, 30, 'Client presentation'),
+    tevt('w10', 5, 11, 0, 11, 45, 'Swim lesson'),
+    tevt('w11', 6, 14, 0, 15, 0, 'Pottery class'),
+  ] }],
+  nextEventId: 'w1',
+};
+
 export const states = {
+  // The wall default — the 7-day time grid.
+  week: { data: weekData, flavor: 'week' },
+
   // Family linked but empty (Tim/Caroline present in the feed but hidden) →
   // the card renders one Family column reading "Nothing scheduled."
   empty: {
