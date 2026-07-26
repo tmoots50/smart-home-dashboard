@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { normalizeUpcoming, normalize, parseCalendars, repairMojibake, resolveRange, calendarIdFor, googleCalendarFor, createEvent, deleteEvent, updateEvent, listEvents } from './calendar-api.js';
+import { normalizeUpcoming, normalize, parseCalendars, repairMojibake, resolveRange, calendarIdFor, googleCalendarFor, canonicalCalendarLabel, createEvent, deleteEvent, updateEvent, listEvents } from './calendar-api.js';
 
 const timed = {
   id: 'e1',
@@ -35,6 +35,7 @@ describe('normalizeUpcoming', () => {
       endsAt: '2026-09-14',
       allDay: true,
       recurring: false,
+      recurringEventId: null,
     });
   });
 
@@ -49,6 +50,13 @@ describe('normalizeUpcoming', () => {
   it('marks instances of a repeating series as recurring', () => {
     const [event] = normalizeUpcoming([{ ...timed, recurringEventId: 'weekly-series' }], 'Family');
     expect(event.recurring).toBe(true);
+  });
+
+  it('passes recurringEventId through (master id when set, null otherwise)', () => {
+    const [instance] = normalizeUpcoming([{ ...timed, recurringEventId: 'weekly-series' }], 'Family');
+    expect(instance.recurringEventId).toBe('weekly-series');
+    const [oneOff] = normalizeUpcoming([timed], 'Family');
+    expect(oneOff.recurringEventId).toBeNull();
   });
 
   it('passes description through to the normalized shape', () => {
@@ -86,6 +94,13 @@ describe('normalize', () => {
     expect(ev.description).toBe('');
   });
 
+  it('passes recurringEventId through (master id when set, null otherwise)', () => {
+    const [instance] = normalize([{ ...timed, recurringEventId: 'weekly-series' }]);
+    expect(instance.recurringEventId).toBe('weekly-series');
+    const [oneOff] = normalize([timed]);
+    expect(oneOff.recurringEventId).toBeNull();
+  });
+
   it('tags the card shape with calendar/person/kind/readOnly for the merge model', () => {
     const [plain] = normalize([timed]);
     expect(plain).toMatchObject({ calendar: '', person: '', kind: 'personal', readOnly: false });
@@ -108,6 +123,28 @@ describe('parseCalendars', () => {
   it('treats the currently mislabeled Caroline calendar as Family', () => {
     const env = { GOOGLE_CALENDARS_JSON: '[{"label":"Caroline","id":"family-id"}]' };
     expect(parseCalendars(env)).toEqual([{ label: 'Family', id: 'family-id' }]);
+  });
+});
+
+describe('canonicalCalendarLabel', () => {
+  it('aliases "Caroline & Tim" (the household Google calendar Tim names) to Family', () => {
+    expect(canonicalCalendarLabel('Caroline & Tim')).toBe('Family');
+    expect(canonicalCalendarLabel('  caroline & tim  ')).toBe('Family');
+  });
+
+  it('aliases the spelled-out "caroline and tim" to Family', () => {
+    expect(canonicalCalendarLabel('caroline and tim')).toBe('Family');
+    expect(canonicalCalendarLabel('Caroline And Tim')).toBe('Family');
+  });
+
+  it('keeps the legacy "Caroline" alias mapping to Family', () => {
+    expect(canonicalCalendarLabel('Caroline')).toBe('Family');
+    expect(canonicalCalendarLabel('caroline')).toBe('Family');
+  });
+
+  it('passes an unknown label through trimmed (no silent rewrite)', () => {
+    expect(canonicalCalendarLabel('Caroline Work')).toBe('Caroline Work');
+    expect(canonicalCalendarLabel('  Tim (Work)  ')).toBe('Tim (Work)');
   });
 });
 
