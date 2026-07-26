@@ -211,8 +211,8 @@ namespace — no `wrangler.toml` in this repo, so bindings are set in the UI; lo
 
 One endpoint, one KV namespace, serves both Coming Up and Picks.
 
-- **KV:** the Pages project **already uses KV** — `HOME_LOCKOUT` is bound and drives the lock lockout
-  (`_lib/ha.js:129`). There is **no `wrangler.toml`** in the repo; bindings are set in the **CF Pages
+- **KV:** the Pages project **already uses KV** — e.g. `HOME_DEVICES` backs the smart-home device
+  registry (`_lib/ha.js`). There is **no `wrangler.toml`** in the repo; bindings are set in the **CF Pages
   dashboard UI**. Bind a new `CURATED` namespace the same way. For local dev of `curated.js`,
   `wrangler pages dev` needs `--kv CURATED` (no toml to pick it up automatically). KV is the right
   tool: a tiny mutable "latest curated content" blob.
@@ -367,7 +367,7 @@ lives in Cloudflare KV behind `/api/curated`.
 - [ ] Hermes holds **no Google credentials**; only a dashboard bearer token + base URL.
 - [ ] Travel dates are **never committed to git** (the hard line); exposing them on the dashboard
   behind the bundle-readable token is acceptable.
-- [ ] Consequential physical actions stay PIN-gated: Hermes's token **cannot unlock the door**.
+- [ ] Hermes's token is **admin-tier by design** (same trust level as the dashboard token) — it owns direct dashboard changes, so it **can** unlock the door and drive every device action. A PIN / per-action second factor for specific sensitive tasks is a deliberate later option (absent for now; would live at the `lock.js` / `_lib/auth.js` layer).
 - [ ] `hermes-setup/deploy/` matches the live Old Mac after the work.
 
 **Success metrics (post-ship)**

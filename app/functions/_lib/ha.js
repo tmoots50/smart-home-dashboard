@@ -6,8 +6,6 @@
 //   HA_ENTITIES_JSON     the allowlist + display names, shaped:
 //                        { "lock": {"id":"lock.front_door","name":"Front Door"},
 //                          "plugs":[{"id":"switch.living_room_lamp","name":"Living Room Lamp"}] }
-//   HOME_UNLOCK_PIN_HASH "<saltHex>:<sha256Hex>"  where hash = SHA-256(saltHex + pin)
-//   HOME_LOCKOUT         (optional) KV namespace binding for unlock rate-limiting
 //
 // SAFETY: only entities named in HA_ENTITIES_JSON — plus dashboard-registered
 // devices in the HOME_DEVICES KV registry — are ever read or actuated. A
@@ -21,8 +19,6 @@
 // consequence toggles but can never add a lock, cover, or alarm. Anything
 // sensitive still requires an env change + its own second factor.
 
-const MAX_FAILS = 5;
-const LOCKOUT_WINDOW_S = 15 * 60;
 const DEVICES_KEY = 'devices';
 const DEVICES_MAX = 12;
 
@@ -181,58 +177,4 @@ export async function callService(env, domain, service, entityId) {
     method: 'POST',
     body: JSON.stringify({ entity_id: entityId }),
   });
-}
-
-// ───── PIN + lockout ─────
-
-async function sha256Hex(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-function timingSafeEqual(a, b) {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
-export async function verifyPin(env, pin) {
-  const stored = env.HOME_UNLOCK_PIN_HASH || '';
-  const [salt, hash] = stored.split(':');
-  if (!salt || !hash || !pin) return false;
-  const computed = await sha256Hex(salt + pin);
-  return timingSafeEqual(computed, hash);
-}
-
-// KV-backed lockout. Fails OPEN when no KV binding is present (PIN is still
-// required) — log-and-allow beats blocking the family from their own door on a
-// missing binding, but bind HOME_LOCKOUT in production. Tracks per-IP + global.
-export async function isLockedOut(env, ip) {
-  const kv = env.HOME_LOCKOUT;
-  if (!kv) return false;
-  const [perIp, global] = await Promise.all([
-    kv.get(`fail:${ip}`), kv.get('fail:global'),
-  ]);
-  return Number(perIp || 0) >= MAX_FAILS || Number(global || 0) >= MAX_FAILS * 4;
-}
-
-export async function recordFail(env, ip) {
-  const kv = env.HOME_LOCKOUT;
-  if (!kv) return;
-  await Promise.all([
-    bump(kv, `fail:${ip}`),
-    bump(kv, 'fail:global'),
-  ]);
-}
-
-async function bump(kv, key) {
-  const n = Number((await kv.get(key)) || 0) + 1;
-  await kv.put(key, String(n), { expirationTtl: LOCKOUT_WINDOW_S });
-}
-
-export async function clearFails(env, ip) {
-  const kv = env.HOME_LOCKOUT;
-  if (!kv) return;
-  await kv.delete(`fail:${ip}`);
 }

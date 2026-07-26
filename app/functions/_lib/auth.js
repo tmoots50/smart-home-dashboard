@@ -11,9 +11,13 @@
 // read responses with the token.
 //
 // HERMES_TOKEN (optional) is a second accepted bearer for the Hermes agent, so
-// it can be revoked on its own without rotating the tablet's token. Same trust
-// tier as DASHBOARD_TOKEN — anything PIN-gated (door unlock) stays PIN-gated
-// regardless of which token the caller holds.
+// it can be revoked on its own without rotating the tablet's token. It is the
+// SAME trust tier as DASHBOARD_TOKEN by design: Hermes has admin-level access to
+// make direct changes (it owns dashboard coding/updates), so either token reaches
+// every dashboard action, including the door unlock (no longer PIN-gated — the
+// deadbolt is reachable only over the home network / HA behind CF Access, per the
+// lock.js header). A PIN / per-action second factor for specific sensitive tasks
+// can be added later at the lock.js layer; it is deliberately absent for now.
 
 export function checkAuth(request, env) {
   if (!env.DASHBOARD_TOKEN) {

@@ -895,7 +895,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 
 /* ───── home control overlay ─────
    Opened from the action-bar home button. Full-screen scrim + centered panel of
-   Mushroom-style tiles: the Aqara lock (PIN-gated unlock) + smart-plug toggles.
+   Mushroom-style tiles: the Aqara lock (one-tap unlock) + smart-plug toggles.
    Touch targets ≥60px for wet-handed wall taps. */
 .home-overlay {
   position: fixed;

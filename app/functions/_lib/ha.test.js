@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseEntities, allowedPlug, isLockEntity, verifyPin, validateDevice, listDevices, addDevice, removeDevice, readHome } from './ha.js';
+import { parseEntities, allowedPlug, isLockEntity, validateDevice, listDevices, addDevice, removeDevice, readHome } from './ha.js';
 
 // Minimal in-memory KV double (get/put/delete on a Map).
 function fakeKv(seed = {}) {
@@ -20,13 +20,6 @@ const ENTITIES = JSON.stringify({
   ],
 });
 
-async function sha256Hex(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
-}
-async function makePinHash(salt, pin) {
-  return `${salt}:${await sha256Hex(salt + pin)}`;
-}
 
 describe('entity allowlist', () => {
   const env = { HA_ENTITIES_JSON: ENTITIES };
@@ -120,19 +113,5 @@ describe('device registry', () => {
     } finally {
       globalThis.fetch = realFetch;
     }
-  });
-});
-
-describe('verifyPin', () => {
-  it('accepts the correct PIN and rejects wrong ones', async () => {
-    const env = { HOME_UNLOCK_PIN_HASH: await makePinHash('a1b2c3', '135790') };
-    expect(await verifyPin(env, '135790')).toBe(true);
-    expect(await verifyPin(env, '000000')).toBe(false);
-    expect(await verifyPin(env, '')).toBe(false);
-  });
-
-  it('rejects when no hash configured', async () => {
-    expect(await verifyPin({}, '1234')).toBe(false);
-    expect(await verifyPin({ HOME_UNLOCK_PIN_HASH: 'malformed' }, '1234')).toBe(false);
   });
 });
