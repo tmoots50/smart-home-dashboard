@@ -150,7 +150,7 @@ describe('renderCalendar', () => {
   });
 });
 
-describe('renderWeek (7-day time grid)', () => {
+describe('renderWeek (5-day rolling window)', () => {
   const NOW = new Date('2026-04-29T07:00:00'); // Wed
 
   // A timed event on `offsetDays` from NOW, sh:sm → eh:em local.
@@ -160,11 +160,45 @@ describe('renderWeek (7-day time grid)', () => {
     return { id, startsAt: s.toISOString(), endsAt: e.toISOString(), title, ...extra };
   };
 
-  it('renders seven day columns and an hour gutter', () => {
+  it('renders five day columns and an hour gutter', () => {
     const html = renderWeek([], NOW);
-    expect((html.match(/calweek__col/g) || [])).toHaveLength(7);
+    expect((html.match(/calweek__col/g) || [])).toHaveLength(5);
     expect(html).toContain('calweek__gutter');
     expect(html).toContain('calendar--week');
+  });
+
+  it('windows off today with offsetDays, dropping events outside the visible window', () => {
+    const todayEv = ev('b', 0, 9, 0, 10, 0, 'Today event');
+    const nextWindowEv = ev('a', 6, 9, 0, 10, 0, 'Next-window event'); // day 6 → in the +5 window (days 5..9)
+    const html = renderWeek([todayEv, nextWindowEv], NOW, { offsetDays: 5 });
+    expect(html).toContain('Next-window event');
+    expect(html).not.toContain('Today event');
+  });
+
+  it('shows the now-line only when today is inside the visible window', () => {
+    expect((renderWeek([], NOW, { offsetDays: 0 }).match(/class="calweek__now"/g) || [])).toHaveLength(1);
+    expect(renderWeek([], NOW, { offsetDays: 5 })).not.toContain('calweek__now'); // today paged out
+  });
+
+  it('renders ‹ › nav buttons and a date-range Today control', () => {
+    const html = renderWeek([], NOW);
+    expect(html).toContain('data-calnav="prev"');
+    expect(html).toContain('data-calnav="next"');
+    expect(html).toContain('data-calnav="today"');
+  });
+
+  it('accents the range label (is-away) only when paged off today', () => {
+    expect(renderWeek([], NOW, { offsetDays: 0 })).not.toContain('is-away');
+    expect(renderWeek([], NOW, { offsetDays: 5 })).toContain('is-away');
+  });
+
+  it('disables prev at the earliest window and next at the latest', () => {
+    const earliest = renderWeek([], NOW, { offsetDays: -5 }); // WEEK_MIN_OFFSET
+    expect(earliest).toMatch(/data-calnav="prev"[^>]*disabled/);
+    expect(earliest).not.toMatch(/data-calnav="next"[^>]*disabled/);
+    const latest = renderWeek([], NOW, { offsetDays: 25 }); // WEEK_MAX_OFFSET
+    expect(latest).toMatch(/data-calnav="next"[^>]*disabled/);
+    expect(latest).not.toMatch(/data-calnav="prev"[^>]*disabled/);
   });
 
   it('draws a timed event as a positioned block carrying data-event', () => {

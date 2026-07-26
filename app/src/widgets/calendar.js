@@ -1,11 +1,13 @@
 // Family Calendar card. Five render flavors behind one entry point. Flavors:
 //
-//   week     (default) — a true 7-day time grid: next 7 rolling days as
-//              columns, hours as rows, events drawn as proportional blocks.
-//              8 AM–6 PM sits in the card's fixed viewport; the grid scrolls
-//              to reach 5 AM–midnight without growing the module. All-day /
-//              multi-day events ride a pinned band above the grid. One
-//              calendar → one color (the theme accent).
+//   week     (default) — a rolling 5-day time grid: five day columns starting
+//              at today, hours as rows, events drawn as proportional blocks.
+//              ‹ › page the window a full 5 days at a time and a tap on the
+//              date range snaps back to today (see mountCalendar). 8 AM–6 PM
+//              sits in the card's fixed viewport; the grid scrolls to reach
+//              5 AM–midnight without growing the module. All-day / multi-day
+//              events ride a pinned band above the grid. One calendar → one
+//              color (the theme accent).
 //   stacked  — three person columns kept; title-first rows (wraps to 2
 //              lines), day+time on a meta line under it, day bolded and
 //              accent-colored when it's today.
@@ -21,7 +23,7 @@
 // Pick a flavor at runtime with ?calflavor=week|stacked|rail|days|classic
 // (the view persists the choice in localStorage 'calendar:flavor').
 
-import { getCalendar, fetchCalendar, getUpcoming, fetchUpcoming } from '../lib/calendar.js';
+import { getCalendar, fetchCalendar, getRange, fetchRange } from '../lib/calendar.js';
 import { CARD_MAX_PER_COLUMN } from '../lib/comingup.js';
 import { visibleRoster, isHiddenEvent } from '../lib/calendar-people.js';
 import { openEventDetail } from './event-detail.js';
@@ -59,9 +61,9 @@ export const FLAVORS = ['week', 'stacked', 'rail', 'days', 'classic'];
 // predate the week grid render unchanged.
 export const DEFAULT_FLAVOR = 'stacked';
 
-export function renderCalendar(data, now = new Date(), { flavor = DEFAULT_FLAVOR } = {}) {
+export function renderCalendar(data, now = new Date(), { flavor = DEFAULT_FLAVOR, offsetDays = 0 } = {}) {
   if (!FLAVORS.includes(flavor)) flavor = DEFAULT_FLAVOR;
-  if (flavor === 'week') return renderWeek(flattenEvents(data), now);
+  if (flavor === 'week') return renderWeek(flattenEvents(data), now, { offsetDays });
   if (flavor === 'days') return renderDayGrouped(data, now);
   return renderColumns(data, now, flavor);
 }
@@ -264,24 +266,48 @@ function renderDayGrouped(data, now) {
   `;
 }
 
-// ── flavor: week (7-day time grid) ──
+// ── flavor: week (5-day rolling time grid) ──
 //
 // The wall default. Blocks are deliberately NOT <button>/role="button": on a
 // fixed-height card the 8 AM–6 PM requirement forces sub-44px blocks, which
 // can't meet the tap floor. Following the month-calendar precedent, blocks are
 // glanceable and tap via [data-event] delegation, while the 44px interaction
 // (See more → full overlay) stays large. Same reason the QA tap audit passes.
+// The ‹ › nav buttons and the date-range/Today control DO carry the 44px hit
+// floor — they're real touch targets and are policed by the tap audit.
 
-const WEEK_DAYS = 7;
+const WINDOW_DAYS = 5;            // day columns shown at once
+const WINDOW_STEP = WINDOW_DAYS;  // ‹ › shift a full, non-overlapping window
+// Navigation bounds (in days from today). One window back, ~five ahead — far
+// enough for the wall's "what's coming" glance; the month overlay ("See more")
+// owns anything further out. Both are multiples of WINDOW_STEP so paging stays
+// window-aligned and today is only ever in view at offset 0.
+const WEEK_MIN_OFFSET = -WINDOW_STEP;
+const WEEK_MAX_OFFSET = WINDOW_STEP * 5;
 const WEEK_START_HOUR = 5;        // grid top (5 AM)
 const WEEK_END_HOUR = 24;         // grid bottom (midnight)
 export const WEEK_OPEN_HOUR = 8;  // scrolled-to hour on mount → 8 AM–6 PM visible
 const WEEK_RANGE_MIN = (WEEK_END_HOUR - WEEK_START_HOUR) * 60;
 const WEEK_DOW_FMT = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
 const WEEK_HOUR_FMT = new Intl.DateTimeFormat(undefined, { hour: 'numeric' });
+// Nav range label, e.g. "Jul 15 – 19" (same month) or "Jul 29 – Aug 2".
+const WEEK_RANGE_MON_DAY = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
+const WEEK_RANGE_DAY = new Intl.DateTimeFormat(undefined, { day: 'numeric' });
 
 function startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 function minutesOfDay(value) { const d = parseLocalish(value); return d.getHours() * 60 + d.getMinutes(); }
+
+// Whole days from a start-of-day anchor to `value`'s start-of-day.
+function dayOffsetFrom(anchor, value) {
+  return Math.round((startOfDay(parseLocalish(value)) - anchor) / 86_400_000);
+}
+
+function weekRangeLabel(start, end) {
+  return start.getMonth() === end.getMonth()
+    ? `${WEEK_RANGE_MON_DAY.format(start)} – ${WEEK_RANGE_DAY.format(end)}`
+    : `${WEEK_RANGE_MON_DAY.format(start)} – ${WEEK_RANGE_MON_DAY.format(end)}`;
+}
 
 function weekEventAttrs(event) {
   const json = escapeHtml(JSON.stringify({
@@ -292,11 +318,15 @@ function weekEventAttrs(event) {
   return `data-event="${json}"`;
 }
 
-export function renderWeek(events, now = new Date()) {
+// `offsetDays` shifts the visible window off today (0 = today-anchored). It's a
+// multiple of WINDOW_STEP in practice, but the render is robust to any value.
+export function renderWeek(events, now = new Date(), { offsetDays = 0 } = {}) {
   const today0 = startOfDay(now);
-  const days = Array.from({ length: WEEK_DAYS }, (_, i) => {
-    const d = new Date(today0); d.setDate(d.getDate() + i); return d;
-  });
+  const windowStart = addDays(today0, offsetDays);
+  const days = Array.from({ length: WINDOW_DAYS }, (_, i) => addDays(windowStart, i));
+  // Today's column index within the window — negative or ≥WINDOW_DAYS when
+  // today isn't in view (a paged window), so no now-line/highlight renders.
+  const todayIdx = Math.round((today0 - windowStart) / 86_400_000);
 
   const visible = (events ?? []).filter(e => !isHiddenEvent(e));
 
@@ -310,34 +340,35 @@ export function renderWeek(events, now = new Date()) {
   }
 
   const allDay = [];
-  const timedByDay = Array.from({ length: WEEK_DAYS }, () => []);
+  const timedByDay = Array.from({ length: WINDOW_DAYS }, () => []);
   for (const e of visible) {
     if (e.allDay) { allDay.push(e); continue; }
-    const idx = dayIndex(e.startsAt, now);
-    if (idx >= 0 && idx < WEEK_DAYS) timedByDay[idx].push(e);
+    const idx = dayOffsetFrom(windowStart, e.startsAt);
+    if (idx >= 0 && idx < WINDOW_DAYS) timedByDay[idx].push(e);
   }
 
   const head = `
     <div class="calweek__head">
       <div class="calweek__corner"></div>
       ${days.map((d, i) => `
-        <div class="calweek__dow${i === 0 ? ' is-today' : ''}">
+        <div class="calweek__dow${i === todayIdx ? ' is-today' : ''}">
           <span class="calweek__dow-name">${escapeHtml(WEEK_DOW_FMT.format(d))}</span>
           <span class="calweek__dow-num">${d.getDate()}</span>
         </div>`).join('')}
     </div>`;
 
-  const cols = days.map((_, i) => renderDayColumn(timedByDay[i], i === 0 ? now : null, nextId)).join('');
+  const cols = days.map((_, i) => renderDayColumn(timedByDay[i], i === todayIdx ? now : null, nextId)).join('');
 
   return `
     <div class="calendar calendar--week">
       <div class="card__header">
         <h2 class="card__title">Family Calendar</h2>
+        ${renderWeekNav(windowStart, days[days.length - 1], offsetDays)}
         <button class="btn btn--text" data-overlay="calendar">See more</button>
       </div>
       <div class="calweek">
         ${head}
-        ${renderAllDayBand(allDay, today0)}
+        ${renderAllDayBand(allDay, windowStart)}
         <div class="calweek__scroll">
           <div class="calweek__grid">
             ${renderHourGutter()}
@@ -345,6 +376,23 @@ export function renderWeek(events, now = new Date()) {
           </div>
         </div>
       </div>
+    </div>`;
+}
+
+// ‹ [date range] › — the arrows page the window a full WINDOW_STEP; the center
+// label shows the visible range and, when paged off today (is-away), taps back
+// to today. All three carry the 44px hit floor (real touch targets → the tap
+// audit polices them, unlike the glanceable event blocks).
+function renderWeekNav(windowStart, windowEnd, offsetDays) {
+  const canPrev = offsetDays > WEEK_MIN_OFFSET;
+  const canNext = offsetDays < WEEK_MAX_OFFSET;
+  const away = offsetDays !== 0;
+  const label = weekRangeLabel(windowStart, windowEnd);
+  return `
+    <div class="calweek__nav">
+      <button class="calweek__nav-btn" data-calnav="prev" aria-label="Earlier days"${canPrev ? '' : ' disabled'}>‹</button>
+      <button class="calweek__nav-label${away ? ' is-away' : ''}" data-calnav="today" aria-label="${away ? 'Back to today' : 'Showing today'}">${escapeHtml(label)}</button>
+      <button class="calweek__nav-btn" data-calnav="next" aria-label="Later days"${canNext ? '' : ' disabled'}>›</button>
     </div>`;
 }
 
@@ -422,17 +470,17 @@ function packLanes(items) {
 // bars across the day columns they cover. Non-overlapping bars share a row;
 // the band is height-capped (CSS) so a rare pile-up clips rather than growing
 // the module — the full list lives behind "See more".
-function renderAllDayBand(allDay, today0) {
+function renderAllDayBand(allDay, windowStart) {
   const bars = [];
   for (const e of allDay) {
     const s = startOfDay(parseLocalish(e.startsAt));
     // All-day endsAt is the exclusive next-day boundary (Google convention).
     const endExcl = e.endsAt ? startOfDay(parseLocalish(e.endsAt)) : new Date(s.getTime() + 86_400_000);
-    let idxStart = Math.round((s - today0) / 86_400_000);
-    let idxEndExcl = Math.round((endExcl - today0) / 86_400_000);
+    let idxStart = Math.round((s - windowStart) / 86_400_000);
+    let idxEndExcl = Math.round((endExcl - windowStart) / 86_400_000);
     if (idxEndExcl <= idxStart) idxEndExcl = idxStart + 1;
-    if (idxEndExcl <= 0 || idxStart >= WEEK_DAYS) continue; // outside this week
-    bars.push({ e, colStart: Math.max(0, idxStart), colEndExcl: Math.min(WEEK_DAYS, idxEndExcl) });
+    if (idxEndExcl <= 0 || idxStart >= WINDOW_DAYS) continue; // outside this window
+    bars.push({ e, colStart: Math.max(0, idxStart), colEndExcl: Math.min(WINDOW_DAYS, idxEndExcl) });
   }
   if (!bars.length) return ''; // no band → the scroll area flexes to fill
 
@@ -518,15 +566,40 @@ export function mountCalendar(el, { flavor = 'week' } = {}) {
     try { openEventDetail(JSON.parse(row.dataset.event)); } catch {}
   });
 
-  // Week grid: a distinct feed (flat, 7-day, all-day included) and a
-  // scroll-to-8 AM after each paint.
+  // Week grid: a rolling 5-day window over a WIDER fetched range so ‹ › paging
+  // is instant — a client-side re-slice, no network hop, no flicker. The range
+  // is recomputed against "today" on each refresh, so a long-running kiosk that
+  // crosses midnight re-anchors itself. Refresh keeps the current offset (the
+  // Today control is the only reset — no surprise snap-backs on the wall).
   if (flavor === 'week') {
-    const { initial, live } = getUpcoming(WEEK_DAYS);
-    const paint = (events) => { el.innerHTML = renderWeek(events, new Date()); scrollWeekToOpen(el); };
-    paint(initial);
-    live.then(events => { if (events) paint(events); });
+    let offsetDays = 0;
+    let events = [];
+    const paint = () => { el.innerHTML = renderWeek(events, new Date(), { offsetDays }); scrollWeekToOpen(el); };
+    // [timeMin, timeMax] covering every reachable window, with today re-read
+    // each call so the range tracks the real date on a kiosk left running.
+    const rangeArgs = () => {
+      const t0 = startOfDay(new Date());
+      return [addDays(t0, WEEK_MIN_OFFSET).toISOString(), addDays(t0, WEEK_MAX_OFFSET + WINDOW_DAYS).toISOString()];
+    };
+
+    const { initial, live } = getRange(...rangeArgs());
+    events = initial; paint();
+    live.then(evs => { if (evs) { events = evs; paint(); } });
+
+    // ‹ › page a full window; a tap on the range label returns to today. Its
+    // own listener — the shared [data-event] one above ignores nav buttons.
+    el.addEventListener('click', (e) => {
+      const nav = e.target.closest('[data-calnav]');
+      if (!nav) return;
+      const dir = nav.dataset.calnav;
+      if (dir === 'today') offsetDays = 0;
+      else if (dir === 'prev') offsetDays = Math.max(WEEK_MIN_OFFSET, offsetDays - WINDOW_STEP);
+      else if (dir === 'next') offsetDays = Math.min(WEEK_MAX_OFFSET, offsetDays + WINDOW_STEP);
+      paint();
+    });
+
     const id = setInterval(() => {
-      fetchUpcoming(WEEK_DAYS).then(paint).catch(() => { /* keep the last good frame */ });
+      fetchRange(...rangeArgs()).then(evs => { events = evs; paint(); }).catch(() => { /* keep the last good frame */ });
     }, REFRESH_MS);
     return () => clearInterval(id);
   }

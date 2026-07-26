@@ -132,14 +132,41 @@ test('calendar/typical-days: day-grouped flavor shows day headers and a Family-o
 
 // ── week grid (the wall default) ──
 
-test('calendar/week: 7-day time grid with hour gutter and a now-line', async ({ page }) => {
+test('calendar/week: 5-day time grid with hour gutter and a now-line', async ({ page }) => {
   await open(page, 'week');
   await expect(page.locator('.calendar--week')).toBeVisible();
-  await expect(page.locator('.calweek__col')).toHaveCount(7);
+  await expect(page.locator('.calweek__col')).toHaveCount(5);
   await expect(page.locator('.calweek__gutter')).toBeVisible();
   // FIXED_NOW (07:30) is inside the 5 AM–midnight range, so the now-line shows.
   await expect(page.locator('.calweek__now')).toHaveCount(1);
   expect(await page.locator('.calweek__event').count()).toBeGreaterThan(0);
+});
+
+test('calendar/week: ‹ › page the window a full 5 days; Today snaps back', async ({ page }) => {
+  await open(page, 'week');
+  // At rest: today-anchored window. Today's event shows, the now-line marks
+  // today, and the range label is not accented (is-away absent).
+  await expect(page.locator('.calweek__event').filter({ hasText: 'Grocery Run' })).toBeVisible();
+  await expect(page.locator('.calweek__now')).toHaveCount(1);
+  await expect(page.locator('.calweek__nav-label.is-away')).toHaveCount(0);
+
+  // Next → the following 5 days: a next-window event appears, today's is gone,
+  // the now-line disappears, and the range label goes accented.
+  await page.locator('[data-calnav="next"]').tap();
+  await expect(page.locator('.calweek__event').filter({ hasText: 'Swim lesson' })).toBeVisible();
+  await expect(page.locator('.calweek__event').filter({ hasText: 'Grocery Run' })).toHaveCount(0);
+  await expect(page.locator('.calweek__now')).toHaveCount(0);
+  await expect(page.locator('.calweek__nav-label.is-away')).toHaveCount(1);
+
+  // Today → back to the today-anchored window.
+  await page.locator('[data-calnav="today"]').tap();
+  await expect(page.locator('.calweek__event').filter({ hasText: 'Grocery Run' })).toBeVisible();
+  await expect(page.locator('.calweek__now')).toHaveCount(1);
+
+  // Prev → the previous 5 days: a past-window event shows, today's is gone.
+  await page.locator('[data-calnav="prev"]').tap();
+  await expect(page.locator('.calweek__event').filter({ hasText: 'Past playdate' })).toBeVisible();
+  await expect(page.locator('.calweek__event').filter({ hasText: 'Grocery Run' })).toHaveCount(0);
 });
 
 test('calendar/week: all-day events span the pinned band', async ({ page }) => {

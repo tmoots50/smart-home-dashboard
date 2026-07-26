@@ -113,6 +113,44 @@ export function getUpcoming(days = 7) {
   return { initial, live };
 }
 
+// ── rolling window: an explicit [timeMin, timeMax) range (the week grid) ──
+//
+// Same timeMin/timeMax backend path as the month view, but keyed by the ISO
+// range so windows cache independently. The week grid fetches one wide range up
+// front and slices it client-side per 5-day window, so ‹ › paging never hits
+// the network (no flicker). Falls back to mock/empty exactly like getUpcoming.
+
+const RANGE_TTL_MS = 5 * 60 * 1000;
+const rangeKey = (timeMin, timeMax) => `calendar:range:${timeMin}:${timeMax}:v1`;
+
+export async function fetchRange(timeMin, timeMax) {
+  const res = await fetch(`/api/calendar/upcoming?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`, {
+    headers: { authorization: `Bearer ${TOKEN}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`calendar range: ${res.status}`);
+  const data = await res.json();
+  const events = canonicalizeUpcoming(data.events || []);
+  try { localStorage.setItem(rangeKey(timeMin, timeMax), JSON.stringify({ at: Date.now(), data: events })); } catch {}
+  return events;
+}
+
+export function getRange(timeMin, timeMax) {
+  let cached = null;
+  try {
+    const raw = localStorage.getItem(rangeKey(timeMin, timeMax));
+    if (raw) {
+      const { at, data } = JSON.parse(raw);
+      if (Date.now() - at <= RANGE_TTL_MS) cached = data;
+    }
+  } catch { /* fall through to mock */ }
+  const initial = canonicalizeUpcoming(cached ?? getMockUpcoming());
+  const live = TOKEN
+    ? fetchRange(timeMin, timeMax).catch(() => initial)
+    : Promise.resolve(initial);
+  return { initial, live };
+}
+
 // ── month view: arbitrary month windows via timeMin/timeMax ──
 
 const MONTH_TTL_MS = 5 * 60 * 1000;

@@ -1689,9 +1689,46 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
    scrolls. --calweek-hour-h is tuned so 10h clears the viewport even with the
    all-day band present. One calendar → one color: every block is the accent. */
 .calendar--week {
+  --calweek-cols: 5;          /* day columns — MUST equal WINDOW_DAYS in calendar.js */
   --calweek-gutter: 2.6rem;
   --calweek-hour-h: 1.65rem;  /* 19h grid = 31.35rem; 10h (8 AM–6 PM) ≈ 16.5rem clears the viewport → taller, more readable blocks */
 }
+/* Week nav: ‹ [date range] › living in the card header. Borderless on purpose —
+   two bordered circles in a header read as a button farm. The 44px hit floor is
+   held by box size, not a visible frame, so the tap audit still passes while the
+   glyphs stay small (kiosk touch-floor convention). */
+.calweek__nav { display: inline-flex; align-items: center; gap: 2px; }
+.calweek__nav-btn {
+  width: 2.75rem;             /* 44px hit target */
+  height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.calweek__nav-btn:hover:not(:disabled) { color: var(--color-fg); }
+.calweek__nav-btn:disabled { opacity: 0.3; cursor: default; }
+.calweek__nav-label {
+  min-height: 2.75rem;        /* 44px touch floor; the visible text stays small */
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.calweek__nav-label.is-away { color: var(--color-accent); }  /* paged off today */
+.calweek__nav-label:hover { color: var(--color-fg); }
 .calweek {
   display: flex;
   flex-direction: column;
@@ -1702,7 +1739,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .calweek__head,
 .calweek__allday {
   display: grid;
-  grid-template-columns: var(--calweek-gutter) repeat(7, minmax(0, 1fr));
+  grid-template-columns: var(--calweek-gutter) repeat(var(--calweek-cols), minmax(0, 1fr));
 }
 .calweek__head { border-bottom: 1px solid var(--color-border); }
 .calweek__dow {
@@ -1778,7 +1815,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .calweek__grid {
   position: relative;
   display: grid;
-  grid-template-columns: var(--calweek-gutter) repeat(7, minmax(0, 1fr));
+  grid-template-columns: var(--calweek-gutter) repeat(var(--calweek-cols), minmax(0, 1fr));
   height: calc(19 * var(--calweek-hour-h));
 }
 .calweek__gutter { position: relative; grid-column: 1; }
