@@ -244,7 +244,10 @@ export function resolveRange(searchParams, now = new Date()) {
 // more than an ICS feed can), and `token` to pick the right Google account.
 export function googleCalendarFor(env, label) {
   const calendars = parseCalendars(env);
-  const normalLabel = String(label).trim().toLowerCase();
+  // Canonicalize the INCOMING label too — parseCalendars already canonicalizes
+  // configured labels, so an alias like "Caroline & Tim" must be folded to
+  // "Family" here or it 404s against the (already-canonical) configured set.
+  const normalLabel = canonicalCalendarLabel(label).toLowerCase();
   return calendars.find(c => c.label.toLowerCase() === normalLabel) ?? null;
 }
 
@@ -256,13 +259,16 @@ export function calendarIdFor(env, label) {
 const GCAL_BASE = 'https://www.googleapis.com/calendar/v3/calendars';
 
 // Create a new event. `start`/`end` are ISO 8601 datetimes or YYYY-MM-DD for all-day.
-export async function createEvent(accessToken, calendarId, { summary, start, end, allDay = false, description = '', location = '' }) {
+export async function createEvent(accessToken, calendarId, { summary, start, end, allDay = false, description = '', location = '', recurrence } = {}) {
   const body = {
     summary,
     ...(description && { description }),
     ...(location && { location }),
     start: allDay ? { date: start } : { dateTime: start },
     end: allDay ? { date: end } : { dateTime: end },
+    // RRULE strings passed through verbatim to Google (e.g.
+    // ["RRULE:FREQ=WEEKLY;COUNT=3"]); omitted entirely for one-off events.
+    ...(Array.isArray(recurrence) && recurrence.length && { recurrence }),
   };
   const res = await fetch(
     `${GCAL_BASE}/${encodeURIComponent(calendarId)}/events`,

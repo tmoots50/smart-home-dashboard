@@ -23,10 +23,12 @@ export async function onRequest(context) {
   let body;
   try { body = await request.json(); } catch { return json({ error: 'invalid JSON body' }, { status: 400 }, cors); }
 
-  const { calendar, summary, start, end, allDay = false, description = '', location = '' } = body;
+  const { calendar, summary, start, end, allDay = false, description = '', location = '', recurrence } = body;
   if (!calendar || typeof calendar !== 'string') return json({ error: 'calendar required' }, { status: 400 }, cors);
   if (!summary || typeof summary !== 'string') return json({ error: 'summary required' }, { status: 400 }, cors);
   if (!start || typeof start !== 'string') return json({ error: 'start required' }, { status: 400 }, cors);
+  // Optional recurrence: array of RRULE strings passed through verbatim to Google.
+  if (recurrence != null && !Array.isArray(recurrence)) return json({ error: 'recurrence must be an array of RRULE strings' }, { status: 400 }, cors);
 
   // Read-only calendars are display-only: ICS feeds (a publish URL is one-way)
   // and Google calendars flagged readOnly (e.g. Tim's work cal — its token is
@@ -56,7 +58,7 @@ export async function onRequest(context) {
   try { accessToken = await getAccessToken(env, gcal.token); } catch (err) { return json({ error: err.message }, { status: 500 }, cors); }
 
   try {
-    const ev = await createEvent(accessToken, gcal.id, { summary, start, end: resolvedEnd, allDay, description, location });
+    const ev = await createEvent(accessToken, gcal.id, { summary, start, end: resolvedEnd, allDay, description, location, recurrence });
     return json({ ok: true, id: ev.id }, {}, cors);
   } catch (err) {
     return json({ error: err.message }, { status: 502 }, cors);
