@@ -13,10 +13,12 @@ const DATA = {
 const sourceOf = (data) => () => ({ initial: structuredClone(data), live: Promise.resolve(null) });
 
 describe('renderHomeCard', () => {
-  it('shows lock state + battery and one row per plug', () => {
+  it('shows lock name, battery, toggle buttons, and one row per plug', () => {
     const html = renderHomeCard(DATA);
     expect(html).toContain('Front Door');
-    expect(html).toContain('Locked · 87%');
+    expect(html).toContain('87%');
+    expect(html).toContain('data-lock-action="lock"');
+    expect(html).toContain('data-lock-action="unlock"');
     expect(html).toContain('Living Room Lamp');
     expect(html).toContain('Grow Light');
   });
@@ -61,6 +63,20 @@ describe('mountHomeCard', () => {
     expect(actions.setPlug).toHaveBeenCalledWith('switch.living_room_lamp', false);
     await vi.advanceTimersByTimeAsync(0); // flush the rejection microtask (not the 60s refresh interval)
     expect(slot.querySelector('[data-id="switch.living_room_lamp"]').getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('toggles lock optimistically via set-lock buttons and reverts on failure', async () => {
+    const slot = document.createElement('div');
+    document.body.appendChild(slot);
+    const actions = { setPlug: vi.fn(), setLock: vi.fn().mockRejectedValue(new Error('boom')) };
+    mountHomeCard(slot, sourceOf(DATA), actions, null);
+    const unlockBtn = slot.querySelector('[data-lock-action="unlock"]');
+    expect(unlockBtn.getAttribute('aria-pressed')).toBe('false');
+    unlockBtn.click();
+    expect(slot.querySelector('[data-lock-action="unlock"]').getAttribute('aria-pressed')).toBe('true');
+    expect(actions.setLock).toHaveBeenCalledWith('unlock');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(slot.querySelector('[data-lock-action="unlock"]').getAttribute('aria-pressed')).toBe('false');
   });
 
   it('adds a device via the inline form (mock mode derives the entity id)', () => {

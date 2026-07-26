@@ -1879,7 +1879,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 }
 
 /* ───── inline home card (under groceries) ───── */
-.home-card__lock {
+.home-card__lock-row {
   display: flex;
   align-items: center;
   gap: var(--space-2);
@@ -1890,18 +1890,38 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: 14px;
-  color: var(--color-fg);
-  font-family: var(--font-body);
-  font-size: 1rem;
-  cursor: pointer;
-  text-align: left;
 }
-.home-card__lock-icon { display: inline-flex; color: var(--color-muted); flex-shrink: 0; }
-.home-card__lock.is-unlocked .home-card__lock-icon { color: var(--color-accent); }
-.home-card__lock.is-jammed .home-card__lock-icon { color: #d08770; }
-.home-card__lock-name { flex: 1; min-width: 0; font-weight: 600; }
-.home-card__lock-state { color: var(--color-muted); font-size: 0.85rem; white-space: nowrap; }
-.home-card__lock.is-unlocked .home-card__lock-state { color: var(--color-accent); }
+.home-card__lock-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.home-card__lock-name { font-weight: 600; }
+.home-card__lock-battery { color: var(--color-muted); font-size: 0.8rem; }
+.home-card__lock-toggle { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.home-card__lock-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: var(--space-1);
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--color-muted);
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.home-card__lock-row.is-locked .home-card__lock-btn[data-lock-action="lock"] {
+  background: color-mix(in srgb, var(--color-fg) 12%, transparent);
+  color: var(--color-fg);
+}
+.home-card__lock-row.is-unlocked .home-card__lock-btn[data-lock-action="unlock"] {
+  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  color: var(--color-accent);
+}
+.home-card__lock-row.is-jammed .home-card__lock-btn[data-lock-action="lock"] {
+  background: rgba(208, 129, 112, 0.22);
+  color: #d08770;
+}
 
 .home-card__list { list-style: none; padding: 0; margin: 0; }
 .home-card__row {

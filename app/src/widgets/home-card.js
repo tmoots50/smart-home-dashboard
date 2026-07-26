@@ -37,14 +37,25 @@ export function renderHomeCard(data, state = {}) {
 function renderLockRow(lock) {
   const locked = lock.state === 'locked';
   const jammed = lock.state === 'jammed';
-  const stateLabel = jammed ? 'Jammed' : locked ? 'Locked' : lock.state === 'unlocked' ? 'Unlocked' : 'Unknown';
-  const battery = lock.battery == null ? '' : ` · ${lock.battery}%`;
+  const unlocked = lock.state === 'unlocked';
+  const battery = lock.battery == null ? '' : `${lock.battery}%`;
   return `
-    <button class="home-card__lock ${locked ? 'is-locked' : 'is-unlocked'} ${jammed ? 'is-jammed' : ''}" data-action="open-overlay">
-      <span class="home-card__lock-icon">${locked || jammed ? LOCK_CLOSED : LOCK_OPEN}</span>
-      <span class="home-card__lock-name">${escapeHtml(lock.name)}</span>
-      <span class="home-card__lock-state">${stateLabel}${battery}</span>
-    </button>
+    <div class="home-card__lock-row ${locked ? 'is-locked' : unlocked ? 'is-unlocked' : ''} ${jammed ? 'is-jammed' : ''}">
+      <span class="home-card__lock-info">
+        <span class="home-card__lock-name">${escapeHtml(lock.name)}</span>
+        ${battery ? `<span class="home-card__lock-battery">${battery}</span>` : ''}
+      </span>
+      <span class="home-card__lock-toggle" role="group" aria-label="Lock ${escapeHtml(lock.name)}">
+        <button class="home-card__lock-btn" data-action="set-lock" data-lock-action="lock"
+                aria-label="Lock" aria-pressed="${locked || jammed}">
+          ${LOCK_CLOSED}
+        </button>
+        <button class="home-card__lock-btn" data-action="set-lock" data-lock-action="unlock"
+                aria-label="Unlock" aria-pressed="${unlocked}">
+          ${LOCK_OPEN}
+        </button>
+      </span>
+    </div>
   `;
 }
 
@@ -157,6 +168,14 @@ export function mountHomeCard(slot, getHomeFn, actions, deviceActions, { askEnti
     if (action === 'device-cancel') {
       state.adding = false;
       draw();
+      return;
+    }
+    if (action === 'set-lock') {
+      const lockAction = t.dataset.lockAction;
+      const before = data;
+      data = { ...data, lock: { ...data.lock, state: lockAction === 'lock' ? 'locked' : 'unlocked' } };
+      draw();
+      actions?.setLock(lockAction).catch(() => { data = before; draw(); });
       return;
     }
     if (action === 'toggle-plug') {
