@@ -93,9 +93,19 @@ describe('isVisible', () => {
     expect(isVisible(brief(), new Date('2026-07-27T11:59:00'), null)).toBe(true);
   });
 
-  it("hides when today's date was dismissed, but yesterday's dismissal doesn't stick", () => {
-    expect(isVisible(brief(), MORNING, '2026-07-27')).toBe(false);
-    expect(isVisible(brief(), MORNING, '2026-07-26')).toBe(true);
+  it('hides the cleared generation only — a re-publish supersedes the clear', () => {
+    const first = brief();
+    expect(isVisible(first, MORNING, first.generatedAt)).toBe(false);
+    // Hermes re-publishes later the same day → new generatedAt → visible again.
+    const republished = brief({ generatedAt: '2026-07-27T12:05:00.000Z' });
+    expect(isVisible(republished, MORNING, first.generatedAt)).toBe(true);
+    // Yesterday's clear marker never hides today's brief.
+    expect(isVisible(brief(), MORNING, '2026-07-26T11:00:00.000Z')).toBe(true);
+  });
+
+  it('falls back to date-keyed dismissal for blobs without generatedAt', () => {
+    const legacy = brief({ generatedAt: undefined });
+    expect(isVisible(legacy, MORNING, '2026-07-27')).toBe(false);
   });
 
   it('hides null blobs and content-free briefs', () => {

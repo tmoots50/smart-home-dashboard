@@ -145,7 +145,15 @@ export function isVisible(data, now, dismissedDate = readDismissed()) {
   if (!hasContent) return false;
   if (data.date !== localYMD(now)) return false;
   if (now.getHours() >= NOON_HOUR) return false;
-  return dismissedDate !== data.date;
+  // Clearing hides THIS generation, not the whole day: a re-published brief
+  // (new generatedAt) supersedes an earlier collapse and reappears
+  // (Tim, 2026-07-26 — "i had collapsed the original; push this new one").
+  return dismissedDate !== dismissKey(data);
+}
+
+// Pre-generatedAt blobs fall back to the date, matching the old behavior.
+function dismissKey(data) {
+  return data.generatedAt ?? data.date;
 }
 
 export function mountDaybrief(el, source, { now = () => new Date(), flavor } = {}) {
@@ -163,13 +171,13 @@ export function mountDaybrief(el, source, { now = () => new Date(), flavor } = {
 
   el.addEventListener('click', (e) => {
     if (!e.target.closest('[data-action="clear"]') || !data?.date) return;
-    const date = data.date;
-    writeDismissed(date);
+    const key = dismissKey(data);
+    writeDismissed(key);
     draw();
     showToast('Morning brief cleared', {
       actionLabel: 'Undo',
       onAction: () => {
-        if (readDismissed() === date) writeDismissed(null);
+        if (readDismissed() === key) writeDismissed(null);
         draw();
       },
     });
