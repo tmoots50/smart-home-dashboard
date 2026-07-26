@@ -217,12 +217,14 @@ describe('renderWeek (5-day rolling window)', () => {
     expect(html).not.toMatch(/<button[^>]*calweek__event/);
   });
 
+  // Blocks carry a fixed px column-gutter inset, so lane math rides inside a
+  // calc(): two lanes → calc(50.00% - …), one lane → calc(100.00% - …).
   it('splits overlapping events into side-by-side lanes', () => {
     const html = renderWeek([
       ev('a', 0, 9, 0, 11, 0, 'A'),
       ev('b', 0, 10, 0, 12, 0, 'B'), // overlaps A
     ], NOW);
-    expect(html).toContain('width:50.00%');
+    expect(html).toContain('width:calc(50.00%');
   });
 
   it('gives a non-overlapping run the full column width back', () => {
@@ -230,8 +232,8 @@ describe('renderWeek (5-day rolling window)', () => {
       ev('a', 0, 9, 0, 10, 0, 'A'),
       ev('b', 0, 11, 0, 12, 0, 'B'), // after A → same lane cluster resets
     ], NOW);
-    expect(html).toContain('width:100.00%');
-    expect(html).not.toContain('width:50.00%');
+    expect(html).toContain('width:calc(100.00%');
+    expect(html).not.toContain('width:calc(50.00%');
   });
 
   it('places all-day events as a spanning bar in the pinned band', () => {

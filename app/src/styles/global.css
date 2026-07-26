@@ -1718,38 +1718,47 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
    two bordered circles in a header read as a button farm. The 44px hit floor is
    held by box size, not a visible frame, so the tap audit still passes while the
    glyphs stay small (kiosk touch-floor convention). */
-.calweek__nav { display: inline-flex; align-items: center; gap: 2px; }
+.calweek__nav { display: inline-flex; align-items: center; gap: var(--space-1); }
+/* Bordered pills so the controls read as tappable buttons from across the room
+   (wall legibility) — the 44px box IS the visible button here, which is the
+   right call for a glanceable kiosk. */
 .calweek__nav-btn {
-  width: 2.75rem;             /* 44px hit target */
+  width: 2.75rem;             /* 44px hit target = the visible pill */
   height: 2.75rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: none;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
   background: transparent;
-  color: var(--color-muted);
-  font-size: 1.35rem;
+  color: var(--color-fg);
+  font-size: 1.3rem;
   line-height: 1;
   cursor: pointer;
 }
-.calweek__nav-btn:hover:not(:disabled) { color: var(--color-fg); }
-.calweek__nav-btn:disabled { opacity: 0.3; cursor: default; }
+.calweek__nav-btn:hover:not(:disabled) { border-color: var(--color-accent); color: var(--color-accent); }
+.calweek__nav-btn:disabled { opacity: 0.28; cursor: default; }
 .calweek__nav-label {
-  min-height: 2.75rem;        /* 44px touch floor; the visible text stays small */
+  min-height: 2.75rem;        /* 44px touch floor */
   display: inline-flex;
   align-items: center;
-  padding: 0 var(--space-2);
-  border: none;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
   background: transparent;
-  color: var(--color-muted);
-  font-family: var(--font-body);
-  font-size: 0.72rem;
+  color: var(--color-fg);
+  font: 600 0.72rem var(--font-body);
   letter-spacing: 0.04em;
   white-space: nowrap;
   cursor: pointer;
 }
-.calweek__nav-label.is-away { color: var(--color-accent); }  /* paged off today */
-.calweek__nav-label:hover { color: var(--color-fg); }
+/* Paged off today → the Today reset lights up so it's obviously the way back. */
+.calweek__nav-label.is-away {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+}
+.calweek__nav-label:hover { border-color: var(--color-accent); }
 .calweek {
   display: flex;
   flex-direction: column;
@@ -1799,9 +1808,17 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 /* All-day band: spanning bars; height-capped so a pile-up clips (full list is
    behind "See more") rather than growing the module. */
 .calweek__allday {
-  grid-auto-rows: 1.15rem;
+  /* Fixed 2-line row height: -webkit-line-clamp bars don't reliably push an
+     `auto` grid track, so give the row enough height for two lines up front
+     and center the (content-height) bars in it. flex-shrink:0 is load-bearing —
+     the band is a flex child with overflow:hidden, so its flex min-height
+     collapses to 0 and the column would otherwise shrink it below the 2-line
+     bars and clip them. */
+  grid-auto-rows: 1.75rem;
+  align-items: center;
+  flex-shrink: 0;
   gap: 2px;
-  max-height: 2.5rem;
+  max-height: 3.8rem;                      /* ~2 rows; a pile-up clips (full list behind "See more") */
   overflow: hidden;
   padding: 2px 0;
   border-bottom: 1px solid var(--color-border);
@@ -1810,16 +1827,18 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   background: color-mix(in srgb, var(--color-accent) 22%, var(--color-surface));
   border-left: 3px solid var(--color-accent);
   border-radius: 3px;
-  padding: 0 4px;
+  padding: 1px 4px;
   font-size: 0.62rem;
-  line-height: 1.15rem;
+  line-height: 1.1;
   color: var(--color-fg);
-  white-space: nowrap;
-  /* Clip horizontally only (ellipsis); the band's own overflow caps height.
-     overflow-y:visible keeps the QA v-clip audit clean. */
-  overflow-x: hidden;
-  overflow-y: visible;
-  text-overflow: ellipsis;
+  /* Wrap to two lines instead of ellipsizing — all-day titles are what read as
+     cut off on the wall. line-clamp keeps the QA v-clip audit green; the band's
+     max-height still caps a pile-up. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
   cursor: pointer;
 }
 .calweek__bar:hover { color: var(--color-accent); }
@@ -1867,7 +1886,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  min-height: 0.85rem;
+  min-height: 1.2rem;  /* room for a wrapped title on short events (kept modest so back-to-back short events don't badly overlap) */
   padding: 1px 4px;
   border-left: 3px solid var(--color-accent);
   border-radius: 4px;
@@ -1889,14 +1908,19 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   text-overflow: ellipsis;
 }
 .calweek__title {
-  flex: 0 0 auto;
+  flex: 0 1 auto;
+  min-height: 0;
   font-size: 0.66rem;
   line-height: 1.15;
   color: var(--color-fg);
-  white-space: nowrap;
-  overflow-x: hidden;
-  overflow-y: visible;
-  text-overflow: ellipsis;
+  /* Wrap to two lines instead of a single ellipsized line — more of the title
+     reads on the wall. -webkit-line-clamp keeps the QA v-clip audit green;
+     overflow-wrap breaks long unbroken words ("GIVE CHLOE HEARING…"). */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
 }
 .calweek__event:hover .calweek__title { color: var(--color-accent); }
 .calweek__now {

@@ -66,6 +66,10 @@ const weekData = {
     tevt('w-p2', -2, 14, 0, 15, 0, 'Past playdate'),   // prev window
     { id: 'w-camp', title: 'Camping Trip', allDay: true, startsAt: dayYmd(0), endsAt: dayYmd(2), sub: '', description: '' },
     { id: 'w-bday', title: "Emma's Birthday", allDay: true, startsAt: dayYmd(3), endsAt: dayYmd(4), sub: '', description: '' },
+    // Long titles exercise the 2-line wrap (all-day bar + timed block) at the
+    // real wall card width, where short titles wouldn't reveal it.
+    { id: 'w-vbs', title: 'Parish Vacation Bible School Week', allDay: true, startsAt: dayYmd(2), endsAt: dayYmd(3), sub: '', description: '' },
+    tevt('w-long', 0, 16, 0, 17, 30, 'Primrose teacher training session'),
     tevt('w1', 0, 9, 0, 10, 0, 'Grocery Run'),
     tevt('w2', 0, 10, 45, 12, 0, 'Coffee with Diane'), // overlaps w3
     tevt('w3', 0, 11, 0, 11, 30, "Dog's bath"),

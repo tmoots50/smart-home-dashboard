@@ -288,6 +288,9 @@ const WEEK_START_HOUR = 5;        // grid top (5 AM)
 const WEEK_END_HOUR = 24;         // grid bottom (midnight)
 export const WEEK_OPEN_HOUR = 8;  // scrolled-to hour on mount → 8 AM–6 PM visible
 const WEEK_RANGE_MIN = (WEEK_END_HOUR - WEEK_START_HOUR) * 60;
+// Horizontal inset per side on each timed block → a breathing gutter between
+// adjacent day columns so packed weeks don't read as one crunched slab.
+const WEEK_BLOCK_GUTTER_PX = 4;
 const WEEK_DOW_FMT = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
 const WEEK_HOUR_FMT = new Intl.DateTimeFormat(undefined, { hour: 'numeric' });
 // Nav range label, e.g. "Jul 15 – 19" (same month) or "Jul 29 – Aug 2".
@@ -420,8 +423,10 @@ function renderDayColumn(dayEvents, nowForCol, nextId) {
     const top = (s - rangeStart) / WEEK_RANGE_MIN * 100;
     const height = (en - s) / WEEK_RANGE_MIN * 100;
     const isNext = e.id != null && e.id === nextId;
+    const laneLeft = (lane * 100 / lanes).toFixed(2);
+    const laneWidth = (100 / lanes).toFixed(2);
     return `<div class="calweek__event${isNext ? ' calweek__event--next' : ''}"
-      style="top:${top.toFixed(2)}%;height:${height.toFixed(2)}%;left:${(lane * 100 / lanes).toFixed(2)}%;width:${(100 / lanes).toFixed(2)}%"
+      style="top:${top.toFixed(2)}%;height:${height.toFixed(2)}%;left:calc(${laneLeft}% + ${WEEK_BLOCK_GUTTER_PX}px);width:calc(${laneWidth}% - ${2 * WEEK_BLOCK_GUTTER_PX}px)"
       ${weekEventAttrs(e)} tabindex="0">
       <span class="calweek__event-time">${eventTime(e)}</span>
       <span class="calweek__title">${escapeHtml(e.title)}</span>
