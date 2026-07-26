@@ -26,7 +26,7 @@ function str(v, max) {
 
 function normItem(it) {
   if (!it || typeof it !== 'object') return null;
-  const text = str(it.text, 300);
+  const text = str(it.text, 160);
   if (!text) return null; // text is required
   const time = str(it.time, 20);
   return time ? { time, text } : { text };

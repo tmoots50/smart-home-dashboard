@@ -2593,20 +2593,26 @@ a.pick__item .pick__title { color: var(--color-accent, var(--color-fg)); }
   padding-left: var(--space-4);
 }
 
-/* letter flavor — Hermes writes actual prose; bullets ride shotgun. */
-.daybrief__letter {
-  display: grid;
-  grid-template-columns: 1.15fr 0.85fr;
-  gap: var(--space-5);
-}
+/* letter flavor — Headlines full-width on top (wide measure, minimal
+   wrapping — the side-by-side grid wrapped every line 4 deep on the wall,
+   Tim 2026-07-26), then the structured sections flow into two balanced
+   columns below. Rail items are clipped phrases by contract, not
+   sentences — brevity is enforced at composition, not by the CSS. */
+.daybrief__letter { display: block; }
+.daybrief__section--headlines { margin-bottom: var(--space-3); }
 .daybrief__body { min-width: 0; }
 .daybrief__body p {
   margin: 0 0 var(--space-2);
-  font-size: 1.02rem;
-  line-height: 1.55;
+  font-size: 1.05rem;
+  line-height: 1.5;
 }
 .daybrief__body p:last-child { margin-bottom: 0; }
-.daybrief__rail { min-width: 0; }
+.daybrief__rail {
+  min-width: 0;
+  column-count: 2;
+  column-gap: var(--space-5);
+}
+.daybrief__rail .daybrief__section { break-inside: avoid; }
 .daybrief__section--compact .daybrief__item {
   font-size: 0.92rem;
   padding: 0.28rem 0;

@@ -64,6 +64,13 @@ only where a fact supports it; never forced. 2–4 paragraphs on a normal day.
 **Day-of-week readahead.** Monday (and Sunday) lead with the week's story;
 Friday looks at the weekend; midweek stays on today. Depth follows the day.
 
+**Section items are clipped phrases, not sentences** (added 2026-07-26 after
+the first wall morning: long rail items wrapped 3–4 lines and swamped the
+card). Target ≤60 characters — "Low: baby powder, Barebells — weekend run",
+not a witty paragraph. Wit lives in Headlines and the closer ONLY. The API
+hard-truncates item text at 160 chars as a backstop, mid-sentence, so
+overlong items look broken by design — stay under the target.
+
 **Sections** — fixed order, hard caps, emoji in every title:
 | kind       | title              | cap | notes |
 |------------|--------------------|-----|-------|
@@ -85,7 +92,10 @@ Skip it when nothing presents itself.
 
 - Widget: `app/src/widgets/daybrief.js` — flavors `letter` (wall default,
   Tim's pick) / `columns` / `split` / `agenda`; `?brieflavor=` overrides and
-  persists (`daybrief:flavor`), mirroring `?calflavor=`.
+  persists (`daybrief:flavor`), mirroring `?calflavor=`. Letter layout:
+  Headlines full-width on top, sections in two balanced columns below
+  (reworked 2026-07-26 — the original side-by-side grid over-wrapped on
+  the wall).
 - Visibility: `date` must equal today, before noon, not cleared. Clearing
   (✓ → Undo toast) stores the brief's date in `daybrief:dismissed:v1`
   (kiosk-local), so yesterday's clear never hides today's brief.

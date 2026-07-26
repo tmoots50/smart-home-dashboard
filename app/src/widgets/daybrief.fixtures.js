@@ -49,30 +49,30 @@ export const states = {
         kind: 'today',
         title: '🗓️ Today',
         items: [
-          { time: 'Morning', text: 'Clear until noon — your one open stretch' },
-          { time: '12:00', text: 'Meetings, wall-to-wall until 7:30' },
+          { time: 'Morning', text: 'Clear until noon — guard it' },
+          { time: '12:00', text: 'Meetings until 7:30' },
         ],
       },
       {
         kind: 'attention',
         title: '⚖️ Needs a decision',
         items: [
-          { text: 'Who has Mabel **Thursday and Friday**? Primrose is closed both days.' },
+          { text: 'Primrose closed **Thu–Fri** — who has Mabel?' },
         ],
       },
       {
         kind: 'meals',
         title: '🍽️ Meals',
         items: [
-          { text: 'Running low on baby powder and Barebells — the weekend run covers it' },
+          { text: 'Low: baby powder, Barebells — weekend run' },
         ],
       },
       {
         kind: 'todos',
         title: '✅ Worth doing',
         items: [
-          { text: 'Start the GA 529 — it’s a form, not a project' },
-          { text: 'Birth-certificate steps; paperwork is queued behind it' },
+          { text: 'Start Mabel’s GA 529 plan' },
+          { text: 'Map the birth-certificate steps' },
         ],
       },
       {
@@ -105,7 +105,7 @@ export const states = {
         title: '🗓️ Today',
         items: [
           { time: '11:35', text: 'Meetings begin' },
-          { time: '1:00', text: 'Mabel’s 4-month checkup — Caroline has her' },
+          { time: '1:00', text: 'Mabel’s checkup — Caroline has her' },
           { time: '6:30', text: 'Spiritual Direction' },
         ],
       },
@@ -113,14 +113,14 @@ export const states = {
         kind: 'attention',
         title: '⚖️ Needs a decision',
         items: [
-          { text: 'Thursday–Friday coverage: make sure last night’s plan is real' },
+          { text: 'Confirm **Thu–Fri** Mabel coverage' },
         ],
       },
       {
         kind: 'meals',
         title: '🍽️ Meals',
         items: [
-          { text: 'What’s for dinner? 99° says takeout — that’s a plan, not a failure' },
+          { text: '99° — takeout night' },
         ],
       },
     ],
