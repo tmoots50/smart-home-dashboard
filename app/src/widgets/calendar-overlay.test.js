@@ -45,13 +45,16 @@ describe('groupByDay', () => {
 });
 
 describe('groupByPerson', () => {
-  it('buckets by calendar label in household order (Family, Tim, Caroline)', () => {
+  it('buckets by person: the visible roster (Family) leads, others sort A→Z', () => {
+    // groupByPerson stays person-agnostic — production filters hidden people
+    // upstream. With only Family in the roster now, everyone else is an
+    // "unknown" label sorted alphabetically after it.
     const groups = groupByPerson([
-      ev({ id: 'c', calendar: 'Caroline', startsAt: '2026-07-09T09:00:00' }),
-      ev({ id: 't', calendar: 'Tim', startsAt: '2026-07-10T09:00:00' }),
+      ev({ id: 'z', calendar: 'Zoe', startsAt: '2026-07-09T09:00:00' }),
+      ev({ id: 'a', calendar: 'Amy', startsAt: '2026-07-10T09:00:00' }),
       ev({ id: 'f', calendar: 'Family', startsAt: '2026-07-08T09:00:00' }),
     ], 7, NOW);
-    expect(groups.map(g => g.person)).toEqual(['Family', 'Tim', 'Caroline']);
+    expect(groups.map(g => g.person)).toEqual(['Family', 'Amy', 'Zoe']);
   });
 
   it('sorts each person chronologically, all-day leading its day', () => {
@@ -112,7 +115,31 @@ describe('renderCalendarOverlay', () => {
     expect(html).not.toContain('cal-chip--family'); // section header names the person
   });
 
-  it('renders the production title, subtitle, and ten-per-person cap', () => {
+  it('hides Tim and Caroline entirely, including their work feeds', () => {
+    // The mock upcoming feed carries Tim (personal + Narvar work) and Caroline
+    // (Outlook work) events, several within the 7-day horizon.
+    const html = renderCalendarOverlay(getMockUpcoming(NOW), { days: 7, now: NOW });
+    expect(html).not.toContain('cal-person--tim');
+    expect(html).not.toContain('cal-person--caroline');
+    expect(html).not.toContain('Recruiter call — Tessa'); // Tim personal
+    expect(html).not.toContain('Quarterly planning');      // Caroline work
+    expect(html).not.toContain('Not linked yet');          // no vanished-person placeholder
+  });
+
+  it('shows no section for a hidden person even when they have events in-window', () => {
+    const html = renderCalendarOverlay([
+      ev({ id: 'f1' }),
+      ev({ id: 't1', calendar: 'Tim', startsAt: '2026-07-09T10:00:00', title: 'Tim thing' }),
+      ev({ id: 'c1', calendar: 'Caroline (Work)', person: 'Caroline', kind: 'work', startsAt: '2026-07-09T10:00:00', title: 'Caroline thing' }),
+    ], { days: 7, now: NOW });
+    expect(html).toContain('cal-person--family');
+    expect(html).not.toContain('cal-person--tim');
+    expect(html).not.toContain('cal-person--caroline');
+    expect(html).not.toContain('Tim thing');
+    expect(html).not.toContain('Caroline thing');
+  });
+
+  it('caps events per person when perPerson is set (feature still available)', () => {
     const events = Array.from({ length: 12 }, (_, i) => ev({
       id: `f${i}`, title: `Family ${i}`, startsAt: `2026-07-${String(8 + i).padStart(2, '0')}T09:00:00`,
     }));
@@ -122,50 +149,38 @@ describe('renderCalendarOverlay', () => {
     expect(html.match(/cal-event--dated/g)).toHaveLength(10);
   });
 
-  it('always renders the full household roster in person mode', () => {
-    // Family-only data → Tim and Caroline still get sections.
-    const html = renderCalendarOverlay([ev({ id: 'f1' })], { days: 7, now: NOW });
-    expect(html).toContain('cal-person--family');
-    expect(html).toContain('cal-person--tim');
-    expect(html).toContain('cal-person--caroline');
+  it('uncapped (production default): shows the whole Family agenda under "Next N days"', () => {
+    const events = Array.from({ length: 12 }, (_, i) => ev({
+      id: `f${i}`, title: `Family ${i}`, startsAt: `2026-07-${String(8 + i).padStart(2, '0')}T09:00:00`,
+    }));
+    const html = renderCalendarOverlay(events, { days: 90, now: NOW });
+    expect(html).toContain('Next 90 days');
+    expect(html).not.toContain('per person'); // no subtitle when uncapped
+    expect(html.match(/cal-event--dated/g)).toHaveLength(12); // nothing dropped
   });
 
-  it('distinguishes "not linked" from "linked but quiet"', () => {
-    const events = [
-      ev({ id: 'f1' }), // Family, within horizon
-      ev({ id: 't1', calendar: 'Tim', startsAt: '2026-09-01T10:00:00' }), // Tim, beyond horizon
-    ];
-    const html = renderCalendarOverlay(events, { days: 7, now: NOW });
-    // Tim exists in the data → quiet week; Caroline appears nowhere → unlinked.
-    expect(html).toContain('Nothing coming up.');
-    expect(html).toContain('Not linked yet');
-  });
-
-  it('a work calendar links its PERSON: Caroline (Work) events mark Caroline linked', () => {
-    const events = [
-      ev({ id: 'cw', calendar: 'Caroline (Work)', person: 'Caroline', kind: 'work', startsAt: '2026-09-01T10:00:00' }),
-      ev({ id: 'f1' }),
-      ev({ id: 't1', calendar: 'Tim', startsAt: '2026-07-09T10:00:00' }),
-    ];
-    const html = renderCalendarOverlay(events, { days: 7, now: NOW });
-    // Her only event is beyond the horizon → quiet week, NOT unlinked.
+  it('a linked-but-quiet Family week reads "Nothing coming up.", not unlinked', () => {
+    const html = renderCalendarOverlay([
+      ev({ id: 'f1', startsAt: '2026-09-01T10:00:00' }), // Family, beyond horizon
+    ], { days: 7, now: NOW });
+    expect(html).toContain('Nothing scheduled in the next week.'); // empty within horizon
     expect(html).not.toContain('Not linked yet');
   });
 
   it('tags work-calendar rows with the Work pill', () => {
     const html = renderCalendarOverlay([
-      ev({ id: 'w', calendar: 'Tim (Work)', person: 'Tim', kind: 'work', title: 'Product review' }),
+      ev({ id: 'w', calendar: 'Family (Work)', person: 'Family', kind: 'work', title: 'Product review' }),
     ], { days: 7, now: NOW });
     expect(html).toContain('cal-tag--work');
-    expect(html).toContain('cal-person--tim'); // grouped under Tim, not "Tim (Work)"
+    expect(html).toContain('cal-person--family'); // grouped under the person, not the source
   });
 
   it('empty-week Coming-up chips carry the person name and hue for work events', () => {
     const html = renderCalendarOverlay([
-      ev({ id: 'w', calendar: 'Tim (Work)', person: 'Tim', kind: 'work', startsAt: '2026-08-01T10:00:00' }),
+      ev({ id: 'w', calendar: 'Family (Work)', person: 'Family', kind: 'work', startsAt: '2026-08-01T10:00:00' }),
     ], { days: 7, now: NOW });
-    expect(html).toContain('cal-chip--tim'); // person hue, not colorless tim-work
-    expect(html).not.toContain('cal-chip--tim-work');
+    expect(html).toContain('cal-chip--family'); // person hue, not colorless family-work
+    expect(html).not.toContain('cal-chip--family-work');
   });
 
   it('shows an event-count badge only for sections with events', () => {

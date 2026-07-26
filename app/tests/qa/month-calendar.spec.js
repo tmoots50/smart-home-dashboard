@@ -71,22 +71,23 @@ test('month-calendar/adjacent-months: nav updates the title; each month section 
   expect(await page.locator('[data-month-title]').textContent()).toBe(before);
 });
 
-test('month-calendar/typical: legend filters chips to one calendar and back', async ({ page }) => {
+test('month-calendar/typical: legend is Family-only and its filter toggles', async ({ page }) => {
   await open(page, 'typical');
-  const timChips = page.locator('.month-cal__month').first().locator('.month-cal__chip--tim');
-  const otherChips = page.locator('.month-cal__month').first()
-    .locator('.month-cal__chip:not(.month-cal__chip--tim)');
-  const timCount = await timChips.count();
-  const otherCount = await otherChips.count();
-  expect(otherCount).toBeGreaterThan(0); // fixture must exercise the filter
+  // Tim and Caroline are hidden — no legend entries, no chips.
+  await expect(page.locator('[data-filter="tim"]')).toHaveCount(0);
+  await expect(page.locator('[data-filter="caroline"]')).toHaveCount(0);
+  await expect(page.locator('.month-cal__chip--tim')).toHaveCount(0);
+  await expect(page.locator('.month-cal__chip--caroline')).toHaveCount(0);
 
-  await page.locator('[data-filter="tim"]').tap();
-  await expect(timChips).toHaveCount(timCount);
-  await expect(otherChips).toHaveCount(0);
-  await expect(page.locator('[data-filter="tim"]')).toHaveAttribute('aria-pressed', 'true');
+  const familyChips = page.locator('.month-cal__month').first().locator('.month-cal__chip--family');
+  const familyCount = await familyChips.count();
+  expect(familyCount).toBeGreaterThan(0);
 
-  await page.locator('[data-filter="tim"]').tap(); // tap again = clear
-  await expect(otherChips).toHaveCount(otherCount);
+  await page.locator('[data-filter="family"]').tap();
+  await expect(page.locator('[data-filter="family"]')).toHaveAttribute('aria-pressed', 'true');
+  await expect(familyChips).toHaveCount(familyCount); // Family stays visible when filtered to Family
+  await page.locator('[data-filter="family"]').tap(); // tap again = clear
+  await expect(page.locator('[data-filter="family"]')).toHaveAttribute('aria-pressed', 'false');
 });
 
 test('month-calendar/typical: scrolling toward the end appends the next month', async ({ page }) => {
@@ -100,20 +101,20 @@ test('month-calendar/typical: scrolling toward the end appends the next month', 
   await expect(page.locator('.month-cal__month')).toHaveCount(3);
 });
 
-// Multi-source model: work chips take the person hue + is-work marker, and
-// the person legend filter includes that person's work calendar.
-test('month-calendar/overflow: work chips carry person hue + is-work; day sheet shows the Work tag', async ({ page }) => {
+// Hidden-people regression: Tim/Caroline (incl. their work feeds) never chip
+// on the grid, and the day-detail sheet is Family-only with no Work tags.
+test('month-calendar/overflow: Tim and Caroline are hidden on the grid and in the day sheet', async ({ page }) => {
   await open(page, 'overflow');
-  const workChip = page.locator('.month-cal__chip.is-work').first();
-  await expect(workChip).toBeVisible();
-  await expect(workChip).toHaveClass(/month-cal__chip--tim/);
+  await expect(page.locator('.month-cal__chip--tim')).toHaveCount(0);
+  await expect(page.locator('.month-cal__chip--caroline')).toHaveCount(0);
+  await expect(page.locator('.month-cal__chip.is-work')).toHaveCount(0);
 
   await page.locator('.month-cal__more').first().tap();
   const sheet = page.locator('.overlay--day-detail');
   await expect(sheet).toBeVisible();
-  expect(await sheet.locator('.cal-tag--work').count()).toBeGreaterThan(0);
-  // Day-sheet chips show the person (colored), not a colorless source slug.
-  expect(await sheet.locator('.cal-chip--tim').count()).toBeGreaterThan(0);
+  await expect(sheet.locator('.cal-event')).toHaveCount(6); // the 6 Family events only
+  await expect(sheet.locator('.cal-tag--work')).toHaveCount(0);
+  await expect(sheet.locator('.cal-chip--tim, .cal-chip--caroline')).toHaveCount(0);
 });
 
 test('month-calendar/all-day-span: a span running since last month lands on day 1', async ({ page }) => {

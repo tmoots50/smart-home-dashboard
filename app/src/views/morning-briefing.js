@@ -174,7 +174,10 @@ export function renderMorningBriefing(root) {
     }
     const overlay = e.target.closest('[data-overlay]')?.dataset.overlay;
     if (overlay === 'calendar') {
-      openCalendarOverlay(getUpcoming(90), { days: 90, perPerson: 10 });
+      // Family is the only visible calendar now, so show the full scrollable
+      // 90-day Family agenda instead of a per-person top-N (which, with one
+      // person, would hide most of the month).
+      openCalendarOverlay(getUpcoming(90), { days: 90 });
     }
   });
 }

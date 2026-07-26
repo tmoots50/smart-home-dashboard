@@ -42,19 +42,23 @@ function evt(i, offset, h, title, extra = {}) {
   };
 }
 
-// A packed week: ~36 timed events across all 7 days plus a multi-day all-day
-// span — the state that answers "what gets pushed off screen, and where does
-// the ideal cutoff sit?".
+// A packed Family week: ~36 timed Family events across all 7 days plus a
+// multi-day all-day span — the state that answers "what gets pushed off
+// screen?". All Family, because that's the only visible calendar now; a
+// handful of Tim/Caroline rows ride along to prove they're dropped under load.
 function overflowWeek() {
   const events = [];
   let i = 0;
   for (let offset = 0; offset < 7; offset++) {
     for (const h of [7, 9, 11, 13, 15, 17, 19]) {
       if ((offset + h) % 3 === 0) continue; // thin it slightly so days differ
-      events.push(evt(i++, offset, h, `Event ${i} — day ${offset}`));
+      events.push(evt(i++, offset, h, `Event ${i} — day ${offset}`, { calendar: 'Family', person: 'Family' }));
     }
   }
-  events.push({ id: 'fx-allday', calendar: 'Family', title: 'Grandma visiting', sub: '', description: '', startsAt: ymd(day(1)), endsAt: ymd(day(3)), allDay: true });
+  // Hidden rows that must not survive the filter.
+  events.push(evt(900, 0, 8, 'Tim work block', { calendar: 'Tim (Work)', person: 'Tim', kind: 'work' }));
+  events.push(evt(901, 3, 8, 'Caroline offsite', { calendar: 'Caroline (Work)', person: 'Caroline', kind: 'work' }));
+  events.push({ id: 'fx-allday', calendar: 'Family', person: 'Family', title: 'Grandma visiting', sub: '', description: '', startsAt: ymd(day(1)), endsAt: ymd(day(3)), allDay: true });
   return events;
 }
 
@@ -67,17 +71,17 @@ export const states = {
   'empty-with-later': Array.from({ length: 36 }, (_, i) =>
     evt(200 + i, 8 + i, 9 + (i % 8), `Later event ${i + 1}`)),
 
-  single: [evt(0, 2, 10, 'Recruiter call — Tessa')],
+  single: [evt(0, 2, 10, 'Pediatrician — Mabel', { calendar: 'Family', person: 'Family' })],
 
-  // The standard demo mix: timed + all-day across all four source calendars
-  // (mock now includes Tim (Work) + Caroline (Work) with person/kind).
+  // The standard demo mix from the four-source feed. Tim (Work) + Caroline
+  // (Work) rows are present but hidden, so only Family renders.
   typical: getMockUpcoming(NOW),
 
   overflow: overflowWeek(),
 
-  // A work-heavy week: Tim's section dominated by Work-tagged rows, Caroline's
-  // section fully populated from her Outlook feed — the two new geometry
-  // stressors for the person-grouped view.
+  // A work-heavy feed: Tim/Caroline dominate with Work-tagged rows on top of
+  // the mock mix. The overlay must drop every one of them and show only
+  // Family — the hidden-people regression under load.
   'work-dense': [
     ...getMockUpcoming(NOW),
     ...Array.from({ length: 6 }, (_, i) => evt(300 + i, i, 9 + (i % 3) * 2, `Narvar sync ${i + 1}`, {
@@ -88,18 +92,17 @@ export const states = {
     })),
   ],
 
-  // Caroline appears nowhere in the data (her reality until her Outlook feed
-  // is wired in Phase 3) → her roster section must render "Not linked yet"
-  // instead of vanishing. Match on person: her work calendar sets person, and
-  // the roster's linked-set is person-keyed.
-  'caroline-unlinked': getMockUpcoming(NOW).filter(ev => (ev.person ?? ev.calendar) !== 'Caroline'),
+  // The feed carries Tim/Caroline events but the overlay shows only Family —
+  // no vanished-person "Not linked yet" placeholder appears for them.
+  'hidden-people': getMockUpcoming(NOW),
 
-  // All-day pinning stress: several all-day events stacked on the same days.
+  // All-day pinning stress: several all-day Family events stacked on the same
+  // days (person-agnostic geometry — all Family, the only visible calendar).
   'all-day-heavy': [
-    { id: 'ad-1', calendar: 'Family', title: 'Grandma visiting', sub: '', description: '', startsAt: ymd(day(0)), endsAt: ymd(day(2)), allDay: true },
-    { id: 'ad-2', calendar: 'Tim', title: 'Conference — virtual', sub: '', description: '', startsAt: ymd(day(0)), endsAt: ymd(day(1)), allDay: true },
-    { id: 'ad-3', calendar: 'Caroline', title: 'Offsite', sub: '', description: '', startsAt: ymd(day(1)), endsAt: ymd(day(1)), allDay: true },
-    evt(90, 0, 12, 'Lunch with Dave'),
-    evt(91, 1, 9, 'Standup'),
+    { id: 'ad-1', calendar: 'Family', person: 'Family', title: 'Grandma visiting', sub: '', description: '', startsAt: ymd(day(0)), endsAt: ymd(day(2)), allDay: true },
+    { id: 'ad-2', calendar: 'Family', person: 'Family', title: 'Conference — virtual', sub: '', description: '', startsAt: ymd(day(0)), endsAt: ymd(day(1)), allDay: true },
+    { id: 'ad-3', calendar: 'Family', person: 'Family', title: 'Neighborhood cleanup', sub: '', description: '', startsAt: ymd(day(1)), endsAt: ymd(day(1)), allDay: true },
+    evt(90, 0, 12, 'Lunch with Dave', { calendar: 'Family', person: 'Family' }),
+    evt(91, 1, 9, 'Standup', { calendar: 'Family', person: 'Family' }),
   ],
 };

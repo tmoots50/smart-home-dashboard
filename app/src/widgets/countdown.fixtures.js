@@ -55,12 +55,15 @@ export const states = {
 
   typical: [...LEFT, ...RIGHT, ...THIS_WEEK],
 
-  // Multi-calendar mix — the card shows every household calendar now.
+  // Hidden-people demo: the feed carries Tim/Caroline items that must be
+  // dropped, leaving only Family. Tim's flight is hidden; the Family trip
+  // still surfaces in the plan-ahead pane.
   mixed: [
     evt('x1', 'Family swim lesson', 5),
-    evt('x2', 'Recruiter call', 6, { calendar: 'Tim' }),
-    evt('x3', 'Book club', 8, { calendar: 'Caroline' }),
-    evt('x4', 'Flight to Denver', 40, { calendar: 'Tim', hour: 7 }),
+    evt('x2', 'Recruiter call', 6, { calendar: 'Tim' }),             // hidden
+    evt('x3', 'Book club', 8, { calendar: 'Caroline' }),             // hidden
+    evt('x4', 'Flight to Denver', 40, { calendar: 'Tim', hour: 7 }), // hidden (Tim travel)
+    evt('x5', 'Family trip to the coast', 45, { allDay: true, startsAt: ymd(45), endsAt: ymd(48) }), // Family → plan-ahead
   ],
 
   // Both panes overflow their scroll regions.

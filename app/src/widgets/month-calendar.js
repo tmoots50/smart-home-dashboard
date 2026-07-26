@@ -22,6 +22,7 @@
 // consistent with calendar-overlay + event-detail today.
 
 import { openEventDetail } from './event-detail.js';
+import { visibleRoster, visibleEvents } from '../lib/calendar-people.js';
 
 const CLOSE_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 
@@ -33,8 +34,11 @@ const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MAX_CHIPS = 3;
 const NAV_LIMIT_MONTHS = 12;
 // Household roster — legend order and colors stay stable before data loads.
-// Calendars that appear in event data but not here append after, unfiltered.
-const ROSTER = ['Family', 'Tim', 'Caroline'];
+// Tim and Caroline are hidden from every calendar surface, so the legend is
+// Family-only (see lib/calendar-people.js); their chips/events are dropped by
+// filterEvents + legendRoster below. Non-hidden calendars in event data that
+// aren't in this list append to the legend after, unfiltered.
+const ROSTER = visibleRoster(['Family', 'Tim', 'Caroline']);
 
 // ───── pure grid model ─────
 
@@ -93,16 +97,19 @@ export function buildMonthGrid(year, month, events, now = new Date()) {
 // personal calendars share one hue and one legend entry; tapping "Tim"
 // filters to both). `calendar` fallback covers pre-multi-source events.
 function filterEvents(events, filter) {
-  if (!filter) return events ?? [];
-  return (events ?? []).filter(ev => slug(personOf(ev)) === filter);
+  // Hidden people (Tim, Caroline) are dropped before any legend filter runs,
+  // so their chips never reach the grid or the day-detail sheet.
+  const base = visibleEvents(events);
+  if (!filter) return base;
+  return base.filter(ev => slug(personOf(ev)) === filter);
 }
 
-// Legend roster: the household three, plus any person the data surfaces
-// that we didn't expect (renders with the "other" hue).
+// Legend roster: the visible household (Family), plus any non-hidden person
+// the data surfaces that we didn't expect (renders with the "other" hue).
 function legendRoster(events) {
   const known = new Set(ROSTER.map(slug));
   const extras = [];
-  for (const ev of events ?? []) {
+  for (const ev of visibleEvents(events)) {
     const s = slug(personOf(ev));
     if (!known.has(s)) {
       known.add(s);

@@ -61,8 +61,9 @@ const WIDGETS = {
     states: calendarOverlayStates,
     mount(root, events) {
       // The real overlay mounts over the briefing; give it the same backdrop.
+      // Matches morning-briefing.js: full 90-day Family agenda, uncapped.
       root.innerHTML = '<main class="briefing"></main>';
-      openCalendarOverlay({ initial: events }, { days: 90, perPerson: 10 });
+      openCalendarOverlay({ initial: events }, { days: 90 });
     },
   },
 

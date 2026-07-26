@@ -19,6 +19,7 @@
 
 import { getCalendar, fetchCalendar } from '../lib/calendar.js';
 import { CARD_MAX_PER_COLUMN } from '../lib/comingup.js';
+import { visibleRoster, isHiddenEvent } from '../lib/calendar-people.js';
 import { openEventDetail } from './event-detail.js';
 
 const TIME_FMT = new Intl.DateTimeFormat(undefined, {
@@ -41,10 +42,11 @@ const MAX_PER_COLUMN = CARD_MAX_PER_COLUMN;
 const MAX_DAY_GROUPED = 21;
 
 // Column order + labels for the family calendar. Each column pulls its events
-// from the data section whose `label` matches. A column with no matching
-// section (e.g. Caroline until her calendar is wired) renders a placeholder.
-// Change the order/labels here; the widget stays in sync.
-const COLUMNS = ['Family', 'Tim', 'Caroline'];
+// from the data section whose `label` matches. The household roster is
+// Family/Tim/Caroline, but Tim and Caroline are hidden from every calendar
+// surface (see lib/calendar-people.js) — so the card renders the Family
+// column only. Their sections/events are dropped, not merged.
+const COLUMNS = visibleRoster(['Family', 'Tim', 'Caroline']);
 
 export const FLAVORS = ['stacked', 'rail', 'days', 'classic'];
 export const DEFAULT_FLAVOR = 'stacked';
@@ -68,13 +70,17 @@ function renderColumns(data, now, flavor) {
     return { label, events, connected: !!section };
   });
 
+  // Track count follows the visible columns — with Tim and Caroline hidden the
+  // card is a single Family column, and a fixed 3-track grid would strand it in
+  // the left third. One column → full width; the layout scales back up on its
+  // own if a person is ever un-hidden.
   return `
     <div class="calendar calendar--columns calendar--${flavor}">
       <div class="card__header">
         <h2 class="card__title">Family Calendar</h2>
         <button class="btn btn--text" data-overlay="calendar">See more</button>
       </div>
-      <div class="calendar__grid">
+      <div class="calendar__grid" style="grid-template-columns: repeat(${columns.length}, minmax(0, 1fr))">
         ${columns.map(col => renderColumn(col, data.nextEventId, now, flavor)).join('')}
       </div>
     </div>
@@ -187,6 +193,9 @@ function renderDayGrouped(data, now) {
     // Keep the event's true source calendar; backfill person from the
     // (person-keyed) section label for legacy events that predate the field.
     .flatMap(s => (s.events ?? []).map(e => ({ ...e, calendar: e.calendar || s.label, person: e.person || s.label })))
+    // This flavor bypasses the column filter (no columns), so drop hidden
+    // people's events here too — the legend already excludes them.
+    .filter(e => !isHiddenEvent(e))
     .filter(e => parseLocalish(e.startsAt) >= now)
     .sort((a, b) => parseLocalish(a.startsAt) - parseLocalish(b.startsAt))
     .slice(0, MAX_DAY_GROUPED);

@@ -45,31 +45,31 @@ for (const state of Object.keys(states)) {
 }
 
 // Regression lock for the 2026-07 column-starvation bug: per-column limits
-// mean a packed Family week can never evict Tim's few events.
-test('calendar/uneven: no connected column with events is starved by another', async ({ page }) => {
+// mean a packed Family week can never evict another column. Only Family is
+// visible now, so a hidden Tim event simply doesn't render.
+test('calendar/uneven: only the Family column renders, capped at 7; Tim is hidden', async ({ page }) => {
   await open(page, 'uneven');
   await expect(page.locator('.calendar__column--family .calendar__event')).toHaveCount(7);
-  await expect(page.locator('.calendar__column--tim .calendar__event')).toHaveCount(1);
+  await expect(page.locator('.calendar__column--tim')).toHaveCount(0);
+  await expect(page.locator('.calendar__column--caroline')).toHaveCount(0);
 });
 
-// Multi-source model: work events interleave into the person's column with
-// the --work left edge (the old text pill is gone); Caroline's column
-// renders her Outlook feed.
-test('calendar/work-dense: work edges render in Tim\'s column; Caroline\'s column is populated', async ({ page }) => {
+// Hidden-people regression: a feed dominated by Tim/Caroline (work + personal)
+// renders as a single Family event — their columns and rows are gone.
+test('calendar/work-dense: Tim and Caroline are hidden; only the Family column shows', async ({ page }) => {
   await open(page, 'work-dense');
-  const timWorkRows = page.locator('.calendar__column--tim .calendar__event--work');
-  expect(await timWorkRows.count()).toBeGreaterThan(0);
-  await expect(page.locator('.calendar__column--tim .cal-tag--work')).toHaveCount(0);
-  await expect(page.locator('.calendar__column--tim .calendar__event')).toHaveCount(7); // 8 events → 7-row cap holds
-  await expect(page.locator('.calendar__column--caroline .calendar__event')).toHaveCount(3);
-  expect(await page.locator('.calendar__column--caroline .calendar__event--work').count()).toBeGreaterThan(0);
+  await expect(page.locator('.calendar__column--tim')).toHaveCount(0);
+  await expect(page.locator('.calendar__column--caroline')).toHaveCount(0);
+  await expect(page.locator('.calendar__column--family')).toHaveCount(1);
+  await expect(page.locator('.calendar__event--work')).toHaveCount(0); // no visible work feeds remain
+  await expect(page.locator('.calendar')).not.toContainText('Busy');
 });
 
-test('calendar/work-dense: tapping a work row opens detail with the true source calendar', async ({ page }) => {
+test('calendar/work-dense: tapping the Family row opens detail with its source calendar', async ({ page }) => {
   await open(page, 'work-dense');
-  await page.locator('.calendar__column--tim .calendar__event').first().tap();
+  await page.locator('.calendar__column--family .calendar__event').first().tap();
   await expect(page.locator('.event-detail')).toBeVisible();
-  await expect(page.locator('.event-detail .cal-chip')).toHaveText('Tim (Work)');
+  await expect(page.locator('.event-detail .cal-chip')).toHaveText('Family');
 });
 
 test('calendar/typical: tapping an event row opens the detail panel', async ({ page }) => {
@@ -120,10 +120,12 @@ test('calendar/typical-classic: classic-flavor titles stay on one compact line',
   expect(heights.every(({ height, lineHeight }) => height <= lineHeight + 1)).toBe(true);
 });
 
-test('calendar/typical-days: day-grouped flavor shows day headers and a person legend', async ({ page }) => {
+test('calendar/typical-days: day-grouped flavor shows day headers and a Family-only legend', async ({ page }) => {
   await open(page, 'typical-days');
   await expect(page.locator('.calendar--days')).toBeVisible();
   expect(await page.locator('.calendar__day-label').count()).toBeGreaterThan(0);
-  await expect(page.locator('.calendar__legend-item')).toHaveCount(3);
+  await expect(page.locator('.calendar__legend-item')).toHaveCount(1); // Family only; Tim/Caroline hidden
+  await expect(page.locator('.calendar__dot--tim')).toHaveCount(0);
+  await expect(page.locator('.calendar__dot--caroline')).toHaveCount(0);
   await expect(page.locator('.calendar__day-label').first()).toContainText(/Today/);
 });

@@ -27,19 +27,21 @@ export const states = {
 
   typical: { months: { [key(Y, M)]: getMockMonth(Y, M) } },
 
-  // Six events stacked on the 10th → 3 chips + "+3 more" → day-detail sheet.
-  // Includes work-calendar events (person + kind) so the day sheet and chips
-  // exercise the person-hue + Work-marker path.
+  // Six FAMILY events stacked on the 10th → 3 chips + "+3 more" → day-detail
+  // sheet. Two hidden Tim/Caroline rows ride along on the same day to prove
+  // they're filtered before the chip/more math runs.
   overflow: {
     months: {
       [key(Y, M)]: [
         evt('o1', 'Family', 'Pediatrician', 10, 8),
-        evt('o2', 'Tim (Work)', 'Product review', 10, 10, { person: 'Tim', kind: 'work' }),
+        evt('o2', 'Tim (Work)', 'Product review', 10, 9, { person: 'Tim', kind: 'work' }),   // hidden
         evt('o3', 'Family', 'Swim lesson', 10, 11),
-        evt('o4', 'Caroline (Work)', 'Offsite', 10, 13, { person: 'Caroline', kind: 'work', readOnly: true }),
-        evt('o5', 'Tim', 'Dentist', 10, 15),
-        evt('o6', 'Family', 'Dinner with the Fregos', 10, 18),
-        evt('o7', 'Family', 'Farmers market', 12, 9),
+        evt('o4', 'Caroline (Work)', 'Offsite', 10, 12, { person: 'Caroline', kind: 'work', readOnly: true }), // hidden
+        evt('o5', 'Family', 'Dentist', 10, 13),
+        evt('o6', 'Family', 'Dinner with the Fregos', 10, 15),
+        evt('o7', 'Family', 'Book club', 10, 17),
+        evt('o8', 'Family', 'Evening walk', 10, 19),
+        evt('o9', 'Family', 'Farmers market', 12, 9),
       ],
     },
   },
@@ -51,7 +53,7 @@ export const states = {
       [key(Y, M)]: [
         { id: 's1', calendar: 'Family', title: 'Grandma visiting', sub: '', description: '', startsAt: ymd(14), endsAt: ymd(17), allDay: true },
         {
-          id: 's2', calendar: 'Tim', title: 'Conference — running since last month', sub: '', description: '',
+          id: 's2', calendar: 'Family', title: 'Conference — running since last month', sub: '', description: '',
           startsAt: `${prevM.getFullYear()}-${String(prevM.getMonth() + 1).padStart(2, '0')}-27`,
           endsAt: ymd(3),
           allDay: true,
@@ -66,7 +68,7 @@ export const states = {
     months: {
       [key(Y, M)]: [evt('a1', 'Family', 'This month event', 15, 10)],
       [key(nextM.getFullYear(), nextM.getMonth())]: [{
-        id: 'a2', calendar: 'Tim', title: 'Next month event', sub: '', description: '',
+        id: 'a2', calendar: 'Family', title: 'Next month event', sub: '', description: '',
         startsAt: new Date(nextM.getFullYear(), nextM.getMonth(), 8, 9).toISOString(),
         endsAt: new Date(nextM.getFullYear(), nextM.getMonth(), 8, 10).toISOString(),
         allDay: false,

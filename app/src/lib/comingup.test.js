@@ -144,6 +144,23 @@ describe('rankComingUp', () => {
     const { left } = rankComingUp([...cardFillers(), ev({ title: 'X', startsAt: '2026-07-20T10:00:00' })], { now: NOW });
     expect(left[0].days).toBe(5);
   });
+
+  it('excludes Tim and Caroline events from both panes (hidden everywhere)', () => {
+    const { left, right } = rankComingUp([
+      ...cardFillers(),                                                                 // occupy the card's near-term slots
+      ev({ title: 'Family agenda item', startsAt: '2026-07-24T10:00:00' }),            // Family, left window
+      ev({ title: 'Family trip', startsAt: '2026-09-01T10:00:00' }),                   // Family, right (travel)
+      ev({ calendar: 'Tim', title: 'Recruiter call', startsAt: '2026-07-24T11:00:00' }), // Tim → hidden
+      ev({ calendar: 'Tim (Work)', person: 'Tim', kind: 'work', title: 'Narvar offsite', startsAt: '2026-09-05T09:00:00' }), // Tim work → hidden
+      ev({ calendar: 'Caroline (Work)', person: 'Caroline', title: 'Client presentation', startsAt: '2026-07-25T09:00:00' }), // Caroline → hidden
+    ], { now: NOW });
+    const names = [...left, ...right].map(i => i.name);
+    expect(names).toContain('Family agenda item');
+    expect(names).toContain('Family trip');
+    expect(names).not.toContain('Recruiter call');
+    expect(names).not.toContain('Narvar offsite');
+    expect(names).not.toContain('Client presentation');
+  });
 });
 
 describe('rankComingUp overrides (the Hermes hand)', () => {

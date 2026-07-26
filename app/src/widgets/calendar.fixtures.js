@@ -42,15 +42,16 @@ function packedSection(label, count) {
 }
 
 export const states = {
-  // All three calendars linked, nothing scheduled — the state Tim flagged as
-  // a design gap (should it show upcoming events instead of three blanks?).
+  // Family linked but empty (Tim/Caroline present in the feed but hidden) →
+  // the card renders one Family column reading "Nothing scheduled."
   empty: {
     data: { sections: [section('Tim', []), section('Family', []), section('Caroline', [])], nextEventId: null },
   },
 
-  // Caroline's calendar not linked yet → "Not linked yet" placeholder column.
+  // No Family section at all → the sole (Family) column shows the
+  // "Not linked yet" placeholder. The stray Tim event is dropped, not shown.
   unlinked: {
-    data: { sections: [section('Tim', [evt('t1', 9, 0, 'Recruiter call — Tessa', 'Phone')]), section('Family', [])], nextEventId: 't1' },
+    data: { sections: [section('Tim', [evt('t1', 9, 0, 'Recruiter call — Tessa', 'Phone')])], nextEventId: 't1' },
   },
 
   single: {
@@ -71,11 +72,10 @@ export const states = {
     data: { sections: [section('Tim', []), packedSection('Family', 12), section('Caroline', [])], nextEventId: 'family-0' },
   },
 
-  // The multi-source geometry stressor: Tim's column dense with work +
-  // personal interleaved (work left-edges on most rows), Caroline's column
-  // populated from her Outlook feed. Exercises the 7-row cap under the
-  // heavier edged rows. Work rows titled "Busy" mirror the Instacart
-  // free/busy feed (titles hidden at that sharing level).
+  // Hidden-people regression fixture: the feed is dominated by Tim (work +
+  // personal) and Caroline (Outlook) rows, with a single Family event. The
+  // card must render ONLY that Family event — every Tim/Caroline row is
+  // dropped. Work rows titled "Busy" mirror the Instacart free/busy feed.
   'work-dense': {
     data: {
       sections: [
@@ -100,9 +100,9 @@ export const states = {
     },
   },
 
-  // Worst-case distribution: Family flooded, Tim with one LATE event, long
-  // title exercising the single-line ellipsis. Under the old global top-10
-  // Tim's event was evicted entirely — the parity spec locks the fix.
+  // Family flooded + a hidden Tim event, long title exercising the single-
+  // line ellipsis. The card shows Family's first 7 rows; the Tim row is
+  // dropped, not squeezed in.
   uneven: {
     data: {
       sections: [

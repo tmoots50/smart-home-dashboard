@@ -16,6 +16,7 @@
 // event-detail panel for description/location drill-down.
 
 import { openEventDetail } from './event-detail.js';
+import { visibleRoster, visibleEvents } from '../lib/calendar-people.js';
 
 const CLOSE_SVG = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
 
@@ -26,7 +27,9 @@ const MONTHDAY_FMT = new Intl.DateTimeFormat(undefined, { month: 'short', day: '
 
 // Column order of the Family Calendar card (calendar.js COLUMNS) — person
 // sections keep the same household order; unknown labels sort after, A→Z.
-const PERSON_ORDER = ['Family', 'Tim', 'Caroline'];
+// Tim and Caroline are hidden from every calendar surface, so the roster is
+// Family-only here too (see lib/calendar-people.js).
+const PERSON_ORDER = visibleRoster(['Family', 'Tim', 'Caroline']);
 
 // Ideal-N for the empty-week "Coming up" list, empirically derived: the QA
 // harness measured 29 event rows fully visible before the canvas fold
@@ -76,6 +79,10 @@ export function openCalendarOverlay(source, { days = 7, groupBy = 'person', perP
 // ───── pure render ─────
 
 export function renderCalendarOverlay(events, { days = 7, now = new Date(), groupBy = 'person', perPerson = null } = {}) {
+  // Hidden people (Tim, Caroline) are dropped up front, so nothing downstream —
+  // person sections, day buckets, the empty-week "Coming up" list — can surface
+  // them. The pure grouping helpers below stay person-agnostic on purpose.
+  events = visibleEvents(events);
   const { within, later } = splitByHorizon(events, days, now);
 
   let body;

@@ -72,39 +72,38 @@ test('overlay/empty: truly-empty stays calm — one line, no Coming up', async (
   await expect(page.locator('.cal-coming')).toHaveCount(0);
 });
 
-test('overlay/empty-with-later: future events are capped at ten per person', async ({ page }) => {
+test('overlay/empty-with-later: uncapped Family agenda under the "Next N days" heading', async ({ page }) => {
   await open(page, 'empty-with-later');
-  await expect(page.locator('.cal-overlay .overlay__title')).toHaveText("What's ahead");
-  await expect(page.locator('.cal-overlay__subtitle')).toHaveText('Next 10 events per person');
+  await expect(page.locator('.cal-overlay .overlay__title')).toHaveText('Next 90 days');
+  await expect(page.locator('.cal-overlay__subtitle')).toHaveCount(0); // no per-person subtitle
   const sections = page.locator('.cal-person');
-  await expect(sections).toHaveCount(3);
-  for (let i = 0; i < 3; i += 1) {
-    await expect(sections.nth(i).locator('.cal-event')).toHaveCount(10);
-  }
+  await expect(sections).toHaveCount(1); // Family only
+  await expect(sections.first().locator('.cal-person__name')).toHaveText('Family');
 });
 
-test('overlay/typical: person sections in household order with day column', async ({ page }) => {
+test('overlay/typical: only the Family section renders, with a day column', async ({ page }) => {
   await open(page, 'typical');
   const labels = await page.locator('.cal-person__name').allTextContents();
-  expect(labels.map(s => s.trim())).toEqual(['Family', 'Tim', 'Caroline']);
+  expect(labels.map(s => s.trim())).toEqual(['Family']);
   await expect(page.locator('.cal-event__day').first()).toBeVisible();
 });
 
-test('overlay/caroline-unlinked: her section renders "Not linked yet" instead of vanishing', async ({ page }) => {
-  await open(page, 'caroline-unlinked');
-  const caroline = page.locator('.cal-person--caroline');
-  await expect(caroline).toHaveCount(1);
-  await expect(caroline.locator('.cal-overlay__unlinked')).toHaveText('Not linked yet');
+test('overlay/hidden-people: Tim and Caroline never render, no placeholder', async ({ page }) => {
+  await open(page, 'hidden-people');
+  await expect(page.locator('.cal-person--tim')).toHaveCount(0);
+  await expect(page.locator('.cal-person--caroline')).toHaveCount(0);
+  await expect(page.locator('.cal-person--family')).toHaveCount(1);
+  await expect(page.locator('.cal-overlay')).not.toContainText('Not linked yet');
 });
 
-// Multi-source model: Tim's section merges personal + Narvar work (tagged);
-// Caroline's section carries her Outlook feed under her own hue.
-test('overlay/work-dense: Work tags in Tim\'s section; Caroline\'s section populated', async ({ page }) => {
+// Hidden-people regression under load: a work-heavy feed still shows only
+// Family — no Tim/Caroline sections, no Work tags survive.
+test('overlay/work-dense: only the Family section survives the hidden filter', async ({ page }) => {
   await open(page, 'work-dense');
-  expect(await page.locator('.cal-person--tim .cal-tag--work').count()).toBeGreaterThan(0);
-  expect(await page.locator('.cal-person--caroline .cal-event').count()).toBeGreaterThan(0);
-  // Work calendars never spawn their own section — person columns only.
-  await expect(page.locator('.cal-person__name').filter({ hasText: '(Work)' })).toHaveCount(0);
+  await expect(page.locator('.cal-person--tim')).toHaveCount(0);
+  await expect(page.locator('.cal-person--caroline')).toHaveCount(0);
+  await expect(page.locator('.cal-person--family')).toHaveCount(1);
+  await expect(page.locator('.cal-tag--work')).toHaveCount(0);
 });
 
 test('overlay/overflow: body scrolling stays inside the modal', async ({ page }) => {

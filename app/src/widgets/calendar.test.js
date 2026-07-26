@@ -6,41 +6,49 @@ import { getMockCalendar } from '../lib/calendar-mock.js';
 const escapeAttr = (s) => s.replace(/"/g, '&quot;');
 
 describe('renderCalendar', () => {
-  it('always renders all three labels with Family first', () => {
+  it('renders the Family column only — Tim and Caroline are hidden everywhere', () => {
     const NOW = new Date('2026-04-29T07:00:00');
-    const data = getMockCalendar(NOW);
-    const html = renderCalendar(data, NOW);
-    expect(html).toContain('Tim');
-    expect(html).toContain('Family');
-    expect(html).toContain('Caroline');
-    expect(html.indexOf('Family')).toBeLessThan(html.indexOf('Tim'));
+    const html = renderCalendar(getMockCalendar(NOW), NOW); // mock carries all three
+    expect(html).toContain('calendar__column--family');
+    expect(html).not.toContain('calendar__column--tim');
+    expect(html).not.toContain('calendar__column--caroline');
+    // Their names never appear — not as a label, not inside a data-event blob.
+    expect(html).not.toContain('Tim');
+    expect(html).not.toContain('Caroline');
+    // Family's own events still render.
+    expect(html).toContain('Pediatrician — Mabel 1mo');
   });
 
-  it('shows "Nothing scheduled." for a connected column with no events', () => {
+  it('drops hidden people\'s sections and events entirely (no placeholder column)', () => {
     const NOW = new Date('2026-04-29T08:00:00');
     const start = new Date(NOW.getTime() + 30 * 60_000).toISOString();
     const html = renderCalendar({
       sections: [
-        { label: 'Tim', events: [{ id: 'a', startsAt: start, title: 'Standup', sub: '' }] },
-        { label: 'Family', events: [] },
+        { label: 'Family', events: [{ id: 'f', startsAt: start, title: 'Dinner at home', sub: '' }] },
+        { label: 'Tim', events: [{ id: 't', startsAt: start, title: 'Recruiter call', sub: '' }] },
+        { label: 'Caroline', events: [{ id: 'c', startsAt: start, title: 'Team standup', sub: '' }] },
       ],
-      nextEventId: 'a',
+      nextEventId: 'f',
     }, NOW);
+    // Exactly one column, no "Not linked yet" for the vanished people.
+    expect((html.match(/calendar__column--/g) || [])).toHaveLength(1);
+    expect(html).toContain('Dinner at home');
+    expect(html).not.toContain('Recruiter call');
+    expect(html).not.toContain('Team standup');
+    expect(html).not.toContain('Not linked yet');
+  });
+
+  it('shows "Nothing scheduled." for an empty Family column', () => {
+    const NOW = new Date('2026-04-29T08:00:00');
+    const html = renderCalendar({ sections: [{ label: 'Family', events: [] }], nextEventId: null }, NOW);
     expect(html).toContain('Nothing scheduled');
   });
 
-  it('shows "Not linked yet" for a column with no matching section (Caroline)', () => {
+  it('shows "Not linked yet" when the Family section is missing', () => {
     const NOW = new Date('2026-04-29T08:00:00');
-    const start = new Date(NOW.getTime() + 30 * 60_000).toISOString();
-    const html = renderCalendar({
-      sections: [
-        { label: 'Tim', events: [{ id: 'a', startsAt: start, title: 'Standup', sub: '' }] },
-      ],
-      nextEventId: 'a',
-    }, NOW);
-    // Family and Caroline have no section → both render the unlinked placeholder.
+    const html = renderCalendar({ sections: [], nextEventId: null }, NOW);
     const unlinked = html.match(/Not linked yet/g) || [];
-    expect(unlinked.length).toBe(2);
+    expect(unlinked.length).toBe(1); // only the Family column exists to be unlinked
   });
 
   it('renders future events across days', () => {
@@ -49,7 +57,7 @@ describe('renderCalendar', () => {
     const tomorrow = new Date('2026-04-30T09:00:00').toISOString();
     const html = renderCalendar({
       sections: [{
-        label: 'Tim',
+        label: 'Family',
         events: [
           { id: 'a', startsAt: laterToday, title: 'Later today', sub: '' },
           { id: 'b', startsAt: tomorrow, title: 'Tomorrow morning', sub: '' },
@@ -64,12 +72,12 @@ describe('renderCalendar', () => {
 
   it('marks the next-up event with the highlight class', () => {
     const NOW = new Date('2026-04-29T07:00:00');
-    const data = getMockCalendar(NOW);
+    const data = getMockCalendar(NOW); // soonest upcoming is a Family event (08:30)
     const html = renderCalendar(data, NOW);
     expect(html).toContain('calendar__event--next');
   });
 
-  it('caps each column at 7 events', () => {
+  it('caps the Family column at 7 events', () => {
     const NOW = new Date('2026-04-29T07:00:00');
     const events = Array.from({ length: 9 }, (_, i) => ({
       id: `e-${i}`, startsAt: new Date(NOW.getTime() + (i + 1) * 60_000).toISOString(), title: `Family Event ${i}`, sub: '',
@@ -80,60 +88,41 @@ describe('renderCalendar', () => {
     expect(html).not.toContain('Family Event 8');
   });
 
-  it('columns fill independently — a packed column never starves another', () => {
+  it('a hidden person\'s events never consume Family\'s slots', () => {
     const NOW = new Date('2026-04-29T07:00:00');
-    const familyEvents = Array.from({ length: 8 }, (_, i) => ({
+    const familyEvents = Array.from({ length: 5 }, (_, i) => ({
       id: `f-${i}`, startsAt: new Date(NOW.getTime() + (i + 1) * 60_000).toISOString(), title: `Family Event ${i}`, sub: '',
     }));
-    const timEvents = Array.from({ length: 3 }, (_, i) => ({
-      // Tim's events start hours after all of Family's — under the old global
-      // top-10 they'd be evicted entirely.
-      id: `t-${i}`, startsAt: new Date(NOW.getTime() + (i + 10) * 3_600_000).toISOString(), title: `Tim Event ${i}`, sub: '',
+    const timEvents = Array.from({ length: 8 }, (_, i) => ({
+      id: `t-${i}`, startsAt: new Date(NOW.getTime() + (i + 1) * 60_000).toISOString(), title: `Tim Event ${i}`, sub: '',
     }));
     const html = renderCalendar({ sections: [
       { label: 'Family', events: familyEvents },
       { label: 'Tim', events: timEvents },
     ] }, NOW);
-    expect((html.match(/class="calendar__event/g) || [])).toHaveLength(10); // 7 + 3
-    expect(html).toContain('Tim Event 0');
-    expect(html).toContain('Tim Event 2');
+    expect((html.match(/class="calendar__event/g) || [])).toHaveLength(5); // all Family, no Tim
+    expect(html).not.toContain('Tim Event');
   });
 
-  it('still renders all column labels when nothing is scheduled', () => {
+  it('still renders the Family label when nothing is scheduled', () => {
     const NOW = new Date('2026-04-29T23:30:00');
-    const data = getMockCalendar(NOW);
-    const html = renderCalendar(data, NOW);
-    expect(html).toContain('Tim');
-    expect(html).toContain('Family');
-    expect(html).toContain('Caroline');
-    // All three people are connected in the multi-source mock; every event is
-    // in the past at 23:30 → three quiet columns, no unlinked placeholder.
+    const html = renderCalendar(getMockCalendar(NOW), NOW); // every mock event is in the past
+    expect(html).toContain('calendar__column--family');
+    expect(html).not.toContain('Tim');
+    expect(html).not.toContain('Caroline');
     const placeholders = html.match(/Nothing scheduled/g) || [];
-    expect(placeholders.length).toBe(3);
+    expect(placeholders.length).toBe(1);
     expect(html).not.toContain('Not linked yet');
   });
 
-  it('marks work-calendar events with the --work edge and interleaves them into the person column', () => {
+  it('days flavor hides Tim/Caroline dots and shows a Family-only legend', () => {
     const NOW = new Date('2026-04-29T07:00:00');
-    const html = renderCalendar(getMockCalendar(NOW), NOW);
-    // Mock Tim column: personal 14:15 → work 15:00 → personal 16:00.
-    expect(html).toContain('calendar__event--work');
-    // The old text pill is gone from the card (left edge replaced it).
-    expect(html).not.toContain('cal-tag--work');
-    const tim = html.split('calendar__column--tim')[1].split('calendar__column--caroline')[0];
-    const order = ['Job-search standup', 'Product review — Track', 'Recruiter call — Tessa']
-      .map(t => tim.indexOf(t));
-    expect(order.every(i => i >= 0)).toBe(true);
-    expect([...order].sort((a, b) => a - b)).toEqual(order);
-  });
-
-  it('preserves the true source calendar in data-event (person-keyed sections)', () => {
-    const NOW = new Date('2026-04-29T07:00:00');
-    const html = renderCalendar(getMockCalendar(NOW), NOW);
-    // The work event routes to "Tim (Work)", not the section label "Tim".
-    expect(html).toContain(escapeAttr('"calendar":"Tim (Work)"'));
-    // Personal events still fall back to the section label.
-    expect(html).toContain(escapeAttr('"calendar":"Tim"'));
+    const html = renderCalendar(getMockCalendar(NOW), NOW, { flavor: 'days' });
+    expect((html.match(/calendar__legend-item/g) || [])).toHaveLength(1); // Family only
+    expect(html).not.toContain('calendar__dot--tim');
+    expect(html).not.toContain('calendar__dot--caroline');
+    expect(html).not.toContain('Tim');
+    expect(html).not.toContain('Caroline');
   });
 
   it('escapes HTML in event titles', () => {
@@ -141,12 +130,22 @@ describe('renderCalendar', () => {
     const start = new Date(NOW.getTime() + 30 * 60_000).toISOString();
     const html = renderCalendar({
       sections: [{
-        label: 'Tim',
+        label: 'Family',
         events: [{ id: 'x', startsAt: start, title: '<img onerror=1>', sub: '' }],
       }],
       nextEventId: 'x',
     }, NOW);
     expect(html).not.toContain('<img');
     expect(html).toContain('&lt;img');
+  });
+
+  it('preserves the true source calendar in data-event for visible rows', () => {
+    const NOW = new Date('2026-04-29T07:00:00');
+    const start = new Date(NOW.getTime() + 30 * 60_000).toISOString();
+    const html = renderCalendar({
+      sections: [{ label: 'Family', events: [{ id: 'f', startsAt: start, title: 'Dinner', sub: '' }] }],
+      nextEventId: 'f',
+    }, NOW);
+    expect(html).toContain(escapeAttr('"calendar":"Family"'));
   });
 });

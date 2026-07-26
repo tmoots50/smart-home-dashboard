@@ -73,11 +73,25 @@ describe('buildMonthGrid', () => {
 
 describe('renderMonthCalendar', () => {
   it('renders the month title, dow header, and colored chips', () => {
-    const html = renderMonthCalendar([ev({ calendar: 'Tim' })], { year: YEAR, month: JULY, now: NOW });
+    const html = renderMonthCalendar([ev({ calendar: 'Family' })], { year: YEAR, month: JULY, now: NOW });
     expect(html).toContain('July 2026');
     expect(html).toContain('<span>Sun</span>');
-    expect(html).toContain('month-cal__chip--tim');
+    expect(html).toContain('month-cal__chip--family');
     expect(html).toContain('is-today');
+  });
+
+  it('hides Tim and Caroline chips and keeps the legend Family-only', () => {
+    const html = renderMonthCalendar([
+      ev({ id: 'f', calendar: 'Family', title: 'Swim lesson' }),
+      ev({ id: 't', calendar: 'Tim', title: 'Recruiter call' }),
+      ev({ id: 'cw', calendar: 'Caroline (Work)', person: 'Caroline', kind: 'work', title: 'Standup' }),
+    ], { year: YEAR, month: JULY, now: NOW });
+    expect(html).toContain('month-cal__chip--family');
+    expect(html).not.toContain('month-cal__chip--tim');
+    expect(html).not.toContain('month-cal__chip--caroline');
+    expect(html).not.toContain('Recruiter call');
+    expect(html).not.toContain('legend-item--tim');
+    expect(html).not.toContain('legend-item--caroline');
   });
 
   it('escapes HTML in titles', () => {
@@ -95,24 +109,26 @@ describe('renderMonthCalendar', () => {
   });
 
   it('work events chip in the person hue with the is-work marker', () => {
+    // Retargeted to a visible calendar — Tim/Caroline work feeds are hidden,
+    // but the person-hue + is-work rendering path still applies to any source.
     const html = renderMonthCalendar([
-      ev({ calendar: 'Tim (Work)', person: 'Tim', kind: 'work' }),
+      ev({ calendar: 'Family (Work)', person: 'Family', kind: 'work' }),
     ], { year: YEAR, month: JULY, now: NOW });
-    expect(html).toContain('month-cal__chip--tim is-work');
-    expect(html).not.toContain('month-cal__chip--tim-work');
-    // The legend stays the household three — no separate work entry.
-    expect(html).not.toContain('legend-item--tim-work');
+    expect(html).toContain('month-cal__chip--family is-work');
+    expect(html).not.toContain('month-cal__chip--family-work');
+    // No separate work legend entry.
+    expect(html).not.toContain('legend-item--family-work');
   });
 
   it('the person filter covers that person\'s work AND personal calendars', () => {
     const events = [
-      ev({ id: 'w', calendar: 'Tim (Work)', person: 'Tim', kind: 'work' }),
-      ev({ id: 'p', calendar: 'Tim', title: 'Personal thing' }),
-      ev({ id: 'f', calendar: 'Family' }),
+      ev({ id: 'w', calendar: 'Family (Work)', person: 'Family', kind: 'work' }),
+      ev({ id: 'p', calendar: 'Family', title: 'Personal thing' }),
+      ev({ id: 's', calendar: 'Sam', title: 'Someone else' }), // another visible calendar
     ];
-    const html = renderMonthCalendar(events, { year: YEAR, month: JULY, now: NOW, filter: 'tim' });
-    expect((html.match(/month-cal__chip--tim/g) || [])).toHaveLength(2); // work + personal
-    expect(html).not.toContain('month-cal__chip--family');
+    const html = renderMonthCalendar(events, { year: YEAR, month: JULY, now: NOW, filter: 'family' });
+    expect((html.match(/month-cal__chip--family/g) || [])).toHaveLength(2); // work + personal
+    expect(html).not.toContain('month-cal__chip--sam');
   });
 });
 

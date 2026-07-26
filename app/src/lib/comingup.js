@@ -20,6 +20,8 @@
 // "move the flight up / hide the watering", Hermes POSTs, the widget merges
 // on its next refresh. Baseline order stays deterministic.
 
+import { visibleEvents, visibleRoster } from './calendar-people.js';
+
 const DAY_MS = 86_400_000;
 
 const LEFT_WINDOW_DAYS = 28;
@@ -31,9 +33,10 @@ const LEFT_MIN_LEAD_DAYS = 3;
 // Mirror of the Family Calendar card's display rule (widgets/calendar.js:
 // MAX_PER_COLUMN over COLUMNS) — an event the card already shows is a dupe
 // here. Keep both constants in sync. 6 → 7 on 2026-07-19 when the card
-// grew one visible row.
+// grew one visible row. Tim and Caroline are hidden everywhere, so the card
+// (and this dupe check) is Family-only — see lib/calendar-people.js.
 export const CARD_MAX_PER_COLUMN = 7;
-const CARD_COLUMNS = ['Family', 'Tim', 'Caroline'];
+const CARD_COLUMNS = visibleRoster(['Family', 'Tim', 'Caroline']);
 
 // Signal patterns run against "title sub". Deliberately loose — a false
 // positive colors a row, it doesn't hide anything.
@@ -67,7 +70,7 @@ export function rankComingUp(events, { now = new Date(), overrides = [] } = {}) 
   const leftEnd = addDays(weekEnd(now), LEFT_WINDOW_DAYS);
   const rightEnd = addDays(today, RIGHT_WINDOW_DAYS);
 
-  const enriched = (events ?? [])
+  const enriched = visibleEvents(events)
     .map(normalizeItem)
     .filter(it => it.startsAt)
     .map(it => classify(it))
