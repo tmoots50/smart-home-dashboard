@@ -1,6 +1,8 @@
 # Home Assistant integration — design doc
 
 **Status:** design / sign-off. Rev 2, 2026-07-10 (supersedes the 2026-07-06 rev).
+
+> **Status update (2026-07-25).** This doc is now largely built history — read it as the design record, not current state. Home Assistant is **live on the Pi** (HA + `matter-server` + `cloudflared` containers, reboot-resilient) and the curated tiles are **live in Production, not mock**: `VITE_HOME_LIVE=1` is set and `/api/home` returns real HA state (Aqara U100 "Front Door" + 4 lamps). Two things below changed during the build and are now stale: **(1)** the unlock **PIN + KV lockout were dropped** — `lock.js` unlocks on the shared bearer token alone (the deadbolt is reachable only over the home network: wall tablet / HA behind CF Access + Tunnel), and `verifyPin`/lockout/`HOME_UNLOCK_PIN_HASH`/`set-unlock-pin.mjs` were removed 2026-07-25, so the **"Security model" section and the PIN-based success criteria below describe the *original* plan, not shipped code**. The Hermes agent token is admin-tier (can unlock) by design. **(2)** "mock-first / flip mock→live" is done. Current status of record: `followups.md` (Recently resolved) + `todo.md` Phase 13.
 **Goal:** make Home Assistant the household's control brain, and give the wall
 dashboard two ways into it — curated PIN-gated tiles for daily actions, and a
 "Full Home" button that opens the real HA UI. Voice (replacing Alexa) is the

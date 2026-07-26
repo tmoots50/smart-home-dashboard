@@ -118,11 +118,14 @@ Scope expanded: Aqara U100 lock + smart plugs (in Aqara Home + Apple HomeKit). D
 - [x] Action-bar ⌂ button opens the overlay
 - [x] CF Functions `/api/home`, `/api/home/plug`, `/api/home/lock` (PIN verify + KV lockout; 501 until HA configured)
 - [x] Shipped to pages.dev in local-mock mode
-- [ ] **Pi standup** (blocked on Pi powered-on + reachable): Docker + Compose on Pi OS → HA + `matter-server` containers → onboard HA
-- [ ] Commission Aqara devices via Matter; verify Apple Home still controls them (multi-admin); verify plug **wattage reporting** (gates Energy dashboard)
-- [ ] `cloudflared` container → private HA hostname; set `HA_BASE_URL`/`HA_TOKEN`/`HA_ENTITIES_JSON`/`HOME_UNLOCK_PIN_HASH` + KV binding on CF
-- [ ] Flip `VITE_HOME_LIVE=1`; verify lock/unlock + plug toggle + bad-PIN lockout end-to-end on the tablet
-- [ ] Network layer: AdGuard/Pi-hole (⚠️ first verify Xfinity gateway allows DHCP DNS override), then monitoring containers (uptime-kuma, speedtest-tracker)
+- [x] **Pi standup** _(2026-07-11: Docker + HA + matter-server + cloudflared live as containers on the Pi; HA onboarded. Reboot-resilience proven organically 2026-07-25 — Pi rebooted, all containers returned healthy)_
+- [ ] Commission Aqara devices via Matter; verify Apple Home still controls them (multi-admin); verify plug **wattage reporting** (gates Energy dashboard) _(→ parallel Aqara-hub/Zigbee thread)_
+- [x] `cloudflared` container → private HA hostname _(2026-07-11: `ha.mootsproductgroup.com` behind CF Access; `HA_BASE_URL` + `CF_ACCESS_CLIENT_ID/SECRET` set on CF Pages; both KV bindings live. Access→tunnel→HA path live-verified 2026-07-25)_
+- [ ] Remaining CF env: `HA_TOKEN` (Tim mints in HA → `scripts/set-ha-token.mjs`), `HA_ENTITIES_JSON` (needs first real entities — Tuya plugs or the lock)
+- [ ] Flip `VITE_HOME_LIVE=1`; verify lock/unlock + plug toggle end-to-end on the tablet
+- [ ] Network layer: AdGuard/Pi-hole (⚠️ first verify Xfinity gateway allows DHCP DNS override — decision pending)
+- [x] Monitoring containers _(2026-07-25: uptime-kuma `:3001` + speedtest-tracker `:8081` up on the Pi; one-time admin claim on each UI still to do)_
+- [x] Nightly backups _(2026-07-25: `server-backup.timer` 03:30, `~/server` → `~/backups/server`, 7 daily + 4 weekly, HA DB hot-copied via sqlite online backup; first snapshot integrity-verified)_
 - [ ] HA Energy dashboard once plug wattage confirmed
 
 ---

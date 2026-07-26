@@ -38,11 +38,13 @@ export function parseCalendars(env) {
 }
 
 // Ground truth until Caroline's separate work calendar is integrated: the
-// calendar currently configured as "Caroline" is the household Family feed.
-// Keep this exact-match alias narrow so a future "Caroline Work" label is not
-// silently rewritten.
+// household Google calendar Tim calls "Caroline & Tim" (also configured as
+// "Caroline" historically) is the Family feed. Keep these exact-match aliases
+// narrow so a future "Caroline Work" label is not silently rewritten.
+const FAMILY_LABEL_ALIASES = new Set(['caroline', 'caroline & tim', 'caroline and tim']);
 export function canonicalCalendarLabel(label) {
-  return String(label).trim().toLowerCase() === 'caroline' ? 'Family' : String(label).trim();
+  const trimmed = String(label).trim();
+  return FAMILY_LABEL_ALIASES.has(trimmed.toLowerCase()) ? 'Family' : trimmed;
 }
 
 // Fetch events for a single calendar in [timeMin, timeMax].
@@ -144,6 +146,9 @@ export function normalize(events, { calendar = '', person, kind = 'personal', re
       sub: repairMojibake(e.location || ''),
       description: repairMojibake(e.description || ''),
       allDay: !e.start?.dateTime,
+      // Master id of a repeating series, when this is an instance — lets Hermes
+      // calendar helpers delete the whole series in one call instead of N.
+      recurringEventId: e.recurringEventId || null,
     }))
     .filter(e => e.startsAt);
 }
@@ -178,6 +183,9 @@ export function normalizeUpcoming(events, calendarLabel, { person, kind = 'perso
         // Instance of a repeating series (weekly watering, monthly meds…) —
         // the Coming-Up widget uses this to tag/order recurring items.
         recurring: Boolean(e.recurringEventId || e.recurrence),
+        // Master id of that series — lets Hermes calendar helpers delete the
+        // whole series in one call instead of N one-at-a-time deletes.
+        recurringEventId: e.recurringEventId || null,
       };
     })
     .filter(Boolean);

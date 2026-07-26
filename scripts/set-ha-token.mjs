@@ -40,15 +40,16 @@ if (!ping.ok) { console.error(`token rejected by ${HA_LOCAL_URL} (${ping.status 
 console.log(`token verified against ${HA_LOCAL_URL}`);
 
 // 2. Set CF env var (both envs, additive).
+// IMPORTANT: send ONLY HA_TOKEN. The PATCH endpoint merges env_vars by key.
+// GET never returns secret_text VALUES, so spreading the existing map back
+// rewrites every secret as empty and WIPES them (the 2026-07-19 incident).
 const api = `https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}`;
 const headers = { authorization: `Bearer ${CLOUDFLARE_API_TOKEN}`, 'content-type': 'application/json' };
 const projBase = `${api}/pages/projects/${CLOUDFLARE_PAGES_PROJECT}`;
-const project = (await (await fetch(projBase, { headers })).json()).result;
 
 const update = {};
 for (const envName of ['production', 'preview']) {
-  const existing = project?.deployment_configs?.[envName]?.env_vars || {};
-  update[envName] = { env_vars: { ...existing, HA_TOKEN: { type: 'secret_text', value: token } } };
+  update[envName] = { env_vars: { HA_TOKEN: { type: 'secret_text', value: token } } };
 }
 const patchRes = await fetch(projBase, { method: 'PATCH', headers, body: JSON.stringify({ deployment_configs: update }) });
 if (!patchRes.ok) { console.error(`PATCH failed ${patchRes.status}: ${await patchRes.text()}`); process.exit(1); }

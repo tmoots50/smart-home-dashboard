@@ -16,6 +16,9 @@ services:
       - ./homeassistant:/config
       - /etc/localtime:/etc/localtime:ro
       - /run/dbus:/run/dbus:ro  # Bluetooth adapters (future) — harmless if absent
+    devices:
+      # Stable by-id path so reboots don't change /dev/ttyUSBx numbering
+      - /dev/serial/by-id/usb-Itead_Sonoff_Zigbee_3.0_USB_Dongle_Plus_V2_78e3b56a22a1f011b0d03081bb936ffa-if00-port0:/dev/ttyUSB0
     cap_add:                    # full (non-degraded) Bluetooth adapter access
       - NET_ADMIN
       - NET_RAW
@@ -25,8 +28,17 @@ services:
     image: ghcr.io/home-assistant-libs/python-matter-server:stable
     container_name: matter-server
     network_mode: host          # Matter commissioning needs host networking + working IPv6
+    security_opt:
+      - apparmor:unconfined     # BlueZ/D-Bus access for BLE commissioning
     volumes:
       - ./matter:/data
+      - /run/dbus:/run/dbus:ro  # talk to host BlueZ for Bluetooth commissioning
+    # --bluetooth-adapter 0 = hci0. NOTE: the adapter cannot be shared — HA's
+    # Bluetooth integration must be disabled while matter-server owns the radio.
+    command: --storage-path /data --primary-interface wlan0 --bluetooth-adapter 0
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
     restart: unless-stopped
 
   cloudflared:
@@ -34,4 +46,32 @@ services:
     container_name: cloudflared
     network_mode: host          # proxies HA at localhost:8123
     command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
+    restart: unless-stopped
+
+  # --- observability (pi-home-server.md) — LAN-only, bridge network ---
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: uptime-kuma
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./uptime-kuma:/app/data
+    restart: unless-stopped
+
+  speedtest-tracker:
+    image: lscr.io/linuxserver/speedtest-tracker:latest
+    container_name: speedtest-tracker
+    ports:
+      - "8081:80"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/New_York
+      - APP_KEY=${SPEEDTEST_APP_KEY}   # Laravel key — generate once, lives in .env on the Pi
+      - APP_URL=http://dashboard.local:8081
+      - DB_CONNECTION=sqlite
+      - SPEEDTEST_SCHEDULE=0 */6 * * *  # WAN speed sample every 6h
+    volumes:
+      - ./speedtest-tracker:/config
     restart: unless-stopped

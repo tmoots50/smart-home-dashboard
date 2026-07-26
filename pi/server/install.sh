@@ -23,5 +23,33 @@ else
   echo "cloudflared skipped: no CLOUDFLARED_TUNNEL_TOKEN in .env yet (Phase C)."
 fi
 
+# Nightly backup timer (root: HA volumes are root-owned). Units are inlined
+# here so the plain `rsync pi/server/ → ~/server/` deploy carries everything.
+if [ -f backup.sh ]; then
+  chmod +x backup.sh
+  sudo tee /etc/systemd/system/server-backup.service >/dev/null <<'UNIT'
+[Unit]
+Description=Snapshot the home-server stack volumes (~/server -> ~/backups)
+
+[Service]
+Type=oneshot
+ExecStart=/home/tmoots/server/backup.sh
+UNIT
+  sudo tee /etc/systemd/system/server-backup.timer >/dev/null <<'UNIT'
+[Unit]
+Description=Nightly home-server backup at 03:30
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now server-backup.timer
+fi
+
 docker compose ps
 echo "HA will be at http://$(hostname).local:8123 in ~a minute (first boot pulls + migrates)."

@@ -90,7 +90,13 @@
   color: var(--color-accent);
 }
 
+/* Morning Brief — section labels + time tokens go coral like the calendar's
+   section labels; the title gets its emoji with the other cards below. */
+[data-theme="fun"] .daybrief__section-label { color: var(--color-accent); }
+[data-theme="fun"] .daybrief__time { font-weight: 700; }
+
 /* Emoji prefixes on card titles. Pure visual flair, no content change. */
+[data-theme="fun"] .daybrief .card__title::before { content: '☕ '; }
 [data-theme="fun"] .traffic .card__title::before  { content: '🚗 '; }
 [data-theme="fun"] .weather .card__title::before  { content: '☀️ '; }
 [data-theme="fun"] .calendar .card__title::before { content: '📅 '; }
