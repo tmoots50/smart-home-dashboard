@@ -129,3 +129,43 @@ test('calendar/typical-days: day-grouped flavor shows day headers and a Family-o
   await expect(page.locator('.calendar__dot--caroline')).toHaveCount(0);
   await expect(page.locator('.calendar__day-label').first()).toContainText(/Today/);
 });
+
+// ── week grid (the wall default) ──
+
+test('calendar/week: 7-day time grid with hour gutter and a now-line', async ({ page }) => {
+  await open(page, 'week');
+  await expect(page.locator('.calendar--week')).toBeVisible();
+  await expect(page.locator('.calweek__col')).toHaveCount(7);
+  await expect(page.locator('.calweek__gutter')).toBeVisible();
+  // FIXED_NOW (07:30) is inside the 5 AM–midnight range, so the now-line shows.
+  await expect(page.locator('.calweek__now')).toHaveCount(1);
+  expect(await page.locator('.calweek__event').count()).toBeGreaterThan(0);
+});
+
+test('calendar/week: all-day events span the pinned band', async ({ page }) => {
+  await open(page, 'week');
+  await expect(page.locator('.calweek__allday')).toBeVisible();
+  await expect(page.locator('.calweek__bar').filter({ hasText: 'Camping Trip' })).toBeVisible();
+});
+
+test('calendar/week: tapping a block opens the event detail', async ({ page }) => {
+  await open(page, 'week');
+  await page.locator('.calweek__event').first().tap();
+  await expect(page.locator('.event-detail')).toBeVisible();
+  await expect(page.locator('.event-detail .overlay__title')).not.toHaveText('');
+});
+
+test('calendar/week: the hour grid scrolls inside the card', async ({ page }) => {
+  await open(page, 'week');
+  await expectNestedScrollContained(page, '.calweek__scroll');
+});
+
+test('calendar/week: opens scrolled so 8 AM sits at the top of the viewport', async ({ page }) => {
+  await open(page, 'week');
+  const gap = await page.evaluate(() => {
+    const scroll = document.querySelector('.calweek__scroll');
+    const eight = [...document.querySelectorAll('.calweek__hour')].find(h => h.textContent.trim().startsWith('8'));
+    return Math.abs(eight.getBoundingClientRect().top - scroll.getBoundingClientRect().top);
+  });
+  expect(gap).toBeLessThan(24); // 8 AM within ~one row of the viewport top → 8 AM–8 PM visible
+});

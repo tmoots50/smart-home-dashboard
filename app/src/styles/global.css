@@ -1682,6 +1682,184 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   text-transform: uppercase;
 }
 
+/* ── flavor: week (7-day time grid) ──
+   Fixed-height body so the card footprint matches the list flavors. head +
+   all-day band are auto; the scroll area flexes to fill, and inside it the
+   hour grid is taller than the viewport so 8 AM–8 PM shows and 5 AM–midnight
+   scrolls. --calweek-hour-h is tuned so 12h clears the viewport even with the
+   all-day band present. One calendar → one color: every block is the accent. */
+.calendar--week {
+  --calweek-gutter: 2.6rem;
+  --calweek-hour-h: 1.4rem;   /* 19h grid = 26.6rem; 12h ≈ 16.8rem clears the viewport */
+}
+.calweek {
+  display: flex;
+  flex-direction: column;
+  height: 20.75rem;           /* == .calendar__list max-height: module size unchanged */
+  margin-top: var(--space-2);
+  min-height: 0;
+}
+.calweek__head,
+.calweek__allday {
+  display: grid;
+  grid-template-columns: var(--calweek-gutter) repeat(7, minmax(0, 1fr));
+}
+.calweek__head { border-bottom: 1px solid var(--color-border); }
+.calweek__dow {
+  text-align: center;
+  padding: 3px 0;
+  min-width: 0;
+  line-height: 1.1;
+}
+.calweek__dow-name {
+  display: block;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-muted);
+}
+.calweek__dow-num {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  color: var(--color-fg);
+}
+.calweek__dow.is-today .calweek__dow-name,
+.calweek__dow.is-today .calweek__dow-num { color: var(--color-accent); }
+.calweek__corner {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.calweek__corner span {
+  font-size: 0.5rem;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+/* All-day band: spanning bars; height-capped so a pile-up clips (full list is
+   behind "See more") rather than growing the module. */
+.calweek__allday {
+  grid-auto-rows: 1.15rem;
+  gap: 2px;
+  max-height: 2.5rem;
+  overflow: hidden;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+.calweek__bar {
+  background: color-mix(in srgb, var(--color-accent) 22%, var(--color-surface));
+  border-left: 3px solid var(--color-accent);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-size: 0.62rem;
+  line-height: 1.15rem;
+  color: var(--color-fg);
+  white-space: nowrap;
+  /* Clip horizontally only (ellipsis); the band's own overflow caps height.
+     overflow-y:visible keeps the QA v-clip audit clean. */
+  overflow-x: hidden;
+  overflow-y: visible;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.calweek__bar:hover { color: var(--color-accent); }
+/* Scrollable hour grid. Scrollbar hidden to match the list flavors. */
+.calweek__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: none;
+}
+.calweek__scroll::-webkit-scrollbar { display: none; }
+.calweek__grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--calweek-gutter) repeat(7, minmax(0, 1fr));
+  height: calc(19 * var(--calweek-hour-h));
+}
+.calweek__gutter { position: relative; grid-column: 1; }
+.calweek__hour {
+  position: absolute;
+  right: 4px;
+  transform: translateY(-0.5em);
+  font-size: 0.6rem;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.calweek__col {
+  position: relative;
+  border-left: 1px solid var(--color-border);
+  /* Hour gridlines as a background so blocks own the stacking context. */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--calweek-hour-h) - 1px),
+    var(--color-border) calc(var(--calweek-hour-h) - 1px),
+    var(--color-border) var(--calweek-hour-h)
+  );
+}
+.calweek__col.is-today { background-color: color-mix(in srgb, var(--color-accent) 7%, transparent); }
+.calweek__event {
+  position: absolute;
+  box-sizing: border-box;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0.85rem;
+  padding: 1px 4px;
+  border-left: 3px solid var(--color-accent);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--color-accent) 22%, var(--color-surface));
+  cursor: pointer;
+}
+.calweek__event--next { box-shadow: 0 0 0 2px var(--color-accent); }
+/* Time + title clip horizontally (ellipsis); the block's overflow:hidden does
+   the vertical clipping. overflow-y stays visible so the flex parent shrinking
+   a span in a short block never trips the QA v-clip audit. */
+.calweek__event-time {
+  flex: 0 0 auto;
+  font-size: 0.58rem;
+  line-height: 1.1;
+  color: var(--color-muted);
+  white-space: nowrap;
+  overflow-x: hidden;
+  overflow-y: visible;
+  text-overflow: ellipsis;
+}
+.calweek__title {
+  flex: 0 0 auto;
+  font-size: 0.66rem;
+  line-height: 1.15;
+  color: var(--color-fg);
+  white-space: nowrap;
+  overflow-x: hidden;
+  overflow-y: visible;
+  text-overflow: ellipsis;
+}
+.calweek__event:hover .calweek__title { color: var(--color-accent); }
+.calweek__now {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0;
+  border-top: 2px solid var(--color-accent);
+  z-index: 2;
+  pointer-events: none;
+}
+.calweek__now-dot {
+  position: absolute;
+  left: -3px;
+  top: -4px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
 /* ───── photo ───── */
 .photo {
   position: relative;
