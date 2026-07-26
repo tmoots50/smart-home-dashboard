@@ -259,16 +259,31 @@ export function calendarIdFor(env, label) {
 const GCAL_BASE = 'https://www.googleapis.com/calendar/v3/calendars';
 
 // Create a new event. `start`/`end` are ISO 8601 datetimes or YYYY-MM-DD for all-day.
-export async function createEvent(accessToken, calendarId, { summary, start, end, allDay = false, description = '', location = '', recurrence } = {}) {
+//
+// `timeZone` (IANA name, default America/New_York) is REQUIRED by Google on
+// recurring inserts: an RRULE has no offset of its own, so Google needs an
+// explicit zone to expand instances across DST — without it the insert 400s
+// ("Missing time zone definition for start time"), even when the dateTime
+// carries an offset. Single (non-recurring) events keep their exact prior
+// payload shape (offset in the dateTime is enough), so timeZone is attached
+// ONLY when a recurrence is present.
+export async function createEvent(accessToken, calendarId, { summary, start, end, allDay = false, description = '', location = '', recurrence, timeZone = 'America/New_York' } = {}) {
+  const hasRecurrence = Array.isArray(recurrence) && recurrence.length > 0;
+  const startObj = allDay ? { date: start } : { dateTime: start };
+  const endObj = allDay ? { date: end } : { dateTime: end };
+  if (hasRecurrence) {
+    startObj.timeZone = timeZone;
+    endObj.timeZone = timeZone;
+  }
   const body = {
     summary,
     ...(description && { description }),
     ...(location && { location }),
-    start: allDay ? { date: start } : { dateTime: start },
-    end: allDay ? { date: end } : { dateTime: end },
+    start: startObj,
+    end: endObj,
     // RRULE strings passed through verbatim to Google (e.g.
     // ["RRULE:FREQ=WEEKLY;COUNT=3"]); omitted entirely for one-off events.
-    ...(Array.isArray(recurrence) && recurrence.length && { recurrence }),
+    ...(hasRecurrence && { recurrence }),
   };
   const res = await fetch(
     `${GCAL_BASE}/${encodeURIComponent(calendarId)}/events`,
