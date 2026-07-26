@@ -55,11 +55,15 @@ function tevt(id, offset, sh, sm, eh, em, title) {
   return { id, startsAt: dayAt(offset, sh, sm), endsAt: dayAt(offset, eh, em), title, sub: '', description: '' };
 }
 
-// A representative family week for the time grid: a same-morning overlap (lane
-// splitting), an early and a late event (proving the 5 AM–midnight scroll),
-// and two multi-day all-day events (the pinned spanning band).
+// A representative family span for the time grid: a same-morning overlap (lane
+// splitting), an early and a late event (proving the 5 AM–midnight scroll), two
+// multi-day all-day events (the pinned spanning band), plus events in the past
+// window (offset < 0) and the next window (offset ≥ 5) so ‹ › nav has content
+// to reveal on both sides of today's 5-day window.
 const weekData = {
   sections: [{ label: 'Family', events: [
+    tevt('w-p1', -4, 10, 0, 11, 0, 'Past dentist'),    // prev window
+    tevt('w-p2', -2, 14, 0, 15, 0, 'Past playdate'),   // prev window
     { id: 'w-camp', title: 'Camping Trip', allDay: true, startsAt: dayYmd(0), endsAt: dayYmd(2), sub: '', description: '' },
     { id: 'w-bday', title: "Emma's Birthday", allDay: true, startsAt: dayYmd(3), endsAt: dayYmd(4), sub: '', description: '' },
     tevt('w1', 0, 9, 0, 10, 0, 'Grocery Run'),
@@ -71,14 +75,14 @@ const weekData = {
     tevt('w7', 2, 9, 0, 10, 0, 'Stroller walk'),
     tevt('w8', 3, 11, 30, 12, 0, 'Dentist'),
     tevt('w9', 4, 13, 30, 14, 30, 'Client presentation'),
-    tevt('w10', 5, 11, 0, 11, 45, 'Swim lesson'),
-    tevt('w11', 6, 14, 0, 15, 0, 'Pottery class'),
+    tevt('w10', 5, 11, 0, 11, 45, 'Swim lesson'),      // next window
+    tevt('w11', 6, 14, 0, 15, 0, 'Pottery class'),     // next window
   ] }],
   nextEventId: 'w1',
 };
 
 export const states = {
-  // The wall default — the 7-day time grid.
+  // The wall default — the rolling 5-day time grid.
   week: { data: weekData, flavor: 'week' },
 
   // Family linked but empty (Tim/Caroline present in the feed but hidden) →
