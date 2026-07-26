@@ -12,7 +12,9 @@
 // Determinism: specs freeze page time (page.clock.install) BEFORE navigation,
 // so fixtures built from `new Date()` resolve against tests/qa/clock.js
 // FIXED_NOW. No fetches happen here — fixtures only.
-import { renderCalendar } from '../widgets/calendar.js';
+import { mountHomeCard } from '../widgets/home-card.js';
+import { states as homeCardStates } from '../widgets/home-card.fixtures.js';
+import { renderCalendar, scrollWeekToOpen } from '../widgets/calendar.js';
 import { openCalendarOverlay } from '../widgets/calendar-overlay.js';
 import { openEventDetail } from '../widgets/event-detail.js';
 import { states as calendarStates } from '../widgets/calendar.fixtures.js';
@@ -48,8 +50,24 @@ const WIDGETS = {
           <section class="card" data-slot="calendar"></section>
         </main>`;
       const slot = root.querySelector('[data-slot="calendar"]');
-      slot.innerHTML = renderCalendar(fixture.data, new Date(), { flavor: fixture.flavor });
+      // Mirror the wall's week-nav so QA can drive ‹ › / Today against fixture
+      // data. WINDOW_STEP is 5 in calendar.js; keep this step in sync.
+      let offsetDays = 0;
+      const render = () => {
+        slot.innerHTML = renderCalendar(fixture.data, new Date(), { flavor: fixture.flavor, offsetDays });
+        if (fixture.flavor === 'week') scrollWeekToOpen(slot); // mirror the wall's open-at-8-AM
+      };
+      render();
       slot.addEventListener('click', (e) => {
+        const nav = e.target.closest('[data-calnav]');
+        if (nav) {
+          const dir = nav.dataset.calnav;
+          if (dir === 'today') offsetDays = 0;
+          else if (dir === 'prev') offsetDays -= 5;
+          else if (dir === 'next') offsetDays += 5;
+          render();
+          return;
+        }
         const row = e.target.closest('[data-event]');
         if (!row) return;
         try { openEventDetail(JSON.parse(row.dataset.event)); } catch {}
@@ -93,6 +111,8 @@ const WIDGETS = {
     },
   },
 
+
+
   countdown: {
     states: countdownStates,
     mount(root, fixture) {
@@ -114,6 +134,16 @@ const WIDGETS = {
       mountTodos(root.querySelector('[data-slot="todos"]'), fixture, {
         append: async () => {}, strike: async () => {}, move: async () => {}, update: async () => {}, setDone: async () => {},
       });
+    },
+  },
+
+  'home-card': {
+    states: homeCardStates,
+    mount(root, fixture) {
+      root.innerHTML = `<main class="briefing"><section class="briefing__duo briefing__lists"><div></div><section class="card" data-slot="home-card"></section></section></main>`;
+      mountHomeCard(root.querySelector('[data-slot="home-card"]'), () => ({ initial: fixture, live: Promise.resolve(null) }), {
+        setPlug: async () => {}, setLock: async () => {},
+      }, null);
     },
   },
 

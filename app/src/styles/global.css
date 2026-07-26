@@ -142,8 +142,10 @@ html.kiosk, html.kiosk body { overscroll-behavior-y: none; }
   display: grid;
   /* The topbox (clock + photo) is the flexible hero row: any height the
      other sections free up flows there instead of stretching every row
-     equally (2026-07-11: rows unified at --list-row bought this space). */
-  grid-template-rows: auto 1fr auto auto auto;
+     equally (2026-07-11: rows unified at --list-row bought this space).
+     Row 3 is the Morning Brief; when it's [hidden] the children shift up a
+     track and the empty trailing auto row costs one invisible gap. */
+  grid-template-rows: auto 1fr auto auto auto auto;
   gap: 10px;
   max-width: 1080px;
   margin: 0 auto;
@@ -2283,3 +2285,103 @@ a.pick__item .pick__title { color: var(--color-accent, var(--color-fg)); }
 /* 18rem → 16rem (2026-07-11): unified rows are ~19px shorter, so the same
    ~3 rows fit in less card — the difference feeds the topbox hero row. */
 .briefing__lists [data-slot="groceries"] { height: 16rem; overflow: hidden; }
+
+/* ───── Morning Brief (daybrief) ─────
+   The one editorial card: Hermes's daily judgment, not a data feed. Reads
+   like a note — display-face headline, only the sections that earned their
+   place today, dry closer. Lives above the family calendar and pushes it
+   down; [hidden] (no brief today / cleared / past noon) hands the top back. */
+.daybrief__header { margin-bottom: var(--space-1); }
+/* Hit rect is 44px; the visible ring stays modest (grow hit areas, not
+   visuals). Negative block margin keeps the header at its usual height. */
+.daybrief__clear {
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-block: -0.5rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.daybrief__clear::before {
+  content: '✓';
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 2px solid var(--color-muted);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: var(--color-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s;
+}
+.daybrief__clear:active::before {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-bg);
+}
+.daybrief__headline {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  line-height: 1.35;
+}
+/* Sections flow into two columns and collapse to whatever exists today —
+   a quiet Saturday renders short, and the brevity is the message. */
+.daybrief__cols {
+  column-count: 2;
+  column-gap: var(--space-5);
+}
+.daybrief__section {
+  break-inside: avoid;
+  margin: 0 0 var(--space-3);
+}
+.daybrief__section-label {
+  /* Mirrors .countdown__pane-label. */
+  margin: 0 0 var(--space-1);
+  padding-bottom: var(--space-1);
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+.daybrief__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.daybrief__item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2);
+  align-items: baseline;
+  padding: 0.35rem 0;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.daybrief__time {
+  min-width: 3rem;
+  color: var(--color-accent);
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+.daybrief__dot { color: var(--color-muted); }
+.daybrief__text { min-width: 0; }
+.daybrief__closer {
+  margin: var(--space-2) 0 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.05rem;
+  line-height: 1.4;
+  color: var(--color-muted);
+}

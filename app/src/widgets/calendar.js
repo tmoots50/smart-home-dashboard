@@ -281,6 +281,11 @@ function parseLocalish(value) {
   return new Date(value);
 }
 
+// Harness seam for the in-flight week-flavor work: scroll the week grid to
+// the wall's open hour. No-op until the week flavor lands — added 2026-07-25
+// because harness.js already imports it (staged WIP from another session).
+export function scrollWeekToOpen() {}
+
 // Mounts into a slot. Renders cached/mock data instantly, then fetches live and
 // swaps in. Re-fetches every REFRESH_MS so a long-running kiosk doesn't sit on
 // stale data. Returns a teardown function.

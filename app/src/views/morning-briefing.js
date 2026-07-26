@@ -1,6 +1,7 @@
 import { mountClock } from '../widgets/clock.js';
 import { mountWeather } from '../widgets/weather.js';
 import { mountCalendar } from '../widgets/calendar.js';
+import { mountDaybrief } from '../widgets/daybrief.js';
 import { mountComingUp } from '../widgets/countdown.js';
 import { mountTodos } from '../widgets/todos.js';
 import { mountGroceries } from '../widgets/groceries.js';
@@ -14,6 +15,7 @@ import { openVoiceOverlay } from '../widgets/voice-overlay.js';
 
 import { getHome, actions as homeActions, deviceActions, isConfigured as homeConfigured } from '../lib/home.js';
 import { getUpcoming, getMonth } from '../lib/calendar.js';
+import { getDaybrief } from '../lib/daybrief.js';
 import { openHermesChat } from '../lib/telegram.js';
 import { voice } from '../lib/voice.js';
 import { toggleTheme, isDark } from '../lib/theme-mode.js';
@@ -78,6 +80,10 @@ export function renderMorningBriefing(root) {
         </div>
       </section>
 
+      <!-- Morning Brief: Hermes posts daily ~7:30a; hidden = no brief today,
+           cleared, or past noon. When visible it pushes the calendar down. -->
+      <section class="card daybrief" data-slot="daybrief" hidden></section>
+
       <section class="card" data-slot="calendar"></section>
 
       <!-- Atlanta Picks unmounted 2026-07-11 (Tim: bring back later); the
@@ -105,6 +111,7 @@ export function renderMorningBriefing(root) {
     try { localStorage.setItem('calendar:flavor', params.get('calflavor')); } catch {}
   }
   mountCalendar(root.querySelector('[data-slot="calendar"]'), { flavor: calFlavor });
+  mountDaybrief(root.querySelector('[data-slot="daybrief"]'), getDaybrief());
   fitBible(root.querySelector('.bible'));
   mountComingUp(root.querySelector('[data-slot="coming-up"]'));
 
