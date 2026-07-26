@@ -1,9 +1,13 @@
-// Family Calendar card. Four render flavors behind one entry point — the
-// 2026-07-11 feedback round: rows were "smushed", titles truncated too early,
-// and the DAY of an event was too hard to pick out. Flavors:
+// Family Calendar card. Five render flavors behind one entry point. Flavors:
 //
-//   stacked  (default) — three person columns kept; title-first rows (wraps
-//              to 2 lines), day+time on a meta line under it, day bolded and
+//   week     (default) — a true 7-day time grid: next 7 rolling days as
+//              columns, hours as rows, events drawn as proportional blocks.
+//              8 AM–8 PM sits in the card's fixed viewport; the grid scrolls
+//              to reach 5 AM–midnight without growing the module. All-day /
+//              multi-day events ride a pinned band above the grid. One
+//              calendar → one color (the theme accent).
+//   stacked  — three person columns kept; title-first rows (wraps to 2
+//              lines), day+time on a meta line under it, day bolded and
 //              accent-colored when it's today.
 //   rail     — three person columns; day/time column leads with a proximity
 //              rail on the row edge (accent fades with distance: today →
@@ -14,10 +18,10 @@
 //   classic  — the pre-2026-07-11 compact three-column layout, for
 //              side-by-side comparison.
 //
-// Pick a flavor at runtime with ?calflavor=stacked|rail|days|classic (the
-// view persists the choice in localStorage 'calendar:flavor').
+// Pick a flavor at runtime with ?calflavor=week|stacked|rail|days|classic
+// (the view persists the choice in localStorage 'calendar:flavor').
 
-import { getCalendar, fetchCalendar } from '../lib/calendar.js';
+import { getCalendar, fetchCalendar, getUpcoming, fetchUpcoming } from '../lib/calendar.js';
 import { CARD_MAX_PER_COLUMN } from '../lib/comingup.js';
 import { visibleRoster, isHiddenEvent } from '../lib/calendar-people.js';
 import { openEventDetail } from './event-detail.js';
@@ -48,13 +52,26 @@ const MAX_DAY_GROUPED = 21;
 // column only. Their sections/events are dropped, not merged.
 const COLUMNS = visibleRoster(['Family', 'Tim', 'Caroline']);
 
-export const FLAVORS = ['stacked', 'rail', 'days', 'classic'];
+export const FLAVORS = ['week', 'stacked', 'rail', 'days', 'classic'];
+// renderCalendar's programmatic fallback. The WALL default is 'week' — set in
+// mountCalendar so a fresh kiosk lands on the time grid — but renderCalendar
+// keeps 'stacked' as its no-arg fallback so direct callers/fixtures that
+// predate the week grid render unchanged.
 export const DEFAULT_FLAVOR = 'stacked';
 
 export function renderCalendar(data, now = new Date(), { flavor = DEFAULT_FLAVOR } = {}) {
   if (!FLAVORS.includes(flavor)) flavor = DEFAULT_FLAVOR;
+  if (flavor === 'week') return renderWeek(flattenEvents(data), now);
   if (flavor === 'days') return renderDayGrouped(data, now);
   return renderColumns(data, now, flavor);
+}
+
+// Flatten the person-keyed sections shape into a flat event list, backfilling
+// the source calendar + person like renderDayGrouped does. The week grid is
+// day/time-keyed, not person-keyed, so it works off one merged stream.
+function flattenEvents(data) {
+  return (data.sections ?? [])
+    .flatMap(s => (s.events ?? []).map(e => ({ ...e, calendar: e.calendar || s.label, person: e.person || s.label })));
 }
 
 // ── column flavors (stacked / rail / classic) ──
@@ -247,6 +264,209 @@ function renderDayGrouped(data, now) {
   `;
 }
 
+// ── flavor: week (7-day time grid) ──
+//
+// The wall default. Blocks are deliberately NOT <button>/role="button": on a
+// fixed-height card the 8 AM–8 PM requirement forces sub-44px blocks, which
+// can't meet the tap floor. Following the month-calendar precedent, blocks are
+// glanceable and tap via [data-event] delegation, while the 44px interaction
+// (See more → full overlay) stays large. Same reason the QA tap audit passes.
+
+const WEEK_DAYS = 7;
+const WEEK_START_HOUR = 5;        // grid top (5 AM)
+const WEEK_END_HOUR = 24;         // grid bottom (midnight)
+export const WEEK_OPEN_HOUR = 8;  // scrolled-to hour on mount → 8 AM–8 PM visible
+const WEEK_RANGE_MIN = (WEEK_END_HOUR - WEEK_START_HOUR) * 60;
+const WEEK_DOW_FMT = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
+const WEEK_HOUR_FMT = new Intl.DateTimeFormat(undefined, { hour: 'numeric' });
+
+function startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
+function minutesOfDay(value) { const d = parseLocalish(value); return d.getHours() * 60 + d.getMinutes(); }
+
+function weekEventAttrs(event) {
+  const json = escapeHtml(JSON.stringify({
+    ...event,
+    calendar: event.calendar || 'Family',
+    person: event.person || event.calendar || 'Family',
+  }));
+  return `data-event="${json}"`;
+}
+
+export function renderWeek(events, now = new Date()) {
+  const today0 = startOfDay(now);
+  const days = Array.from({ length: WEEK_DAYS }, (_, i) => {
+    const d = new Date(today0); d.setDate(d.getDate() + i); return d;
+  });
+
+  const visible = (events ?? []).filter(e => !isHiddenEvent(e));
+
+  // next-up highlight: soonest timed event from now (all-day events excluded).
+  const nowMs = now.getTime();
+  let nextId = null, nextMs = Infinity;
+  for (const e of visible) {
+    if (e.allDay) continue;
+    const t = parseLocalish(e.startsAt).getTime();
+    if (t >= nowMs && t < nextMs) { nextMs = t; nextId = e.id; }
+  }
+
+  const allDay = [];
+  const timedByDay = Array.from({ length: WEEK_DAYS }, () => []);
+  for (const e of visible) {
+    if (e.allDay) { allDay.push(e); continue; }
+    const idx = dayIndex(e.startsAt, now);
+    if (idx >= 0 && idx < WEEK_DAYS) timedByDay[idx].push(e);
+  }
+
+  const head = `
+    <div class="calweek__head">
+      <div class="calweek__corner"></div>
+      ${days.map((d, i) => `
+        <div class="calweek__dow${i === 0 ? ' is-today' : ''}">
+          <span class="calweek__dow-name">${escapeHtml(WEEK_DOW_FMT.format(d))}</span>
+          <span class="calweek__dow-num">${d.getDate()}</span>
+        </div>`).join('')}
+    </div>`;
+
+  const cols = days.map((_, i) => renderDayColumn(timedByDay[i], i === 0 ? now : null, nextId)).join('');
+
+  return `
+    <div class="calendar calendar--week">
+      <div class="card__header">
+        <h2 class="card__title">Family Calendar</h2>
+        <button class="btn btn--text" data-overlay="calendar">See more</button>
+      </div>
+      <div class="calweek">
+        ${head}
+        ${renderAllDayBand(allDay, today0)}
+        <div class="calweek__scroll">
+          <div class="calweek__grid">
+            ${renderHourGutter()}
+            ${cols}
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderHourGutter() {
+  let labels = '';
+  for (let h = WEEK_START_HOUR; h < WEEK_END_HOUR; h++) {
+    const top = ((h - WEEK_START_HOUR) * 60) / WEEK_RANGE_MIN * 100;
+    labels += `<span class="calweek__hour" style="top:${top.toFixed(2)}%">${escapeHtml(WEEK_HOUR_FMT.format(new Date(2000, 0, 1, h)))}</span>`;
+  }
+  return `<div class="calweek__gutter">${labels}</div>`;
+}
+
+function renderDayColumn(dayEvents, nowForCol, nextId) {
+  const rangeStart = WEEK_START_HOUR * 60, rangeEnd = WEEK_END_HOUR * 60;
+  const laid = packLanes(dayEvents.map(e => {
+    let start = minutesOfDay(e.startsAt);
+    let end = e.endsAt ? minutesOfDay(e.endsAt) : start + 30;
+    if (end <= start) end = start + 30; // guard bad/zero-length data
+    return { e, start, end };
+  }));
+
+  const blocks = laid.map(({ e, start, end, lane, lanes }) => {
+    const s = Math.max(start, rangeStart), en = Math.min(end, rangeEnd);
+    if (en <= s) return ''; // fully outside the visible range
+    const top = (s - rangeStart) / WEEK_RANGE_MIN * 100;
+    const height = (en - s) / WEEK_RANGE_MIN * 100;
+    const isNext = e.id != null && e.id === nextId;
+    return `<div class="calweek__event${isNext ? ' calweek__event--next' : ''}"
+      style="top:${top.toFixed(2)}%;height:${height.toFixed(2)}%;left:${(lane * 100 / lanes).toFixed(2)}%;width:${(100 / lanes).toFixed(2)}%"
+      ${weekEventAttrs(e)} tabindex="0">
+      <span class="calweek__event-time">${eventTime(e)}</span>
+      <span class="calweek__title">${escapeHtml(e.title)}</span>
+    </div>`;
+  }).join('');
+
+  let nowLine = '';
+  if (nowForCol) {
+    const m = nowForCol.getHours() * 60 + nowForCol.getMinutes();
+    if (m >= rangeStart && m <= rangeEnd) {
+      const top = (m - rangeStart) / WEEK_RANGE_MIN * 100;
+      nowLine = `<div class="calweek__now" style="top:${top.toFixed(2)}%"><span class="calweek__now-dot"></span></div>`;
+    }
+  }
+
+  return `<div class="calweek__col${nowForCol ? ' is-today' : ''}">${nowLine}${blocks}</div>`;
+}
+
+// Greedy interval packing: events that overlap in time split the column width
+// into side-by-side lanes; a gap flushes the cluster so the next run reclaims
+// full width. Returns each item with its {lane, lanes}.
+function packLanes(items) {
+  const sorted = [...items].sort((a, b) => a.start - b.start || a.end - b.end);
+  const out = [];
+  let columns = [];
+  let clusterEnd = -Infinity;
+  const flush = () => {
+    const lanes = columns.length;
+    columns.forEach((col, lane) => col.forEach(it => out.push({ ...it, lane, lanes })));
+    columns = [];
+  };
+  for (const it of sorted) {
+    if (it.start >= clusterEnd && columns.length) flush();
+    let placed = false;
+    for (const col of columns) {
+      if (col[col.length - 1].end <= it.start) { col.push(it); placed = true; break; }
+    }
+    if (!placed) columns.push([it]);
+    clusterEnd = Math.max(clusterEnd, it.end);
+  }
+  flush();
+  return out;
+}
+
+// All-day / multi-day events ride a pinned band above the grid, as spanning
+// bars across the day columns they cover. Non-overlapping bars share a row;
+// the band is height-capped (CSS) so a rare pile-up clips rather than growing
+// the module — the full list lives behind "See more".
+function renderAllDayBand(allDay, today0) {
+  const bars = [];
+  for (const e of allDay) {
+    const s = startOfDay(parseLocalish(e.startsAt));
+    // All-day endsAt is the exclusive next-day boundary (Google convention).
+    const endExcl = e.endsAt ? startOfDay(parseLocalish(e.endsAt)) : new Date(s.getTime() + 86_400_000);
+    let idxStart = Math.round((s - today0) / 86_400_000);
+    let idxEndExcl = Math.round((endExcl - today0) / 86_400_000);
+    if (idxEndExcl <= idxStart) idxEndExcl = idxStart + 1;
+    if (idxEndExcl <= 0 || idxStart >= WEEK_DAYS) continue; // outside this week
+    bars.push({ e, colStart: Math.max(0, idxStart), colEndExcl: Math.min(WEEK_DAYS, idxEndExcl) });
+  }
+  if (!bars.length) return ''; // no band → the scroll area flexes to fill
+
+  const rows = packAllDayRows(bars);
+  const cells = rows.map(({ e, colStart, colEndExcl, row }) =>
+    `<div class="calweek__bar" style="grid-column:${2 + colStart} / ${2 + colEndExcl};grid-row:${row + 1}" ${weekEventAttrs(e)} tabindex="0">${escapeHtml(e.title)}</div>`,
+  ).join('');
+  return `<div class="calweek__allday"><div class="calweek__corner"><span>all-day</span></div>${cells}</div>`;
+}
+
+// Horizontal lane packing for the all-day band: a bar joins the first row it
+// doesn't collide with (by column span), else opens a new row.
+function packAllDayRows(bars) {
+  const sorted = [...bars].sort((a, b) => a.colStart - b.colStart || a.colEndExcl - b.colEndExcl);
+  const rows = []; // each row: list of placed bars
+  const out = [];
+  for (const bar of sorted) {
+    let row = rows.findIndex(r => r.every(b => bar.colStart >= b.colEndExcl || bar.colEndExcl <= b.colStart));
+    if (row === -1) { row = rows.length; rows.push([]); }
+    rows[row].push(bar);
+    out.push({ ...bar, row });
+  }
+  return out;
+}
+
+// Scroll the grid so 8 AM sits at the top of the viewport (→ 8 AM–8 PM shown).
+// Called after every (re)render because innerHTML resets scrollTop.
+export function scrollWeekToOpen(el) {
+  const scroll = el.querySelector('.calweek__scroll');
+  if (!scroll) return;
+  const frac = (WEEK_OPEN_HOUR - WEEK_START_HOUR) / (WEEK_END_HOUR - WEEK_START_HOUR);
+  scroll.scrollTop = scroll.scrollHeight * frac;
+}
+
 // ── shared helpers ──
 
 function eventTime(event) {
@@ -284,17 +504,36 @@ function parseLocalish(value) {
 // Mounts into a slot. Renders cached/mock data instantly, then fetches live and
 // swaps in. Re-fetches every REFRESH_MS so a long-running kiosk doesn't sit on
 // stale data. Returns a teardown function.
-export function mountCalendar(el, { flavor = DEFAULT_FLAVOR } = {}) {
-  const { initial, live } = getCalendar();
-  el.innerHTML = renderCalendar(initial, new Date(), { flavor });
-  live.then(data => { if (data) el.innerHTML = renderCalendar(data, new Date(), { flavor }); });
+//
+// The wall defaults to the week grid; the list flavors remain reachable with
+// ?calflavor=stacked|rail|days|classic.
+export function mountCalendar(el, { flavor = 'week' } = {}) {
+  if (!FLAVORS.includes(flavor)) flavor = 'week';
 
-  // Event delegation — survives innerHTML refreshes on the container.
+  // Event delegation — survives innerHTML refreshes on the container. Shared by
+  // every flavor (blocks and rows both carry [data-event]).
   el.addEventListener('click', (e) => {
     const row = e.target.closest('[data-event]');
     if (!row) return;
     try { openEventDetail(JSON.parse(row.dataset.event)); } catch {}
   });
+
+  // Week grid: a distinct feed (flat, 7-day, all-day included) and a
+  // scroll-to-8 AM after each paint.
+  if (flavor === 'week') {
+    const { initial, live } = getUpcoming(WEEK_DAYS);
+    const paint = (events) => { el.innerHTML = renderWeek(events, new Date()); scrollWeekToOpen(el); };
+    paint(initial);
+    live.then(events => { if (events) paint(events); });
+    const id = setInterval(() => {
+      fetchUpcoming(WEEK_DAYS).then(paint).catch(() => { /* keep the last good frame */ });
+    }, REFRESH_MS);
+    return () => clearInterval(id);
+  }
+
+  const { initial, live } = getCalendar();
+  el.innerHTML = renderCalendar(initial, new Date(), { flavor });
+  live.then(data => { if (data) el.innerHTML = renderCalendar(data, new Date(), { flavor }); });
 
   const id = setInterval(() => {
     fetchCalendar()

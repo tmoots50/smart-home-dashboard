@@ -12,7 +12,7 @@
 // Determinism: specs freeze page time (page.clock.install) BEFORE navigation,
 // so fixtures built from `new Date()` resolve against tests/qa/clock.js
 // FIXED_NOW. No fetches happen here — fixtures only.
-import { renderCalendar } from '../widgets/calendar.js';
+import { renderCalendar, scrollWeekToOpen } from '../widgets/calendar.js';
 import { openCalendarOverlay } from '../widgets/calendar-overlay.js';
 import { openEventDetail } from '../widgets/event-detail.js';
 import { states as calendarStates } from '../widgets/calendar.fixtures.js';
@@ -49,6 +49,7 @@ const WIDGETS = {
         </main>`;
       const slot = root.querySelector('[data-slot="calendar"]');
       slot.innerHTML = renderCalendar(fixture.data, new Date(), { flavor: fixture.flavor });
+      if (fixture.flavor === 'week') scrollWeekToOpen(slot); // mirror the wall's open-at-8-AM
       slot.addEventListener('click', (e) => {
         const row = e.target.closest('[data-event]');
         if (!row) return;
