@@ -9,9 +9,10 @@ if (params.has('kiosk')) {
   document.documentElement.classList.add('kiosk');
 }
 
-// Household schedule: `light` from 07:00–22:59, `cosy` from 23:00–06:59.
-// `?theme=` forces a preview. Re-evaluate every five minutes so the always-on
-// kiosk crosses both boundaries without a reload.
+// Sun-based: `light` (dark OFF) from sunrise through sunset, `cosy` (dark ON)
+// after sunset until the next sunrise. Sunrise/sunset computed locally by
+// lib/solar.js. `?theme=` forces a preview. Re-evaluate every five minutes so
+// the always-on kiosk crosses both boundaries without a reload.
 applyTheme();
 setInterval(applyTheme, 5 * 60 * 1000);
 
