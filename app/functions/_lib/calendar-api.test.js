@@ -306,11 +306,57 @@ describe('createEvent / deleteEvent / updateEvent', () => {
     expect(body.recurrence).toEqual(['RRULE:FREQ=WEEKLY;COUNT=3']);
   });
 
+  it('createEvent attaches timeZone to start+end (default America/New_York) when recurrence is given', async () => {
+    // Google 400s recurring inserts without an explicit start/end.timeZone —
+    // an RRULE has no offset, so the zone must be spelled out.
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'x' }) }));
+    await createEvent('tok', 'calId', {
+      summary: 'Weekly standup',
+      start: '2026-07-15T12:00:00-04:00',
+      end: '2026-07-15T13:00:00-04:00',
+      recurrence: ['RRULE:FREQ=WEEKLY;COUNT=3'],
+    });
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1].body);
+    expect(body.start.timeZone).toBe('America/New_York');
+    expect(body.end.timeZone).toBe('America/New_York');
+    // dateTime still carries the original offset — timeZone is additive.
+    expect(body.start.dateTime).toBe('2026-07-15T12:00:00-04:00');
+    expect(body.end.dateTime).toBe('2026-07-15T13:00:00-04:00');
+  });
+
+  it('createEvent honors an explicit timeZone override on recurring inserts', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'x' }) }));
+    await createEvent('tok', 'calId', {
+      summary: 'Weekly standup',
+      start: '2026-07-15T12:00:00Z',
+      end: '2026-07-15T13:00:00Z',
+      recurrence: ['RRULE:FREQ=WEEKLY;COUNT=3'],
+      timeZone: 'America/Los_Angeles',
+    });
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1].body);
+    expect(body.start.timeZone).toBe('America/Los_Angeles');
+    expect(body.end.timeZone).toBe('America/Los_Angeles');
+  });
+
   it('createEvent omits the recurrence key entirely for a one-off event', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'x' }) }));
     await createEvent('tok', 'calId', { summary: 'One-off', start: '2026-07-15T12:00:00Z', end: '2026-07-15T13:00:00Z' });
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1].body);
     expect('recurrence' in body).toBe(false);
+  });
+
+  it('createEvent omits timeZone from a single (non-recurring) event — payload shape unchanged', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'x' }) }));
+    await createEvent('tok', 'calId', {
+      summary: 'One-off',
+      start: '2026-07-15T12:00:00-04:00',
+      end: '2026-07-15T13:00:00-04:00',
+    });
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1].body);
+    expect(body.start).toEqual({ dateTime: '2026-07-15T12:00:00-04:00' });
+    expect(body.end).toEqual({ dateTime: '2026-07-15T13:00:00-04:00' });
+    expect('timeZone' in body.start).toBe(false);
+    expect('timeZone' in body.end).toBe(false);
   });
 
   it('createEvent throws on HTTP error', async () => {
