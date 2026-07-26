@@ -1685,12 +1685,12 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 /* ── flavor: week (7-day time grid) ──
    Fixed-height body so the card footprint matches the list flavors. head +
    all-day band are auto; the scroll area flexes to fill, and inside it the
-   hour grid is taller than the viewport so 8 AM–8 PM shows and 5 AM–midnight
-   scrolls. --calweek-hour-h is tuned so 12h clears the viewport even with the
+   hour grid is taller than the viewport so 8 AM–6 PM shows and 5 AM–midnight
+   scrolls. --calweek-hour-h is tuned so 10h clears the viewport even with the
    all-day band present. One calendar → one color: every block is the accent. */
 .calendar--week {
   --calweek-gutter: 2.6rem;
-  --calweek-hour-h: 1.4rem;   /* 19h grid = 26.6rem; 12h ≈ 16.8rem clears the viewport */
+  --calweek-hour-h: 1.65rem;  /* 19h grid = 31.35rem; 10h (8 AM–6 PM) ≈ 16.5rem clears the viewport → taller, more readable blocks */
 }
 .calweek {
   display: flex;
