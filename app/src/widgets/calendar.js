@@ -2,7 +2,7 @@
 //
 //   week     (default) — a true 7-day time grid: next 7 rolling days as
 //              columns, hours as rows, events drawn as proportional blocks.
-//              8 AM–8 PM sits in the card's fixed viewport; the grid scrolls
+//              8 AM–6 PM sits in the card's fixed viewport; the grid scrolls
 //              to reach 5 AM–midnight without growing the module. All-day /
 //              multi-day events ride a pinned band above the grid. One
 //              calendar → one color (the theme accent).
@@ -267,7 +267,7 @@ function renderDayGrouped(data, now) {
 // ── flavor: week (7-day time grid) ──
 //
 // The wall default. Blocks are deliberately NOT <button>/role="button": on a
-// fixed-height card the 8 AM–8 PM requirement forces sub-44px blocks, which
+// fixed-height card the 8 AM–6 PM requirement forces sub-44px blocks, which
 // can't meet the tap floor. Following the month-calendar precedent, blocks are
 // glanceable and tap via [data-event] delegation, while the 44px interaction
 // (See more → full overlay) stays large. Same reason the QA tap audit passes.
@@ -275,7 +275,7 @@ function renderDayGrouped(data, now) {
 const WEEK_DAYS = 7;
 const WEEK_START_HOUR = 5;        // grid top (5 AM)
 const WEEK_END_HOUR = 24;         // grid bottom (midnight)
-export const WEEK_OPEN_HOUR = 8;  // scrolled-to hour on mount → 8 AM–8 PM visible
+export const WEEK_OPEN_HOUR = 8;  // scrolled-to hour on mount → 8 AM–6 PM visible
 const WEEK_RANGE_MIN = (WEEK_END_HOUR - WEEK_START_HOUR) * 60;
 const WEEK_DOW_FMT = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
 const WEEK_HOUR_FMT = new Intl.DateTimeFormat(undefined, { hour: 'numeric' });

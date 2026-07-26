@@ -167,5 +167,5 @@ test('calendar/week: opens scrolled so 8 AM sits at the top of the viewport', as
     const eight = [...document.querySelectorAll('.calweek__hour')].find(h => h.textContent.trim().startsWith('8'));
     return Math.abs(eight.getBoundingClientRect().top - scroll.getBoundingClientRect().top);
   });
-  expect(gap).toBeLessThan(24); // 8 AM within ~one row of the viewport top → 8 AM–8 PM visible
+  expect(gap).toBeLessThan(24); // 8 AM within ~one row of the viewport top → 8 AM–6 PM visible
 });
