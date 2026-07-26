@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- Standalone preview for the Morning Brief (daybrief) card. DEV-ONLY, same
+     rules as harness.html: single-entry build never bundles this.
+     Exists apart from the shared harness so daybrief states can be eyeballed
+     while other harness work is in flight:
+       /daybrief-preview.html?state=typical&theme=fun
+     States: typical | quiet | headline-only | overflow | empty. -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Morning Brief Preview</title>
+    <link rel="stylesheet" href="/src/styles/tokens.css" />
+    <link rel="stylesheet" href="/src/styles/global.css" />
+    <link rel="stylesheet" href="/src/styles/themes-fun.css" />
+    <link rel="stylesheet" href="/src/styles/themes-light.css" />
+    <link rel="stylesheet" href="/src/styles/themes-cosy.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/harness/daybrief-preview.js"></script>
+  </body>
+</html>

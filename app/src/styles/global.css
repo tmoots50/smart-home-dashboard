@@ -997,21 +997,40 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .home-tile--lock.is-jammed .home-tile__icon { background: rgba(208, 129, 112, 0.22); color: #d08770; }
 .home-tile__control { flex-shrink: 0; }
 
-.home-btn {
-  min-height: 3.4rem;
-  padding: 0 var(--space-4);
-  border-radius: 999px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid var(--color-border);
+.home-lock-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: color-mix(in srgb, var(--color-muted) 10%, transparent);
+  border-radius: 14px;
+  padding: 4px;
+}
+.home-lock-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  min-height: 54px;
+  border: none;
+  border-radius: 10px;
   background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.home-tile--lock.is-locked .home-lock-btn[data-action="lock"],
+.home-tile--lock.is-jammed .home-lock-btn[data-action="lock"] {
+  background: color-mix(in srgb, var(--color-fg) 15%, transparent);
   color: var(--color-fg);
 }
-.home-btn:disabled { opacity: 0.5; cursor: default; }
-.home-btn--unlock { background: var(--color-accent); border-color: var(--color-accent); color: #1a1a1a; }
-.home-btn--lock { color: var(--color-muted); }
-.home-btn--lock:hover { color: var(--color-fg); border-color: var(--color-accent); }
+.home-tile--lock.is-unlocked .home-lock-btn[data-action="unlock"] {
+  background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+  color: var(--color-accent);
+}
+.home-tile--lock.is-jammed .home-lock-btn[data-action="lock"] {
+  background: rgba(208, 129, 112, 0.22);
+  color: #d08770;
+}
 
 /* scene modes */
 .home__modes {
@@ -1887,16 +1906,22 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   gap: var(--space-2);
   width: 100%;
   min-height: 3.25rem;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-1) 0;
   margin-bottom: var(--space-2);
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: 14px;
 }
 .home-card__lock-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .home-card__lock-name { font-weight: 600; }
 .home-card__lock-battery { color: var(--color-muted); font-size: 0.8rem; }
-.home-card__lock-toggle { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.home-card__lock-toggle {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 3px;
+}
 .home-card__lock-btn {
   display: inline-flex;
   align-items: center;
@@ -1905,7 +1930,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   min-height: 44px;
   padding: var(--space-1);
   border: none;
-  border-radius: 10px;
+  border-radius: 9px;
   background: transparent;
   color: var(--color-muted);
   font-family: var(--font-body);

@@ -143,11 +143,12 @@ export function render(data, ui = {}) {
 function renderLock(lock) {
   const locked = lock.state === 'locked';
   const jammed = lock.state === 'jammed';
-  const stateLabel = jammed ? 'Jammed' : locked ? 'Locked' : lock.state === 'unlocked' ? 'Unlocked' : 'Unknown';
+  const unlocked = lock.state === 'unlocked';
+  const stateLabel = jammed ? 'Jammed' : locked ? 'Locked' : unlocked ? 'Unlocked' : 'Unknown';
   const icon = locked || jammed ? LOCK_CLOSED : LOCK_OPEN;
 
   return `
-    <div class="home-tile home-tile--lock ${locked ? 'is-locked' : 'is-unlocked'} ${jammed ? 'is-jammed' : ''}">
+    <div class="home-tile home-tile--lock ${locked ? 'is-locked' : unlocked ? 'is-unlocked' : ''} ${jammed ? 'is-jammed' : ''}">
       <div class="home-tile__lead">
         <span class="home-tile__icon">${icon}</span>
         <div class="home-tile__labels">
@@ -156,9 +157,14 @@ function renderLock(lock) {
         </div>
       </div>
       <div class="home-tile__control">
-        ${locked
-          ? `<button class="home-btn home-btn--unlock" data-action="unlock">Unlock</button>`
-          : `<button class="home-btn home-btn--lock" data-action="lock">Lock</button>`}
+        <span class="home-lock-toggle" role="group" aria-label="Lock ${escapeHtml(lock.name)}">
+          <button class="home-lock-btn" data-action="lock" aria-label="Lock" aria-pressed="${locked || jammed}">
+            ${LOCK_CLOSED}
+          </button>
+          <button class="home-lock-btn" data-action="unlock" aria-label="Unlock" aria-pressed="${unlocked}">
+            ${LOCK_OPEN}
+          </button>
+        </span>
       </div>
     </div>
   `;
