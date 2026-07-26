@@ -240,6 +240,12 @@ describe('googleCalendarFor', () => {
     expect(fam.token).toBeUndefined();
     expect(fam.readOnly).toBeUndefined();
   });
+
+  it('canonicalizes the INCOMING label so Family aliases resolve to the Family entry', () => {
+    const fam = { label: 'Family', id: 'family@group.calendar.google.com' };
+    expect(googleCalendarFor(env, 'Caroline & Tim')).toEqual(fam);
+    expect(googleCalendarFor(env, 'caroline and tim')).toEqual(fam);
+  });
 });
 
 describe('createEvent / deleteEvent / updateEvent', () => {
@@ -286,6 +292,25 @@ describe('createEvent / deleteEvent / updateEvent', () => {
     const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1].body);
     expect(body.description).toBeUndefined();
     expect(body.location).toBeUndefined();
+  });
+
+  it('createEvent passes recurrence (array of RRULE strings) through verbatim when given', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'x' }) }));
+    await createEvent('tok', 'calId', {
+      summary: 'Weekly standup',
+      start: '2026-07-15T12:00:00Z',
+      end: '2026-07-15T13:00:00Z',
+      recurrence: ['RRULE:FREQ=WEEKLY;COUNT=3'],
+    });
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1].body);
+    expect(body.recurrence).toEqual(['RRULE:FREQ=WEEKLY;COUNT=3']);
+  });
+
+  it('createEvent omits the recurrence key entirely for a one-off event', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ id: 'x' }) }));
+    await createEvent('tok', 'calId', { summary: 'One-off', start: '2026-07-15T12:00:00Z', end: '2026-07-15T13:00:00Z' });
+    const body = JSON.parse(vi.mocked(fetch).mock.calls[0][1].body);
+    expect('recurrence' in body).toBe(false);
   });
 
   it('createEvent throws on HTTP error', async () => {
