@@ -39,8 +39,30 @@ import { renderVoiceOverlay } from '../widgets/voice-overlay.js';
 import { states as voiceOverlayStates } from '../widgets/voice-overlay.fixtures.js';
 import { openMonthCalendar } from '../widgets/month-calendar.js';
 import { states as monthCalendarStates } from '../widgets/month-calendar.fixtures.js';
+import { mountDaybrief } from '../widgets/daybrief.js';
+import { states as daybriefStates } from '../widgets/daybrief.fixtures.js';
 
 const WIDGETS = {
+  daybrief: {
+    states: daybriefStates,
+    mount(root, fixture) {
+      localStorage.removeItem('daybrief:dismissed:v1');
+      // Mirrors morning-briefing.js: the brief card sits between the topbox
+      // and the calendar; wall default flavor is letter, ?flavor= overrides.
+      // "Now" is pinned to 8:15a so the widget's noon cutoff never hides a
+      // fixture regardless of when QA runs.
+      root.innerHTML = `<main class="briefing"><section class="card daybrief" data-slot="daybrief" hidden></section></main>`;
+      const morning = new Date();
+      morning.setHours(8, 15, 0, 0);
+      const flavor = new URLSearchParams(window.location.search).get('flavor') ?? 'letter';
+      mountDaybrief(
+        root.querySelector('[data-slot="daybrief"]'),
+        { initial: fixture, live: Promise.resolve(fixture) },
+        { now: () => morning, flavor },
+      );
+    },
+  },
+
   calendar: {
     states: calendarStates,
     mount(root, fixture) {

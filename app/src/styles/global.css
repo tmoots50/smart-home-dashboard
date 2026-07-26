@@ -2578,6 +2578,73 @@ a.pick__item .pick__title { color: var(--color-accent, var(--color-fg)); }
 }
 .daybrief__dot { color: var(--color-muted); }
 .daybrief__text { min-width: 0; }
+
+/* split flavor — semantic halves with a center rule: your day | after work
+   & ahead. Same two-column silhouette as `columns`, but grouping is fixed
+   and the divider says so. */
+.daybrief__split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+}
+.daybrief__pane { min-width: 0; }
+.daybrief__pane + .daybrief__pane {
+  border-left: 1px solid var(--color-border);
+  padding-left: var(--space-4);
+}
+
+/* letter flavor — Hermes writes actual prose; bullets ride shotgun. */
+.daybrief__letter {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: var(--space-5);
+}
+.daybrief__body { min-width: 0; }
+.daybrief__body p {
+  margin: 0 0 var(--space-2);
+  font-size: 1.02rem;
+  line-height: 1.55;
+}
+.daybrief__body p:last-child { margin-bottom: 0; }
+.daybrief__rail { min-width: 0; }
+.daybrief__section--compact .daybrief__item {
+  font-size: 0.92rem;
+  padding: 0.28rem 0;
+}
+.daybrief__section--compact .daybrief__time {
+  font-size: 0.82rem;
+  min-width: 2.6rem;
+}
+
+/* agenda flavor — timeline-first: the day runs down a ruled gutter with big
+   time tokens; everything else compacts into the right rail. */
+.daybrief__agenda {
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: var(--space-5);
+}
+.daybrief__timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: 2px solid var(--color-border);
+}
+.daybrief__tl-item {
+  display: grid;
+  grid-template-columns: 4.5rem 1fr;
+  gap: var(--space-3);
+  align-items: baseline;
+  padding: 0.45rem 0 0.45rem var(--space-3);
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.daybrief__tl-time {
+  color: var(--color-accent);
+  font-weight: 600;
+  font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .daybrief__closer {
   margin: var(--space-2) 0 0;
   padding-top: var(--space-2);

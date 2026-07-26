@@ -111,7 +111,14 @@ export function renderMorningBriefing(root) {
     try { localStorage.setItem('calendar:flavor', params.get('calflavor')); } catch {}
   }
   mountCalendar(root.querySelector('[data-slot="calendar"]'), { flavor: calFlavor });
-  mountDaybrief(root.querySelector('[data-slot="daybrief"]'), getDaybrief());
+  // Morning Brief flavor: ?brieflavor=letter|columns|split|agenda wins and
+  // persists (same pattern as calflavor). The wall default is letter — Tim's
+  // pick, 2026-07-26.
+  const briefFlavor = params.get('brieflavor') || localStorage.getItem('daybrief:flavor') || 'letter';
+  if (params.get('brieflavor')) {
+    try { localStorage.setItem('daybrief:flavor', params.get('brieflavor')); } catch {}
+  }
+  mountDaybrief(root.querySelector('[data-slot="daybrief"]'), getDaybrief(), { flavor: briefFlavor });
   fitBible(root.querySelector('.bible'));
   mountComingUp(root.querySelector('[data-slot="coming-up"]'));
 

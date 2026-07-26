@@ -8,6 +8,7 @@ import { states } from '../widgets/daybrief.fixtures.js';
 
 const params = new URLSearchParams(window.location.search);
 const stateName = params.get('state') ?? 'typical';
+const flavor = params.get('flavor') ?? 'columns'; // columns | split | letter | agenda
 
 const theme = params.get('theme');
 if (theme) document.documentElement.dataset.theme = theme;
@@ -28,7 +29,7 @@ if (fixture === undefined && stateName !== 'empty') {
   mountDaybrief(
     root.querySelector('[data-slot="daybrief"]'),
     { initial: fixture, live: Promise.resolve(fixture) },
-    { now: () => morning },
+    { now: () => morning, flavor },
   );
   document.documentElement.dataset.harnessReady = '1';
 }

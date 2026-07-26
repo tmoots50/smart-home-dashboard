@@ -47,6 +47,16 @@ test('morning briefing: ≥3 todo and ≥3 grocery rows land above the fold', as
   test.skip(page.viewportSize()?.width !== 1080, 'fold contract is canvas-only');
   await openBriefing(page);
 
+  // The Morning Brief legitimately pushes everything down while it's up
+  // (mornings until cleared/noon — approved trade-off, Tim 2026-07-26). The
+  // fold contract applies to the dashboard's steady state: clear the brief
+  // first, which doubles as a reflow check.
+  const daybrief = page.locator('.daybrief');
+  if (await daybrief.isVisible()) {
+    await daybrief.locator('.daybrief__clear').tap();
+    await expect(daybrief).toBeHidden();
+  }
+
   const fold = page.viewportSize().height;
   for (const selector of ['.todos__item', '.groceries__item']) {
     const rows = page.locator(selector);

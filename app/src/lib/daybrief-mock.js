@@ -13,11 +13,17 @@ export function getMockDaybrief() {
   return {
     date: todayYMD(),
     generatedAt: new Date().toISOString(),
-    headline: 'Full morning, open afternoon. The passport appointment Thursday is the one that needs prep.',
+    bodyTitle: '🗞️ Headlines',
+    headline: 'Full morning, open afternoon. One form to chase.',
+    body: [
+      '📋 **The passport appointment Thursday is the one that needs prep.** Birth certificate from the fire safe, both parents present, Mabel in a cooperative mood.',
+      '🕛 **Today splits at noon.** Errands and daycare in the morning, meetings stacked 10–2, then clear — anything physical happens after 3.',
+      '🍽️ **Salmon tonight, minus the lemons.** Add them to the CVS stop and dinner stays a plan.',
+    ],
     sections: [
       {
         kind: 'today',
-        title: 'Today',
+        title: '🗓️ Today',
         items: [
           { time: '9:00', text: 'Daycare drop-off — you’re on it' },
           { time: '11:30', text: 'Vet — Chloe, annual shots' },
@@ -27,7 +33,7 @@ export function getMockDaybrief() {
       },
       {
         kind: 'errands',
-        title: 'On your way home',
+        title: '🚗 On your way home',
         items: [
           { text: 'CVS — Mabel’s prescription is ready (closes 9)' },
           { text: 'Milk + coffee — out of both as of this morning' },
@@ -35,15 +41,15 @@ export function getMockDaybrief() {
       },
       {
         kind: 'comingup',
-        title: 'Coming up',
+        title: '🔭 Coming up',
         items: [
           { time: 'Thu', text: 'Passport appointment — bring Mabel’s birth certificate (fire safe)' },
           { time: 'Sat', text: 'Aidan’s birthday party — gift still unsorted' },
         ],
       },
       {
-        kind: 'kitchen',
-        title: 'Kitchen',
+        kind: 'meals',
+        title: '🍽️ Meals',
         items: [
           { text: 'Salmon tonight — missing lemons; add to the CVS stop' },
           { text: 'Grocery list is at 9 items — a run this week beats two next week' },
@@ -51,7 +57,7 @@ export function getMockDaybrief() {
       },
       {
         kind: 'todos',
-        title: 'Worth doing today',
+        title: '✅ Worth doing',
         items: [
           { text: 'Renew car registration — expires in 6 days' },
           { text: 'RSVP to the daycare potluck — due tomorrow' },

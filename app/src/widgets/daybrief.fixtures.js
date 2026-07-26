@@ -27,6 +27,106 @@ export const states = {
   // No blob for today — the card must stay hidden and the calendar owns the top.
   empty: null,
 
+  // ── Real-data states (Tim's actual week of Jul 27, pulled 2026-07-26 via
+  // mfb-calendar-show + gtask + open-meteo). These are the voice reference:
+  // connected sentences, contractions, judgment attached to real facts.
+  // Both carry `body` paragraphs so every flavor renders from one payload. ──
+
+  // Monday → week readout: Headlines lead with the week's one real story,
+  // Coming Up rides along (Sun/Mon/Thu are its days). Rail order is the
+  // contract: Today → Needs a decision → Meals → Worth doing → Coming up.
+  'real-monday': brief({
+    bodyTitle: '🗞️ Headlines',
+    headline: 'Clear morning, stacked afternoon. One decision pending.',
+    body: [
+      '🏫 **The week’s story is childcare.** Primrose wraps its year Wednesday and closes Thursday–Friday for teacher training. Tonight’s job: settle who has Mabel.',
+      '🕛 **Today is two different days.** Nothing until noon, then meetings straight through 7:30. Real thinking happens this morning or not at all.',
+      '🍼 **Mabel’s checkup is tomorrow at 1:00** — mid-meeting for you, so confirm Caroline’s on it. Four-month visits mean shots; plan a gentle evening.',
+      '🌡️ **Heat builds all week.** 94 today, 99 tomorrow. Saturday brings Chloe’s heartworm pill and, at last, the air filter.',
+    ],
+    sections: [
+      {
+        kind: 'today',
+        title: '🗓️ Today',
+        items: [
+          { time: 'Morning', text: 'Clear until noon — your one open stretch' },
+          { time: '12:00', text: 'Meetings, wall-to-wall until 7:30' },
+        ],
+      },
+      {
+        kind: 'attention',
+        title: '⚖️ Needs a decision',
+        items: [
+          { text: 'Who has Mabel **Thursday and Friday**? Primrose is closed both days.' },
+        ],
+      },
+      {
+        kind: 'meals',
+        title: '🍽️ Meals',
+        items: [
+          { text: 'Running low on baby powder and Barebells — the weekend run covers it' },
+        ],
+      },
+      {
+        kind: 'todos',
+        title: '✅ Worth doing',
+        items: [
+          { text: 'Start the GA 529 — it’s a form, not a project' },
+          { text: 'Birth-certificate steps; paperwork is queued behind it' },
+        ],
+      },
+      {
+        kind: 'comingup',
+        title: '🔭 Coming up',
+        items: [
+          { time: 'Tue', text: 'Mabel’s 4-month checkup, 1:00' },
+          { time: 'Tue', text: 'Spiritual Direction, 6:30' },
+          { time: 'Wed', text: 'Primrose’s last day of the year' },
+          { time: 'Sat', text: 'Chloe’s heartworm pill · air filter' },
+        ],
+      },
+    ],
+    closer: '94 today, 99 tomorrow. The air filter picked a good week to matter.',
+  }),
+
+  // Tuesday → tight, today-focused: no Coming Up (it flashes Sun/Mon/Thu
+  // unless something urgent), fewer Headlines, decision follow-through.
+  'real-tuesday': brief({
+    bodyTitle: '🗞️ Headlines',
+    headline: 'Checkup day, 99 degrees. Plan a gentle evening.',
+    body: [
+      '🍼 **Mabel sees the doctor at 1:00.** Caroline has her; your 12:45 breather is enough time to call for the verdict. Expect shots and an early bedtime.',
+      '💼 **Meetings run 11:35 through the evening**, then Spiritual Direction at 6:30. The morning is yours.',
+      '🌡️ **It’s 99° out there.** Anything that can wait indoors, should.',
+    ],
+    sections: [
+      {
+        kind: 'today',
+        title: '🗓️ Today',
+        items: [
+          { time: '11:35', text: 'Meetings begin' },
+          { time: '1:00', text: 'Mabel’s 4-month checkup — Caroline has her' },
+          { time: '6:30', text: 'Spiritual Direction' },
+        ],
+      },
+      {
+        kind: 'attention',
+        title: '⚖️ Needs a decision',
+        items: [
+          { text: 'Thursday–Friday coverage: make sure last night’s plan is real' },
+        ],
+      },
+      {
+        kind: 'meals',
+        title: '🍽️ Meals',
+        items: [
+          { text: 'What’s for dinner? 99° says takeout — that’s a plan, not a failure' },
+        ],
+      },
+    ],
+    closer: 'Stay near the air conditioning. Mabel has the right idea about naps.',
+  }),
+
   // A reasonably full weekday: all five core sections + closer.
   typical: getMockDaybrief(),
 
@@ -36,7 +136,7 @@ export const states = {
     sections: [
       {
         kind: 'today',
-        title: 'Today',
+        title: '🗓️ Today',
         items: [{ time: '11:00', text: 'Swim lesson — Mabel' }],
       },
       {
@@ -61,7 +161,7 @@ export const states = {
     sections: [
       {
         kind: 'today',
-        title: 'Today',
+        title: '🗓️ Today',
         items: [
           { time: '8:30', text: 'Daycare drop-off — Caroline has an early call, so this one is yours' },
           { time: '10:00', text: 'Dentist — the form they emailed twice is still unsigned in your downloads folder' },
@@ -81,7 +181,7 @@ export const states = {
       },
       {
         kind: 'comingup',
-        title: 'Coming up',
+        title: '🔭 Coming up',
         items: [
           { time: 'Wed', text: 'Car registration deadline — the renewal takes four minutes online, you have timed it' },
           { time: 'Thu', text: 'Passport appointment 9:40a — birth certificate, both parents, and Mabel in a cooperative mood' },
