@@ -114,4 +114,51 @@ describe('device registry', () => {
       globalThis.fetch = realFetch;
     }
   });
+
+  it('readHome reads battery from a separate sensor entity when batteryId is configured', async () => {
+    const entitiesWithBattery = JSON.stringify({
+      lock: { id: 'lock.front_door', name: 'Front Door', batteryId: 'sensor.front_door_battery' },
+      plugs: [{ id: 'switch.lamp', name: 'Lamp' }],
+    });
+    const env = {
+      HA_BASE_URL: 'https://ha.test',
+      HA_TOKEN: 't',
+      HA_ENTITIES_JSON: entitiesWithBattery,
+      HOME_DEVICES: fakeKv(),
+    };
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async (url) => {
+      const u = String(url);
+      if (u.includes('sensor.front_door_battery')) return { ok: true, json: async () => ({ state: '97', attributes: {} }) };
+      if (u.includes('lock.front_door')) return { ok: true, json: async () => ({ state: 'locked', attributes: {} }) };
+      return { ok: true, json: async () => ({ state: 'on', attributes: {} }) };
+    };
+    try {
+      const home = await readHome(env);
+      expect(home.lock.battery).toBe(97);
+      expect(home.lock.state).toBe('locked');
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  it('readHome falls back to lock entity attributes when no batteryId is configured', async () => {
+    const env = {
+      HA_BASE_URL: 'https://ha.test',
+      HA_TOKEN: 't',
+      HA_ENTITIES_JSON: ENTITIES, // no batteryId
+      HOME_DEVICES: fakeKv(),
+    };
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async () => ({
+      ok: true,
+      json: async () => ({ state: 'locked', attributes: { battery_level: 55 } }),
+    });
+    try {
+      const home = await readHome(env);
+      expect(home.lock.battery).toBe(55);
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
 });

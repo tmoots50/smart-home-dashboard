@@ -152,8 +152,8 @@ function renderLock(lock) {
       <div class="home-tile__lead">
         <span class="home-tile__icon">${icon}</span>
         <div class="home-tile__labels">
-          <span class="home-tile__name">${escapeHtml(lock.name)}</span>
-          <span class="home-tile__state">${stateLabel}${battery(lock.battery)}</span>
+          <span class="home-tile__name">${escapeHtml(lock.name)}${battery(lock.battery)}</span>
+          <span class="home-tile__state">${stateLabel}</span>
         </div>
       </div>
       <div class="home-tile__control">

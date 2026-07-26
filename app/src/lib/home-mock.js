@@ -17,7 +17,7 @@ export function getMockHome() {
       id: 'lock.aqara_smart_lock_u100',
       name: 'Front Door',
       state: 'locked',
-      battery: null,
+      battery: 97,
     },
     plugs: [
       { id: 'switch.living_room_side_lamp', name: 'Side Lamp',  on: true },

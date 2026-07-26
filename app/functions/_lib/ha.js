@@ -146,8 +146,9 @@ export async function readHome(env) {
     ...plugs.map(p => ({ ...p, custom: false })),
     ...registry.filter(d => !plugs.some(p => p.id === d.id)).map(d => ({ ...d, custom: true })),
   ];
-  const [lockState, ...plugStates] = await Promise.all([
+  const [lockState, batteryState, ...plugStates] = await Promise.all([
     lock ? getState(env, lock.id) : Promise.resolve(null),
+    lock?.batteryId ? getState(env, lock.batteryId).catch(() => null) : Promise.resolve(null),
     ...all.map(p => getState(env, p.id).catch(() => null)), // one dead device ≠ dead card
   ]);
   return {
@@ -155,7 +156,7 @@ export async function readHome(env) {
       id: lock.id,
       name: lock.name,
       state: lockState.state, // 'locked' | 'unlocked' | 'jammed' | 'unknown'
-      battery: batteryOf(lockState),
+      battery: batteryState ? batteryFromSensor(batteryState) : batteryOf(lockState),
     } : null,
     plugs: all.map((p, i) => ({
       id: p.id,
@@ -166,6 +167,15 @@ export async function readHome(env) {
   };
 }
 
+// Extract battery from a dedicated HA sensor entity where the state value IS
+// the percentage (e.g. sensor.aqara_smart_lock_u100_battery → state: "97").
+function batteryFromSensor(state) {
+  const n = Number(state?.state);
+  return Number.isFinite(n) ? Math.round(n) : null;
+}
+
+// Extract battery from a lock/device entity's attributes (fallback for devices
+// that expose battery directly on the main entity, not a separate sensor).
 function batteryOf(state) {
   const b = state?.attributes?.battery_level ?? state?.attributes?.battery;
   return b == null ? null : Math.round(Number(b));
