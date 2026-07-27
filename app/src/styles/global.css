@@ -2620,8 +2620,8 @@ a.pick__item .pick__title { color: var(--color-accent, var(--color-fg)); }
 .daybrief__masthead-body > :last-child { margin-bottom: 0; }
 .daybrief__avatar {
   flex: 0 0 auto;
-  width: 3.75rem;
-  height: 3.75rem;
+  width: 4.25rem;
+  height: 4.25rem;
   border-radius: 50%;
   object-fit: cover;
   /* Lift the portrait off the near-black card with a hairline ring. */

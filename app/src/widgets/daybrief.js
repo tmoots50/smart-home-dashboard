@@ -66,7 +66,7 @@ export function renderDaybrief(data, { flavor = DEFAULT_FLAVOR } = {}) {
   // masthead; the body sections below reflow full-width beneath it.
   return `
     <div class="daybrief__masthead">
-      <img class="daybrief__avatar" src="/nigel.png" alt="Nigel" width="60" height="60" decoding="async" />
+      <img class="daybrief__avatar" src="/nigel.png" alt="Nigel" width="68" height="68" decoding="async" />
       <div class="daybrief__masthead-body">
         <div class="card__header daybrief__header">
           <h2 class="card__title">${title}</h2>
