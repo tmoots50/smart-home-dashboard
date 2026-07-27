@@ -45,19 +45,14 @@ const headers = {
   'content-type': 'application/json',
 };
 
-const getResponse = await fetch(base, { headers });
-if (!getResponse.ok) {
-  console.error(`Cloudflare project lookup failed (${getResponse.status}).`);
-  process.exit(1);
-}
-const project = (await getResponse.json()).result;
-
+// PATCH only the two keys we own. env_vars merge PER KEY on PATCH; never
+// GET-then-resend the whole map — secret_text values come back from GET
+// empty, so a wholesale re-send wipes every stored secret (this exact
+// mistake took down Google + CF Access secrets on 2026-07-19).
 const deploymentConfigs = {};
 for (const environment of ['production', 'preview']) {
-  const existing = project?.deployment_configs?.[environment]?.env_vars || {};
   deploymentConfigs[environment] = {
     env_vars: {
-      ...existing,
       RELAY_URL: { type: 'plain_text', value: relayUrl },
       RELAY_SECRET: { type: 'secret_text', value: relaySecret },
     },

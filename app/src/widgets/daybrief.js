@@ -61,12 +61,20 @@ export function renderDaybrief(data, { flavor = DEFAULT_FLAVOR } = {}) {
   const title = isCheckin
     ? `Check-in · ${escapeHtml(formatTime(data.generatedAt) ?? formatDate(data.date))}`
     : `Morning Brief · ${escapeHtml(formatDate(data.date))}`;
+  // Nigel's portrait sits to the left of the masthead (label + headline) so
+  // the card reads as him handing over the note. The avatar spans only the
+  // masthead; the body sections below reflow full-width beneath it.
   return `
-    <div class="card__header daybrief__header">
-      <h2 class="card__title">${title}</h2>
-      <button class="daybrief__clear" data-action="clear" aria-label="Clear ${isCheckin ? 'check-in' : 'morning brief'}"></button>
+    <div class="daybrief__masthead">
+      <img class="daybrief__avatar" src="/nigel.png" alt="Nigel" width="60" height="60" decoding="async" />
+      <div class="daybrief__masthead-body">
+        <div class="card__header daybrief__header">
+          <h2 class="card__title">${title}</h2>
+          <button class="daybrief__clear" data-action="clear" aria-label="Clear ${isCheckin ? 'check-in' : 'morning brief'}"></button>
+        </div>
+        ${data.headline ? `<p class="daybrief__headline">${escapeHtml(data.headline)}</p>` : ''}
+      </div>
     </div>
-    ${data.headline ? `<p class="daybrief__headline">${escapeHtml(data.headline)}</p>` : ''}
     ${middle}
     ${data.closer ? `<p class="daybrief__closer">${md(data.closer)}</p>` : ''}
   `;

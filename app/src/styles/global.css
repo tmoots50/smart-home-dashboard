@@ -2601,6 +2601,32 @@ a.pick__item .pick__title { color: var(--color-accent, var(--color-fg)); }
    like a note — display-face headline, only the sections that earned their
    place today, dry closer. Lives above the family calendar and pushes it
    down; [hidden] (no brief today / cleared / past noon) hands the top back. */
+/* Masthead: Nigel's portrait beside the label + headline, so the card reads
+   as him handing over the note. He spans just this top block; the body
+   sections below reflow full-width under him (avatar floats top-left in
+   spirit, flex in mechanism). Sized to roughly cover label→headline. */
+.daybrief__masthead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+.daybrief__masthead-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+/* The headline's own bottom margin would double up with the masthead's; the
+   masthead owns the gap to the body, so the last child inside runs flush. */
+.daybrief__masthead-body > :last-child { margin-bottom: 0; }
+.daybrief__avatar {
+  flex: 0 0 auto;
+  width: 3.75rem;
+  height: 3.75rem;
+  border-radius: 50%;
+  object-fit: cover;
+  /* Lift the portrait off the near-black card with a hairline ring. */
+  box-shadow: 0 0 0 1px var(--color-border);
+}
 .daybrief__header { margin-bottom: var(--space-1); }
 /* Hit rect is 44px; the visible ring stays modest (grow hit areas, not
    visuals). Negative block margin keeps the header at its usual height. */
