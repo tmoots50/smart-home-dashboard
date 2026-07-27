@@ -69,6 +69,10 @@ const weekData = {
     // Long titles exercise the 2-line wrap (all-day bar + timed block) at the
     // real wall card width, where short titles wouldn't reveal it.
     { id: 'w-vbs', title: 'Parish Vacation Bible School Week', allDay: true, startsAt: dayYmd(2), endsAt: dayYmd(3), sub: '', description: '' },
+    // Liturgical feast days (Catholic ICS feed) — own tint, stacked next to a
+    // family all-day event so the distinct color reads at the wall.
+    { id: 'w-feast1', title: 'The Transfiguration of the Lord', allDay: true, startsAt: dayYmd(1), endsAt: dayYmd(2), sub: '', description: '', liturgical: true, calendar: 'Catholic Calendar', person: 'Catholic' },
+    { id: 'w-feast2', title: 'Saint Maximilian Kolbe, priest and martyr', allDay: true, startsAt: dayYmd(3), endsAt: dayYmd(4), sub: '', description: '', liturgical: true, calendar: 'Catholic Calendar', person: 'Catholic' },
     tevt('w-long', 0, 16, 0, 17, 30, 'Primrose teacher training session'),
     tevt('w1', 0, 9, 0, 10, 0, 'Grocery Run'),
     tevt('w2', 0, 10, 45, 12, 0, 'Coffee with Diane'), // overlaps w3

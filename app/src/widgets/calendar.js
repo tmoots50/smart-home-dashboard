@@ -27,6 +27,13 @@ import { getCalendar, fetchCalendar, getRange, fetchRange } from '../lib/calenda
 import { CARD_MAX_PER_COLUMN } from '../lib/comingup.js';
 import { visibleRoster, isHiddenEvent } from '../lib/calendar-people.js';
 import { openEventDetail } from './event-detail.js';
+import { CAL_SVG } from '../lib/icons.js';
+
+// "Open month view" control. Replaces the old "See more" text link with the same
+// calendar glyph the action bar uses — both fire data-overlay="calendar", which
+// the view wires to openMonthCalendar, so they open the identical month overlay.
+const monthViewButton = () =>
+  `<button class="cal-monthbtn" data-overlay="calendar" aria-label="Open month calendar">${CAL_SVG}</button>`;
 
 const TIME_FMT = new Intl.DateTimeFormat(undefined, {
   hour: 'numeric',
@@ -97,7 +104,7 @@ function renderColumns(data, now, flavor) {
     <div class="calendar calendar--columns calendar--${flavor}">
       <div class="card__header">
         <h2 class="card__title">Family Calendar</h2>
-        <button class="btn btn--text" data-overlay="calendar">See more</button>
+        ${monthViewButton()}
       </div>
       <div class="calendar__grid" style="grid-template-columns: repeat(${columns.length}, minmax(0, 1fr))">
         ${columns.map(col => renderColumn(col, data.nextEventId, now, flavor)).join('')}
@@ -258,7 +265,7 @@ function renderDayGrouped(data, now) {
                 <i class="calendar__dot calendar__dot--${colSlug(label)}"></i>${escapeHtml(label)}
               </span>`).join('')}
           </span>
-          <button class="btn btn--text" data-overlay="calendar">See more</button>
+          ${monthViewButton()}
         </div>
       </div>
       <div class="calendar__daylist">${body}</div>
@@ -366,8 +373,10 @@ export function renderWeek(events, now = new Date(), { offsetDays = 0 } = {}) {
     <div class="calendar calendar--week">
       <div class="card__header">
         <h2 class="card__title">Family Calendar</h2>
-        ${renderWeekNav(windowStart, days[days.length - 1], offsetDays)}
-        <button class="btn btn--text" data-overlay="calendar">See more</button>
+        <div class="calweek__actions">
+          ${renderWeekNav(windowStart, days[days.length - 1], offsetDays)}
+          ${monthViewButton()}
+        </div>
       </div>
       <div class="calweek">
         ${head}
@@ -425,7 +434,7 @@ function renderDayColumn(dayEvents, nowForCol, nextId) {
     const isNext = e.id != null && e.id === nextId;
     const laneLeft = (lane * 100 / lanes).toFixed(2);
     const laneWidth = (100 / lanes).toFixed(2);
-    return `<div class="calweek__event${isNext ? ' calweek__event--next' : ''}"
+    return `<div class="calweek__event${isNext ? ' calweek__event--next' : ''}${e.liturgical ? ' calweek__event--feast' : ''}"
       style="top:${top.toFixed(2)}%;height:${height.toFixed(2)}%;left:calc(${laneLeft}% + ${WEEK_BLOCK_GUTTER_PX}px);width:calc(${laneWidth}% - ${2 * WEEK_BLOCK_GUTTER_PX}px)"
       ${weekEventAttrs(e)} tabindex="0">
       <span class="calweek__event-time">${eventTime(e)}</span>
@@ -490,8 +499,10 @@ function renderAllDayBand(allDay, windowStart) {
   if (!bars.length) return ''; // no band → the scroll area flexes to fill
 
   const rows = packAllDayRows(bars);
+  // Liturgical (Catholic-calendar) all-day events get their own single tint so
+  // feast days read as distinct from real family commitments at a glance.
   const cells = rows.map(({ e, colStart, colEndExcl, row }) =>
-    `<div class="calweek__bar" style="grid-column:${2 + colStart} / ${2 + colEndExcl};grid-row:${row + 1}" ${weekEventAttrs(e)} tabindex="0">${escapeHtml(e.title)}</div>`,
+    `<div class="calweek__bar${e.liturgical ? ' calweek__bar--feast' : ''}" style="grid-column:${2 + colStart} / ${2 + colEndExcl};grid-row:${row + 1}" ${weekEventAttrs(e)} tabindex="0">${escapeHtml(e.title)}</div>`,
   ).join('');
   return `<div class="calweek__allday"><div class="calweek__corner"><span>all-day</span></div>${cells}</div>`;
 }

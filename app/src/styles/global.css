@@ -558,6 +558,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .cal-person--tim      .cal-person__head { color: var(--color-accent); }  /* coral */
 .cal-person--family   .cal-person__head { color: #6dac8e; }              /* sage green */
 .cal-person--caroline .cal-person__head { color: #6e8faf; }              /* medium blue */
+.cal-person--catholic .cal-person__head { color: var(--color-feast); }   /* feast violet */
 .cal-overlay__unlinked { font-style: italic; opacity: 0.6; }
 .cal-overlay__unlinked, .cal-overlay__quiet { margin: var(--space-2) 0 0; }
 .cal-overlay__subtitle {
@@ -590,6 +591,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .cal-chip--tim { color: var(--color-accent); }
 .cal-chip--family { color: #6dac8e; }
 .cal-chip--caroline { color: #6e8faf; }
+.cal-chip--catholic { color: var(--color-feast); }
 /* Work-calendar marker: a quiet uppercase pill after the title / on the meta
    line. Display-only — the ROW carries the 44px hit area; this never grows a
    tap target and never lives inside a line-clamped box. */
@@ -660,11 +662,13 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .month-cal__legend-item--tim      i { background: var(--color-accent); }
 .month-cal__legend-item--caroline i { background: #6e8faf; }
 .month-cal__legend-item--other    i { background: var(--color-muted); }
+.month-cal__legend-item--catholic i { background: var(--color-feast); }
 .month-cal__legend-item.is-active { color: var(--color-fg); }
 .month-cal__legend-item--family.is-active   { border-color: #6dac8e; background: color-mix(in srgb, #6dac8e 14%, transparent); }
 .month-cal__legend-item--tim.is-active      { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
 .month-cal__legend-item--caroline.is-active { border-color: #6e8faf; background: color-mix(in srgb, #6e8faf 14%, transparent); }
 .month-cal__legend-item--other.is-active    { border-color: var(--color-muted); background: color-mix(in srgb, var(--color-muted) 12%, transparent); }
+.month-cal__legend-item--catholic.is-active { border-color: var(--color-feast); background: color-mix(in srgb, var(--color-feast) 14%, transparent); }
 .month-cal__legend-item.is-dimmed { opacity: 0.45; }
 .month-cal__dow {
   display: grid;
@@ -765,6 +769,7 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
 .month-cal__chip--tim      { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
 .month-cal__chip--caroline { border-color: #6e8faf; background: color-mix(in srgb, #6e8faf 14%, transparent); }
 .month-cal__chip--other    { border-color: var(--color-muted); background: color-mix(in srgb, var(--color-muted) 12%, transparent); }
+.month-cal__chip--catholic { border-color: var(--color-feast); background: color-mix(in srgb, var(--color-feast) 16%, transparent); }
 /* Work events keep the person hue; the dashed edge is the subtle "work"
    marker (a text pill won't fit a month chip). */
 .month-cal__chip.is-work   { border-left-style: dashed; }
@@ -1759,6 +1764,26 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   background: color-mix(in srgb, var(--color-accent) 12%, transparent);
 }
 .calweek__nav-label:hover { border-color: var(--color-accent); }
+/* Right-side header cluster: the ‹ date-range › nav sits next to the month-view
+   button (they share the right edge; the title owns the left). */
+.calweek__actions { display: inline-flex; align-items: center; gap: var(--space-2); }
+/* Month-view button — the calendar-glyph pill that replaced the "See more" text
+   link. Sized/bordered like the nav pills so the whole right cluster reads as one
+   control group; used by every calendar flavor (data-overlay="calendar"). */
+.cal-monthbtn {
+  width: 2.75rem;             /* 44px hit target = the visible pill */
+  height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+.cal-monthbtn svg { width: 1.4rem; height: 1.4rem; }
+.cal-monthbtn:hover { border-color: var(--color-accent); color: var(--color-accent); }
 .calweek {
   display: flex;
   flex-direction: column;
@@ -1842,6 +1867,13 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   cursor: pointer;
 }
 .calweek__bar:hover { color: var(--color-accent); }
+/* Catholic-calendar feast days: one distinct tint (cool violet) so they don't
+   read as family commitments. Same treatment as family bars, different hue. */
+.calweek__bar--feast {
+  background: color-mix(in srgb, var(--color-feast) 24%, var(--color-surface));
+  border-left-color: var(--color-feast);
+}
+.calweek__bar--feast:hover { color: var(--color-feast); }
 /* Scrollable hour grid. Scrollbar hidden to match the list flavors. */
 .calweek__scroll {
   flex: 1 1 auto;
@@ -1923,6 +1955,12 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   overflow-wrap: anywhere;
 }
 .calweek__event:hover .calweek__title { color: var(--color-accent); }
+/* Feast tint for any (rare) timed liturgical event — matches the all-day bars. */
+.calweek__event--feast {
+  background: color-mix(in srgb, var(--color-feast) 24%, var(--color-surface));
+  border-left-color: var(--color-feast);
+}
+.calweek__event--feast:hover .calweek__title { color: var(--color-feast); }
 .calweek__now {
   position: absolute;
   left: 0;

@@ -13,6 +13,7 @@ export const color = {
   surface: '#16161a',
   border: '#26262b',
   'event-feed': '#d49b5e',
+  feast: '#8b7bc0',
 };
 
 export const font = {

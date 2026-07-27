@@ -12,6 +12,11 @@
 
   --color-event-feed: #d49b5e;
 
+  /* Liturgical (Catholic-calendar) feast tint — one hue for that whole feed, a
+     cool violet that reads distinct from the warm gold accent used by family
+     events. Works on both the dark (cosy) and light (fun) surfaces via color-mix. */
+  --color-feast: #8b7bc0;
+
   --font-display: ui-serif, "Iowan Old Style", Georgia, serif;
   --font-body: ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", sans-serif;
 
