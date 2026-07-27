@@ -161,6 +161,21 @@ describe('rankComingUp', () => {
     expect(names).not.toContain('Narvar offsite');
     expect(names).not.toContain('Client presentation');
   });
+
+  it('excludes liturgical feast days from both panes (week grid + month only — Coming Up is family)', () => {
+    const { left, right } = rankComingUp([
+      ...cardFillers(),
+      ev({ title: 'Family agenda item', startsAt: '2026-07-24T10:00:00' }),                 // Family, left window → keep
+      ev({ calendar: 'Catholic Calendar', person: 'Catholic', liturgical: true, allDay: true,
+           title: 'The Assumption of the Blessed Virgin Mary', startsAt: '2026-07-24' }),   // feast in left window → drop
+      ev({ calendar: 'Catholic Calendar', person: 'Catholic', liturgical: true, allDay: true,
+           title: 'Octave of a Long Feast', startsAt: '2026-09-01', endsAt: '2026-09-05' }), // multi-day → would be "travel"/right, but drop
+    ], { now: NOW });
+    const names = [...left, ...right].map(i => i.name);
+    expect(names).toContain('Family agenda item');           // non-liturgical family event still shows
+    expect(names).not.toContain('The Assumption of the Blessed Virgin Mary');
+    expect(names).not.toContain('Octave of a Long Feast');
+  });
 });
 
 describe('rankComingUp overrides (the Hermes hand)', () => {

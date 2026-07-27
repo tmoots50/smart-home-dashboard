@@ -71,6 +71,10 @@ export function rankComingUp(events, { now = new Date(), overrides = [] } = {}) 
   const rightEnd = addDays(today, RIGHT_WINDOW_DAYS);
 
   const enriched = visibleEvents(events)
+    // Coming Up is purely family events — liturgical feast days (from the
+    // Catholic ICS feed) belong on the week grid + month view only, never here
+    // (Tim, 2026-07-26). They stay visible on those surfaces; this drop is local.
+    .filter(it => !it.liturgical)
     .map(normalizeItem)
     .filter(it => it.startsAt)
     .map(it => classify(it))

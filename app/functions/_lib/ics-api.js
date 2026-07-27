@@ -47,6 +47,9 @@ export function parseIcsCalendars(env) {
         url: c.url,
         person: (c.person && String(c.person).trim()) || String(c.label).trim(),
         kind: c.kind === 'work' ? 'work' : 'personal',
+        // Optional per-feed transform. 'liturgical-ranked' keeps only rank-tagged
+        // celebrations from a gcatholic-style feed (see liturgicalRankedOnly).
+        filter: c.filter === 'liturgical-ranked' ? 'liturgical-ranked' : undefined,
         readOnly: true,
       }));
   } catch {
@@ -97,9 +100,30 @@ async function getIcsText(env, url) {
   return text;
 }
 
+// Liturgical (gcatholic-style) feeds tag every celebration with its rank in the
+// title — [S]olemnity / [F]east / [M]emorial / [m] optional memorial — while the
+// ~2/3 of days that are plain ferias ("Monday of week 3 in Ordinary Time") carry
+// NO tag. `filter: 'liturgical-ranked'` keeps only the tagged days (drops the
+// ferias Tim doesn't want on the wall), strips the leading emoji + rank tag so the
+// title is just the celebration, and stamps `liturgical: true` so a surface can
+// exclude feasts WITHOUT hiding them everywhere (Coming Up stays family-only; the
+// week grid + month view still show them). Keeps all four ranks — dropping the
+// optional memorials [m] (about half) is a one-line change if the wall gets busy.
+const LITURGICAL_RANK = /\[(S|F|M|m)\]/;
+export function liturgicalRankedOnly(events) {
+  const out = [];
+  for (const ev of events) {
+    const m = LITURGICAL_RANK.exec(ev.title || '');
+    if (!m) continue; // ferial / untagged → drop
+    const title = String(ev.title).replace(/^.*?\[(?:S|F|M|m)\]\s*/, '').trim();
+    out.push({ ...ev, title: title || ev.title, rank: m[1], liturgical: true });
+  }
+  return out;
+}
+
 // Expand an ICS document into normalized events within [timeMin, timeMax].
 // Output shape matches normalizeUpcoming() so the two sources merge seamlessly.
-export function expandIcs(icsText, timeMin, timeMax, { label, person, kind, readOnly = true } = {}) {
+export function expandIcs(icsText, timeMin, timeMax, { label, person, kind, readOnly = true, filter } = {}) {
   const expander = new IcalExpander({ ics: icsText, maxIterations: ICS_MAX_ITERATIONS });
   const { events, occurrences } = expander.between(new Date(timeMin), new Date(timeMax));
 
@@ -107,9 +131,10 @@ export function expandIcs(icsText, timeMin, timeMax, { label, person, kind, read
   const repeat = occurrences.map(o =>
     shape(o.item.uid, o.item.summary, o.item.location, o.item.description, o.startDate, o.endDate, true));
 
-  return [...single, ...repeat]
+  const mapped = [...single, ...repeat]
     .filter(Boolean)
     .map(ev => ({ ...ev, calendar: label, person: person || label, kind: kind === 'work' ? 'work' : 'personal', readOnly }));
+  return filter === 'liturgical-ranked' ? liturgicalRankedOnly(mapped) : mapped;
 
   // ICAL.Time → our shape. All-day events (startDate.isDate) render as bare
   // YYYY-MM-DD with an EXCLUSIVE end (matching Google's all-day convention, so

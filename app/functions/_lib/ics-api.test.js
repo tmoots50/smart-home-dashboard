@@ -50,6 +50,53 @@ END:VCALENDAR`;
 const JULY = { timeMin: '2026-07-01T00:00:00Z', timeMax: '2026-08-01T00:00:00Z' };
 const META = { label: 'Caroline (Work)', person: 'Caroline', kind: 'work', readOnly: true };
 
+// A gcatholic-style liturgical feed: all-day celebrations tagged with a rank
+// ([S]/[F]/[M]/[m]) behind a color emoji, plus untagged ferial days that the
+// 'liturgical-ranked' filter must drop.
+const LITURGICAL_ICS = `BEGIN:VCALENDAR
+PRODID:-//gcatholic.org//Liturgical Calendar//EN
+VERSION:2.0
+BEGIN:VEVENT
+UID:assumption@gc
+SUMMARY:⚪ [S] The Assumption of the Blessed Virgin Mary
+DTSTART;VALUE=DATE:20260815
+DTEND;VALUE=DATE:20260816
+END:VEVENT
+BEGIN:VEVENT
+UID:lawrence@gc
+SUMMARY:🔴 [F] Saint Lawrence\\, deacon and martyr
+DTSTART;VALUE=DATE:20260810
+DTEND;VALUE=DATE:20260811
+END:VEVENT
+BEGIN:VEVENT
+UID:dominic@gc
+SUMMARY:⚪ [M] Saint Dominic\\, priest
+DTSTART;VALUE=DATE:20260808
+DTEND;VALUE=DATE:20260809
+END:VEVENT
+BEGIN:VEVENT
+UID:eudes@gc
+SUMMARY:⚪ [m] Saint John Eudes\\, priest
+DTSTART;VALUE=DATE:20260819
+DTEND;VALUE=DATE:20260820
+END:VEVENT
+BEGIN:VEVENT
+UID:ferial1@gc
+SUMMARY:⚪ Monday of week 18 in Ordinary Time
+DTSTART;VALUE=DATE:20260803
+DTEND;VALUE=DATE:20260804
+END:VEVENT
+BEGIN:VEVENT
+UID:ferial2@gc
+SUMMARY:⚪ Saturday of week 20 in Ordinary Time
+DTSTART;VALUE=DATE:20260822
+DTEND;VALUE=DATE:20260823
+END:VEVENT
+END:VCALENDAR`;
+
+const AUG = { timeMin: '2026-08-01T00:00:00Z', timeMax: '2026-09-01T00:00:00Z' };
+const LIT_META = { label: 'Catholic Calendar', person: 'Catholic', kind: 'personal', filter: 'liturgical-ranked' };
+
 describe('parseIcsCalendars', () => {
   it('parses the JSON env var, defaulting person to label and marking read-only', () => {
     const env = { ICS_CALENDARS_JSON: '[{"label":"Caroline (Work)","url":"https://x/y.ics","kind":"work","person":"Caroline"}]' };
@@ -70,6 +117,16 @@ describe('parseIcsCalendars', () => {
       .toHaveLength(1);
     expect(parseIcsCalendars({})).toEqual([]);
     expect(parseIcsCalendars({ ICS_CALENDARS_JSON: 'not json' })).toEqual([]);
+  });
+
+  it('passes through a known filter and ignores unknown filter values', () => {
+    const env = { ICS_CALENDARS_JSON: JSON.stringify([
+      { label: 'Catholic Calendar', url: 'https://g/us.ics', person: 'Catholic', filter: 'liturgical-ranked' },
+      { label: 'Other', url: 'https://x/o.ics', filter: 'bogus' },
+    ]) };
+    const cals = parseIcsCalendars(env);
+    expect(cals[0].filter).toBe('liturgical-ranked');
+    expect(cals[1].filter).toBeUndefined();
   });
 });
 
@@ -125,6 +182,38 @@ describe('expandIcs', () => {
   it('filters to the requested window', () => {
     const oneDay = expandIcs(SAMPLE_ICS, '2026-07-09T00:00:00Z', '2026-07-10T00:00:00Z', META);
     expect(oneDay.map(e => e.title).sort()).toEqual(['1:1 with manager']); // only the Jul 9 one-off (standup EXDATE'd on the 8th, none on the 9th)
+  });
+});
+
+describe('expandIcs — liturgical-ranked filter (gcatholic feasts)', () => {
+  it('keeps only rank-tagged celebrations and drops untagged ferial days', () => {
+    const titles = expandIcs(LITURGICAL_ICS, AUG.timeMin, AUG.timeMax, LIT_META).map(e => e.title).sort();
+    expect(titles).toEqual([
+      'Saint Dominic, priest',
+      'Saint John Eudes, priest',
+      'Saint Lawrence, deacon and martyr',
+      'The Assumption of the Blessed Virgin Mary',
+    ]);
+    expect(titles.some(t => /Ordinary Time/.test(t))).toBe(false); // ferials gone
+  });
+
+  it('strips the emoji + rank tag, records the rank, stamps liturgical, keeps all-day + tags', () => {
+    const evs = expandIcs(LITURGICAL_ICS, AUG.timeMin, AUG.timeMax, LIT_META);
+    const assumption = evs.find(e => e.title.includes('Assumption'));
+    expect(assumption).toMatchObject({
+      title: 'The Assumption of the Blessed Virgin Mary', // no ⚪ / [S]
+      rank: 'S', liturgical: true, allDay: true,
+      calendar: 'Catholic Calendar', person: 'Catholic', kind: 'personal',
+    });
+    expect(evs.every(e => e.liturgical === true)).toBe(true);
+    expect(new Set(evs.map(e => e.rank))).toEqual(new Set(['S', 'F', 'M', 'm'])); // all four ranks kept
+  });
+
+  it('without the filter, the same feed keeps ferials and leaves titles (tag) untouched', () => {
+    const evs = expandIcs(LITURGICAL_ICS, AUG.timeMin, AUG.timeMax, { ...LIT_META, filter: undefined });
+    expect(evs.some(e => /Ordinary Time/.test(e.title))).toBe(true);
+    expect(evs.some(e => e.title.includes('[S]'))).toBe(true); // tag NOT stripped
+    expect(evs.every(e => e.liturgical === undefined)).toBe(true);
   });
 });
 
