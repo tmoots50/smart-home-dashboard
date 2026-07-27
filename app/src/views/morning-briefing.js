@@ -8,13 +8,16 @@ import { mountGroceries } from '../widgets/groceries.js';
 import { renderBible, fitBible } from '../widgets/bible.js';
 import { mountCardPhoto } from '../widgets/card-photo.js';
 import { openHomeOverlay } from '../widgets/home.js';
-import { openCalendarOverlay } from '../widgets/calendar-overlay.js';
+// "See more" now opens the month-grid view instead of the 90-day agenda modal
+// (openCalendarOverlay). The modal + its tests stay in the codebase; this import
+// is commented out for easy restore — Tim, 2026-07-26.
+// import { openCalendarOverlay } from '../widgets/calendar-overlay.js';
 import { openMonthCalendar } from '../widgets/month-calendar.js';
 import { mountHomeCard } from '../widgets/home-card.js';
 import { openVoiceOverlay } from '../widgets/voice-overlay.js';
 
 import { getHome, actions as homeActions, deviceActions, isConfigured as homeConfigured } from '../lib/home.js';
-import { getUpcoming, getMonth } from '../lib/calendar.js';
+import { getMonth } from '../lib/calendar.js';
 import { getDaybrief } from '../lib/daybrief.js';
 import { openHermesChat } from '../lib/telegram.js';
 import { voice } from '../lib/voice.js';
@@ -188,10 +191,11 @@ export function renderMorningBriefing(root) {
     }
     const overlay = e.target.closest('[data-overlay]')?.dataset.overlay;
     if (overlay === 'calendar') {
-      // Family is the only visible calendar now, so show the full scrollable
-      // 90-day Family agenda instead of a per-person top-N (which, with one
-      // person, would hide most of the month).
-      openCalendarOverlay(getUpcoming(90), { days: 90 });
+      // "See more" opens the month-grid view — the same view the action-bar
+      // calendar icon opens. The old 90-day agenda modal is commented out but
+      // kept in the codebase for easy restore — Tim, 2026-07-26.
+      // openCalendarOverlay(getUpcoming(90), { days: 90 });
+      openMonthCalendar({ getMonth });
     }
   });
 }
