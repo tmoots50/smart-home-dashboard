@@ -63,6 +63,14 @@ test('daybrief/real-tuesday: quiet-day cadence — no Coming Up section', async 
   await expect(page.locator('.daybrief__section--comingup')).toHaveCount(0);
 });
 
+test('daybrief/checkin-afternoon: header is Check-in · time, clear control still meets the tap floor', async ({ page }) => {
+  await open(page, 'checkin-afternoon', 'letter');
+  await expect(page.locator('.daybrief .card__title')).toContainText('Check-in ·');
+  await expect(page.locator('.daybrief .card__title')).not.toContainText('Morning Brief');
+  // Same clear affordance as the morning brief, relabeled for the kind.
+  await expect(page.locator('.daybrief__clear')).toHaveAttribute('aria-label', 'Clear check-in');
+});
+
 test('daybrief/real-monday: ✓ clears the card, undo toast restores it', async ({ page }) => {
   await open(page, 'real-monday', 'letter');
   await page.locator('.daybrief__clear').tap();

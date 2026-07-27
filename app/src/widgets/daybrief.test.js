@@ -68,6 +68,28 @@ describe('renderDaybrief', () => {
     expect(html).not.toContain('onmouseover');
   });
 
+  it('titles a check-in with its generation time, not the date', () => {
+    const html = renderDaybrief(brief({ kind: 'checkin', generatedAt: '2026-07-27T19:42:00.000Z' }));
+    expect(html).toContain('Check-in ·');
+    expect(html).not.toContain('Morning Brief');
+    expect(html).toContain('aria-label="Clear check-in"');
+    // The header shows a clock time (locale-formatted), never the YMD date.
+    const title = html.match(/<h2 class="card__title">([^<]+)<\/h2>/)[1];
+    expect(title).toMatch(/\d/);
+    expect(title).not.toContain('Jul');
+  });
+
+  it('falls back to the date in a check-in title when generatedAt is missing', () => {
+    const html = renderDaybrief(brief({ kind: 'checkin', generatedAt: undefined }));
+    expect(html).toContain('Check-in ·');
+    expect(html).toContain('Jul');
+  });
+
+  it('keeps the Morning Brief title for morning (and legacy kind-less) blobs', () => {
+    expect(renderDaybrief(brief({ kind: 'morning' }))).toContain('Morning Brief ·');
+    expect(renderDaybrief(brief())).toContain('Morning Brief ·');
+  });
+
   it('omits headline, closer, and empty sections when absent', () => {
     const html = renderDaybrief(brief({
       headline: '', closer: null,
@@ -91,6 +113,15 @@ describe('isVisible', () => {
   it('hides after the noon cutoff', () => {
     expect(isVisible(brief(), new Date('2026-07-27T12:00:00'), null)).toBe(false);
     expect(isVisible(brief(), new Date('2026-07-27T11:59:00'), null)).toBe(true);
+  });
+
+  it('check-ins are exempt from the noon cutoff — requested mid-day on purpose', () => {
+    const checkin = brief({ kind: 'checkin' });
+    expect(isVisible(checkin, new Date('2026-07-27T16:00:00'), null)).toBe(true);
+    expect(isVisible(checkin, new Date('2026-07-27T23:30:00'), null)).toBe(true);
+    // …but never survive their date or a dismissal.
+    expect(isVisible(checkin, new Date('2026-07-28T09:00:00'), null)).toBe(false);
+    expect(isVisible(checkin, new Date('2026-07-27T16:00:00'), checkin.generatedAt)).toBe(false);
   });
 
   it('hides the cleared generation only — a re-publish supersedes the clear', () => {

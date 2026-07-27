@@ -5,6 +5,11 @@ judgment, not a data feed. Hermes composes it every morning (~7:30a ET) and
 POSTs it to `/api/brief`; the `daybrief` widget renders it above the Family
 Calendar (pushing it down) until it's cleared, replaced, or noon arrives.
 
+The same card carries a second product since 2026-07-27: the **check-in**
+(`kind: "checkin"`), requested from the action bar's clipboard button. Nigel
+composes it on demand, contextual to the time of day, and it is exempt from
+the noon cutoff — see § Check-in below.
+
 Approved by Tim 2026-07-26 (letter flavor, emojis). Voice updated later the
 same day: the beat-reporter register was replaced by the **Nigel persona**
 (Nigel from *The Devil Wears Prada* — Tim + Caroline's pick; full voice spec
@@ -31,6 +36,7 @@ Hermes cron (7:30a, Old Mac)                     Cloudflare Pages
 
 ```jsonc
 {
+  "kind": "morning",             // optional: "morning" (default) | "checkin" — anything else → "morning"
   "date": "2026-07-27",          // REQUIRED, YYYY-MM-DD local — widget only renders it on this day
   "headline": "…",               // ≤160 chars; the widget headline, ≤8-ish words
   "bodyTitle": "🗞️ Headlines",  // optional label over the prose column
@@ -93,6 +99,39 @@ is the feature, not a bug.
 **Closer.** One dry Nigel line, usually weather- or situation-aware, italic
 footer. Skip it when nothing presents itself.
 
+## Check-in (`kind: "checkin"`)
+
+The clipboard button in the action bar asks Nigel for a mid-day update — the
+analogy is checking in with your assistant after the morning email: they
+don't re-send the email, they tell you what's changed and what to do with
+what's left.
+
+**Flow.** Button → `POST /api/checkin` (fixed server-side instruction, no
+client text) → Old Mac relay → Nigel runs the `checkin-brief` skill
+(hermes-setup) → publishes here with `kind: "checkin"` → the client polls
+`/api/brief` (~12s interval, 4 min cap) and pushes the blob into the card the
+moment it lands. Errors are honest toasts: relay busy (429), unconfigured
+(501), Old Mac unreachable/asleep (502/504), or a poll timeout.
+
+**Composition contract** (the `checkin-brief` skill enforces this; it shares
+the payload schema, voice, and section grammar above):
+- **Never repeats the morning brief.** Reads the current blob first; only
+  what's new, changed, or still undecided gets airtime.
+- **Time-banded:** mid-morning → remainder of today, past events silently
+  dropped; afternoon → rest of today + a look at tomorrow, plus task triage
+  (what won't realistically fit today is explicitly moved to tomorrow);
+  evening → mostly tomorrow-facing; late night → brief, tomorrow-facing.
+- Section kinds are reused with check-in titles where it helps ("🗓️ Still
+  today", "➡️ Moved to tomorrow", "🔭 Tomorrow").
+
+**Rendering differences.** Header shows `Check-in · <generation time>`
+instead of the date; the card is exempt from the noon cutoff (you asked for
+it at 4pm — it stays up the rest of its `date`, until cleared or
+superseded). Dismissal and same-day rules are unchanged; each publish
+supersedes the previous blob (`brief:latest` is single-slot, so a check-in
+replaces the morning brief on the wall — continuity lives in the skill
+reading the previous blob before composing).
+
 ## Rendering (dashboard side)
 
 - Widget: `app/src/widgets/daybrief.js` — flavors `letter` (wall default,
@@ -101,9 +140,10 @@ footer. Skip it when nothing presents itself.
   Headlines full-width on top, sections in two balanced columns below
   (reworked 2026-07-26 — the original side-by-side grid over-wrapped on
   the wall).
-- Visibility: `date` must equal today, before noon, not cleared. Clearing
-  (✓ → Undo toast) stores the brief's date in `daybrief:dismissed:v1`
-  (kiosk-local), so yesterday's clear never hides today's brief.
+- Visibility: `date` must equal today, before noon (check-ins are exempt
+  from the noon rule), not cleared. Clearing (✓ → Undo toast) stores the
+  brief's generation marker in `daybrief:dismissed:v1` (kiosk-local), so
+  yesterday's clear never hides today's brief.
 - No mock in production: no blob → hidden card (`lib/daybrief.js`; contrast
   the picks fallback chain).
 

@@ -80,6 +80,14 @@ describe('normalizeBrief', () => {
     expect(r.value.sections[0].items[0]).not.toHaveProperty('time');
   });
 
+  it('normalizes kind: "checkin" passes through, everything else is "morning"', () => {
+    expect(normalizeBrief({ ...valid(), kind: 'checkin' }, NOW).value.kind).toBe('checkin');
+    expect(normalizeBrief(valid(), NOW).value.kind).toBe('morning');
+    for (const junk of ['CHECKIN', 'evening', 42, null, { k: 1 }]) {
+      expect(normalizeBrief({ ...valid(), kind: junk }, NOW).value.kind).toBe('morning');
+    }
+  });
+
   it('omits bodyTitle when absent and nulls an empty closer', () => {
     const r = normalizeBrief({ ...valid(), bodyTitle: undefined, closer: '' }, NOW);
     expect(r.value).not.toHaveProperty('bodyTitle');

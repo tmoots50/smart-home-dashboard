@@ -127,6 +127,57 @@ export const states = {
     closer: 'Stay near the air conditioning. Mabel has the right idea about naps.',
   }),
 
+  // Afternoon check-in (kind: "checkin") — the clipboard-button product, set
+  // in the real-monday world at 3:42p. The contract on display: nothing from
+  // the morning is repeated, past events are gone, remaining-day + tomorrow
+  // lead, and tasks that won't fit today are explicitly moved to tomorrow.
+  // Header shows "Check-in · <time>" instead of the date.
+  'checkin-afternoon': brief({
+    kind: 'checkin',
+    generatedAt: (() => { const d = new Date(); d.setHours(15, 42, 0, 0); return d.toISOString(); })(),
+    bodyTitle: '🗞️ Since this morning',
+    headline: 'Afternoon holds. Two tasks slide to tomorrow.',
+    body: [
+      '🕢 **The afternoon is spoken for.** Meetings hold straight through 7:30 — nothing new has landed since this morning, and nothing has moved.',
+      '✅ **The 529 is officially tomorrow’s problem.** No gap big enough left today; it goes first thing tomorrow, and the birth-certificate mapping rides along.',
+      '🍼 **Tomorrow starts with a needle.** Mabel’s checkup at 1:00 — confirm tonight that Caroline has her, and plan a gentle evening after the shots.',
+    ],
+    sections: [
+      {
+        kind: 'today',
+        title: '🗓️ Still today',
+        items: [
+          { time: 'Now–7:30', text: 'Meetings, straight through' },
+          { time: '7:30', text: 'Clear — dinner, Mabel handoff' },
+        ],
+      },
+      {
+        kind: 'attention',
+        title: '⚖️ Needs a decision',
+        items: [
+          { text: '**Thu–Fri** Mabel coverage — still undecided' },
+        ],
+      },
+      {
+        kind: 'todos',
+        title: '➡️ Moved to tomorrow',
+        items: [
+          { text: '529 plan — first gap tomorrow' },
+          { text: 'Birth-certificate steps' },
+        ],
+      },
+      {
+        kind: 'comingup',
+        title: '🔭 Tomorrow',
+        items: [
+          { time: '1:00', text: 'Mabel’s checkup — confirm Caroline' },
+          { time: '6:30', text: 'Spiritual Direction' },
+        ],
+      },
+    ],
+    closer: 'Four hours of meetings left. I’d send coffee, but you know where it is.',
+  }),
+
   // A reasonably full weekday: all five core sections + closer.
   typical: getMockDaybrief(),
 

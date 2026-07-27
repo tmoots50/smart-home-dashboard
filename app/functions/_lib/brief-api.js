@@ -55,6 +55,12 @@ export function normalizeBrief(payload, nowIso) {
     return { ok: false, error: 'date must be YYYY-MM-DD (the local day the brief is for)' };
   }
 
+  // Two brief kinds share the blob: the 7:30a "morning" brief and the
+  // button-requested "checkin" (time-of-day update). The widget keys its
+  // title and the noon cutoff off this; anything unrecognized is "morning"
+  // so old payloads keep their old behavior.
+  const kind = payload.kind === 'checkin' ? 'checkin' : 'morning';
+
   const headline = str(payload.headline, 160);
   const body = (Array.isArray(payload.body) ? payload.body : [])
     .map(p => str(p, 600)).filter(Boolean).slice(0, BODY_MAX);
@@ -71,6 +77,7 @@ export function normalizeBrief(payload, nowIso) {
     ok: true,
     value: {
       generatedAt: nowIso,
+      kind,
       date,
       headline,
       ...(bodyTitle ? { bodyTitle } : {}),

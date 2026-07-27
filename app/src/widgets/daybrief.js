@@ -22,6 +22,12 @@
 // Cleared state is kiosk-local, keyed by the brief's date so yesterday's
 // clear never hides today's brief.
 //
+// A blob with kind "checkin" (the action-bar clipboard button → Nigel's
+// time-of-day update, 2026-07-27) is EXEMPT from the noon cutoff: you asked
+// for it at 4pm, so it stays up the rest of the day until cleared or
+// superseded. Same date/dismissal rules otherwise; its header shows the
+// generation time instead of the date.
+//
 // Sections carry a `kind` (today / attention / errands / comingup / kitchen /
 // todos / mabel) used for grouping + theme accents; unknown kinds render
 // generically off their `title`, so Hermes can invent a section without a
@@ -51,10 +57,14 @@ export function renderDaybrief(data, { flavor = DEFAULT_FLAVOR } = {}) {
   else if (flavor === 'agenda') middle = renderAgenda(sections);
   else middle = sections.length ? `<div class="daybrief__cols">${sections.map(s => renderSection(s)).join('')}</div>` : '';
 
+  const isCheckin = data.kind === 'checkin';
+  const title = isCheckin
+    ? `Check-in · ${escapeHtml(formatTime(data.generatedAt) ?? formatDate(data.date))}`
+    : `Morning Brief · ${escapeHtml(formatDate(data.date))}`;
   return `
     <div class="card__header daybrief__header">
-      <h2 class="card__title">Morning Brief · ${escapeHtml(formatDate(data.date))}</h2>
-      <button class="daybrief__clear" data-action="clear" aria-label="Clear morning brief"></button>
+      <h2 class="card__title">${title}</h2>
+      <button class="daybrief__clear" data-action="clear" aria-label="Clear ${isCheckin ? 'check-in' : 'morning brief'}"></button>
     </div>
     ${data.headline ? `<p class="daybrief__headline">${escapeHtml(data.headline)}</p>` : ''}
     ${middle}
@@ -138,13 +148,14 @@ function md(s) {
   return escapeHtml(s).replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
 }
 
-// Visible = a real brief, for today, before noon, not cleared.
+// Visible = a real brief, for today, before noon (check-ins are exempt —
+// they're requested mid-day on purpose), not cleared.
 export function isVisible(data, now, dismissedDate = readDismissed()) {
   if (!data?.date) return false;
   const hasContent = data.headline || (data.body ?? []).length || (data.sections ?? []).some(s => s?.items?.length);
   if (!hasContent) return false;
   if (data.date !== localYMD(now)) return false;
-  if (now.getHours() >= NOON_HOUR) return false;
+  if (data.kind !== 'checkin' && now.getHours() >= NOON_HOUR) return false;
   // Clearing hides THIS generation, not the whole day: a re-published brief
   // (new generatedAt) supersedes an earlier collapse and reappears
   // (Tim, 2026-07-26 — "i had collapsed the original; push this new one").
@@ -174,7 +185,7 @@ export function mountDaybrief(el, source, { now = () => new Date(), flavor } = {
     const key = dismissKey(data);
     writeDismissed(key);
     draw();
-    showToast('Morning brief cleared', {
+    showToast(data.kind === 'checkin' ? 'Check-in cleared' : 'Morning brief cleared', {
       actionLabel: 'Undo',
       onAction: () => {
         if (readDismissed() === key) writeDismissed(null);
@@ -190,7 +201,13 @@ export function mountDaybrief(el, source, { now = () => new Date(), flavor } = {
     if (isConfigured) fetchDaybrief().then(next => { data = next; draw(); }).catch(() => draw());
     else draw();
   }, REFRESH_MS);
-  return () => clearInterval(id);
+  // Controller so the view can push a fresh blob outside the 5-min poll —
+  // the check-in flow polls /api/brief itself and hands the result over here
+  // the moment it lands, instead of waiting out the interval.
+  return {
+    refresh(next) { if (next !== undefined) data = next; draw(); },
+    stop() { clearInterval(id); },
+  };
 }
 
 function readDismissed() {
@@ -211,6 +228,14 @@ function formatDate(dateStr) {
   const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(d);
   const month = new Intl.DateTimeFormat(undefined, { month: 'short' }).format(d);
   return `${weekday}, ${month} ${d.getDate()}`;
+}
+// Check-in header time ("3:42 PM"), local. Null when generatedAt is absent
+// or unparseable so the caller can fall back to the date.
+function formatTime(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(d);
 }
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({

@@ -18,7 +18,8 @@ import { openVoiceOverlay } from '../widgets/voice-overlay.js';
 
 import { getHome, actions as homeActions, deviceActions, isConfigured as homeConfigured } from '../lib/home.js';
 import { getMonth } from '../lib/calendar.js';
-import { getDaybrief } from '../lib/daybrief.js';
+import { getDaybrief, fetchDaybrief } from '../lib/daybrief.js';
+import { requestCheckin, awaitCheckinBrief, isConfigured as checkinConfigured } from '../lib/checkin.js';
 import { openHermesChat } from '../lib/telegram.js';
 import { voice } from '../lib/voice.js';
 import { toggleTheme, isDark } from '../lib/theme-mode.js';
@@ -33,9 +34,10 @@ import {
 } from '../lib/tasks.js';
 import { showToast } from '../widgets/toast.js';
 
-// SVG_ATTRS + CAL_SVG live in lib/icons.js so the action-bar calendar button and
-// the Family Calendar card's month-view button render the exact same glyph.
-import { SVG_ATTRS, CAL_SVG } from '../lib/icons.js';
+// Shared glyphs live in lib/icons.js. The action bar's fifth slot is the
+// check-in clipboard (2026-07-27 — it replaced the month-calendar button;
+// month view stays reachable via the Family Calendar card's own control).
+import { SVG_ATTRS, CLIPBOARD_SVG } from '../lib/icons.js';
 const MIC_SVG = `<svg ${SVG_ATTRS}><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><line x1="12" y1="18" x2="12" y2="21"/><line x1="9" y1="21" x2="15" y2="21"/></svg>`;
 const MUSIC_SVG = `<svg ${SVG_ATTRS}><circle cx="6" cy="18" r="3"/><circle cx="18" cy="15" r="3"/><path d="M9 18V5l12-2v12"/></svg>`;
 const HOME_SVG = `<svg ${SVG_ATTRS}><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><rect x="10" y="14" width="4" height="6"/></svg>`;
@@ -76,7 +78,7 @@ export function renderMorningBriefing(root) {
             <button class="action-btn" data-launch="mic" aria-label="Voice input">${MIC_SVG}</button>
             <button class="action-btn" data-launch="music" aria-label="Music">${MUSIC_SVG}</button>
             <button class="action-btn" data-launch="home" aria-label="Home controls">${HOME_SVG}</button>
-            <button class="action-btn" data-launch="month-calendar" aria-label="Month calendar">${CAL_SVG}</button>
+            <button class="action-btn" data-launch="checkin" aria-label="Ask Nigel for a check-in">${CLIPBOARD_SVG}</button>
           </div>
         </div>
         <div class="card card--photo-fill">
@@ -122,7 +124,7 @@ export function renderMorningBriefing(root) {
   if (params.get('brieflavor')) {
     try { localStorage.setItem('daybrief:flavor', params.get('brieflavor')); } catch {}
   }
-  mountDaybrief(root.querySelector('[data-slot="daybrief"]'), getDaybrief(), { flavor: briefFlavor });
+  const daybriefCtl = mountDaybrief(root.querySelector('[data-slot="daybrief"]'), getDaybrief(), { flavor: briefFlavor });
   fitBible(root.querySelector('.bible'));
   mountComingUp(root.querySelector('[data-slot="coming-up"]'));
 
@@ -162,6 +164,41 @@ export function renderMorningBriefing(root) {
   const syncThemeIcon = () => { if (themeBtn) themeBtn.innerHTML = themeIcon(isDark()); };
   document.addEventListener('themechanged', syncThemeIcon);
 
+  // Check-in: ping Nigel via the relay, then watch /api/brief until his
+  // kind:"checkin" blob lands (a minute or two) and push it into the card.
+  // One in flight at a time; every exit path is a toast — the wall never
+  // fails silently (the Old Mac can be asleep).
+  let checkinPending = false;
+  const checkinBtn = root.querySelector('[data-launch="checkin"]');
+  async function runCheckin() {
+    if (checkinPending) { showToast('Nigel’s already on it', { duration: 2500 }); return; }
+    if (!checkinConfigured) { showToast('Check-in needs the live dashboard (no token set)', { duration: 3500 }); return; }
+    checkinPending = true;
+    checkinBtn?.classList.add('action-btn--busy');
+    try {
+      // Identity marker, not a clock comparison: any NEW check-in has a fresh
+      // server-stamped generatedAt, so drift can't fake or miss an arrival.
+      const before = await fetchDaybrief().then(b => b?.generatedAt ?? null).catch(() => null);
+      showToast('Asked Nigel for a check-in — give him a minute or two', { duration: 4000 });
+      await requestCheckin();
+      const blob = await awaitCheckinBrief({ afterGeneratedAt: before });
+      if (blob) {
+        daybriefCtl.refresh(blob);
+        showToast('Nigel’s check-in is up', { duration: 3000 });
+      } else {
+        showToast('No check-in arrived — check Telegram', { duration: 6000 });
+      }
+    } catch (err) {
+      const msg = err.status === 429 ? 'Nigel’s mid-task — try again in a minute'
+        : err.status === 501 ? 'Check-in isn’t configured yet'
+        : 'Nigel’s not answering — the Old Mac may be asleep';
+      showToast(msg, { duration: 6000 });
+    } finally {
+      checkinPending = false;
+      checkinBtn?.classList.remove('action-btn--busy');
+    }
+  }
+
   root.addEventListener('click', (e) => {
     const launch = e.target.closest('[data-launch]')?.dataset.launch;
     if (launch === 'theme') {
@@ -186,8 +223,8 @@ export function renderMorningBriefing(root) {
       window.open('spotify:', '_blank');
       return;
     }
-    if (launch === 'month-calendar') {
-      openMonthCalendar({ getMonth });
+    if (launch === 'checkin') {
+      runCheckin();
       return;
     }
     const overlay = e.target.closest('[data-overlay]')?.dataset.overlay;

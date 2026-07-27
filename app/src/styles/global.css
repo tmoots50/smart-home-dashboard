@@ -223,6 +223,14 @@ html.kiosk, html.kiosk body { overscroll-behavior-y: none; }
   border-color: var(--color-accent);
   background: rgba(255, 255, 255, 0.02);
 }
+/* Check-in in flight: Nigel is composing on the Old Mac (a minute or two).
+   A slow glyph pulse — the button stays tappable so a second press can
+   answer with the "already on it" toast instead of dead-clicking. */
+.action-btn--busy svg { animation: action-busy 1.6s ease-in-out infinite; }
+@keyframes action-busy {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
 
 /* ───── photo watermark ─────
    Mounted by main.js into a fixed-position host behind everything. */
