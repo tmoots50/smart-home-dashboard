@@ -5,7 +5,10 @@ judgment, not a data feed. Hermes composes it every morning (~7:30a ET) and
 POSTs it to `/api/brief`; the `daybrief` widget renders it above the Family
 Calendar (pushing it down) until it's cleared, replaced, or noon arrives.
 
-Approved by Tim 2026-07-26 (letter flavor, beat-reporter voice, emojis).
+Approved by Tim 2026-07-26 (letter flavor, emojis). Voice updated later the
+same day: the beat-reporter register was replaced by the **Nigel persona**
+(Nigel from *The Devil Wears Prada* — Tim + Caroline's pick; full voice spec
+in hermes-setup `deploy/SOUL.md`).
 This doc is the contract between the dashboard (rendering) and the Hermes
 skill `morning-briefing` in `hermes-setup` (composition). Tim iterates on the
 brief by giving Hermes instructions — when those change *composition* (voice,
@@ -56,10 +59,12 @@ events/planning only. Work calendar appears as busy-shape ("meetings stack
 **Headline.** One short line, ≤8-ish words, fragment pairs welcome:
 "Clear morning, stacked afternoon. One decision pending."
 
-**Headlines (`body`).** Beat-reporter paragraphs, each exactly one shape:
+**Headlines (`body`).** Nigel's daily memo, each paragraph exactly one shape:
 content-matched emoji, **bold lede sentence**, then 1–2 supporting sentences.
-Complete sentences, contractions, judgment attached to real facts. Dry humor
-only where a fact supports it; never forced. 2–4 paragraphs on a normal day.
+Complete sentences, contractions, judgment attached to real facts — dry,
+precise, a little coy. Humor only where a fact supports it, never forced;
+camp urgency ("gird your loins") rationed for genuinely big days; barbs land
+on logistics, never on people. 2–4 paragraphs on a normal day.
 
 **Day-of-week readahead.** Monday (and Sunday) lead with the week's story;
 Friday looks at the weekend; midweek stays on today. Depth follows the day.
@@ -85,8 +90,8 @@ overlong items look broken by design — stay under the target.
 Sections that have nothing to say are omitted — a short card on a quiet day
 is the feature, not a bug.
 
-**Closer.** One dry line, usually weather- or situation-aware, italic footer.
-Skip it when nothing presents itself.
+**Closer.** One dry Nigel line, usually weather- or situation-aware, italic
+footer. Skip it when nothing presents itself.
 
 ## Rendering (dashboard side)
 
@@ -112,7 +117,8 @@ Skip it when nothing presents itself.
   `dash-brief current` from the Old Mac (hermes-setup `deploy/bin/`).
 - Fixtures `real-monday` / `real-tuesday` are the voice reference — composed
   from Tim's actual week of Jul 27 and approved by him. Keep them current
-  when the voice evolves.
+  when the voice evolves. **Note:** they predate the 2026-07-26 Nigel voice
+  change; refresh them from the first approved Nigel-voiced morning.
 
 ## Tests
 
