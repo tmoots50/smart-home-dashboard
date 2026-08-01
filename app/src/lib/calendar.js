@@ -1,29 +1,65 @@
 // Client for the /api/calendar CF Pages Function. Returns the same shape as
 // calendar-mock.js so the widget doesn't care which source it's rendering.
 //
-// Falls back to mock when no token is configured, when the fetch fails, or
-// when the endpoint returns no sections — so the dashboard never has a blank
-// calendar card during dev / outages.
+// Fallback order when there's no fresh live fetch yet (see chooseFallback):
+//   fresh cache → last-known REAL cache (serve-stale, up to STALE_MAX_MS) →
+//   empty on a configured wall → bundled mock ONLY in tokenless dev.
+// The bundled mock must NEVER reach a wall that has a token: a transient fetch
+// failure at reload time would otherwise repaint retired placeholder events
+// over the real calendar until the next successful poll (the 2026-08 "calendar
+// keeps switching to old placeholders" bug). getMonth already followed this
+// rule; getCalendar/getUpcoming/getRange now do too, via upcomingSource.
 
 import { getMockCalendar, getMockUpcoming, getMockMonth } from './calendar-mock.js';
 
 const TOKEN = import.meta.env.VITE_DASHBOARD_TOKEN;
 const CACHE_KEY = 'calendar:v1';
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5min — calendar changes more often than weather/photos
+// On a failed fetch, serve the last-known REAL cache this far back rather than
+// blanking (mirrors the ICS layer's serve-stale backstop). Slightly-stale real
+// events beat an empty wall; past events self-drop from the windowed views.
+const STALE_MAX_MS = 24 * 60 * 60 * 1000;
+const EMPTY_CALENDAR = { sections: [], nextEventId: null };
 
-function readCache() {
+// Read a cache entry, classifying it two ways: `fresh` (< ttl → paint it now,
+// no waiting) and `stale` (< STALE_MAX_MS → usable only as a fetch-failure
+// fallback). Either can be null.
+function readCached(key, ttl) {
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) return null;
+    const raw = localStorage.getItem(key);
+    if (!raw) return { fresh: null, stale: null };
     const { at, data } = JSON.parse(raw);
-    if (Date.now() - at > CACHE_TTL_MS) return null;
-    return data;
-  } catch { return null; }
+    const age = Date.now() - at;
+    return { fresh: age <= ttl ? data : null, stale: age <= STALE_MAX_MS ? data : null };
+  } catch { return { fresh: null, stale: null }; }
 }
 
 function writeCache(data) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), data })); }
   catch {}
+}
+
+// The anti-mock rule in one place. Prefer real data we already have (even if
+// stale) over anything synthetic; fall to bundled mock ONLY when there's no
+// token at all (local dev). Pure + exported so the rule is unit-tested directly
+// — module load captures TOKEN, so callers pass `hasToken` in rather than the
+// test trying to flip a const after import.
+export function chooseFallback(staleReal, { hasToken, empty, mock }) {
+  if (staleReal) return staleReal;
+  return hasToken ? empty : mock();
+}
+
+// Shared {initial, live} builder for the array-shaped feeds (upcoming / range /
+// month). Fresh cache paints immediately; a missing-or-stale cache and every
+// fetch failure route through chooseFallback, so mock never reaches a wall with
+// a token. `fetcher` writes the cache + canonicalizes on success.
+function upcomingSource(key, ttl, fetcher, mock) {
+  const { fresh, stale } = readCached(key, ttl);
+  const fallback = () => canonicalizeUpcoming(
+    chooseFallback(stale, { hasToken: !!TOKEN, empty: [], mock }));
+  const initial = fresh ? canonicalizeUpcoming(fresh) : fallback();
+  const live = TOKEN ? fetcher().catch(fallback) : Promise.resolve(initial);
+  return { initial, live };
 }
 
 // Sections and events are now keyed by PERSON server-side (a person's work +
@@ -72,11 +108,11 @@ export async function fetchCalendar() {
 
 // Same {initial, live} contract as getWeather / getPhotos.
 export function getCalendar() {
-  const cached = readCache();
-  const initial = canonicalizeCalendarData(cached ?? getMockCalendar());
-  const live = TOKEN
-    ? fetchCalendar().catch(() => initial)
-    : Promise.resolve(initial);
+  const { fresh, stale } = readCached(CACHE_KEY, CACHE_TTL_MS);
+  const fallback = () => canonicalizeCalendarData(
+    chooseFallback(stale, { hasToken: !!TOKEN, empty: EMPTY_CALENDAR, mock: getMockCalendar }));
+  const initial = fresh ? canonicalizeCalendarData(fresh) : fallback();
+  const live = TOKEN ? fetchCalendar().catch(fallback) : Promise.resolve(initial);
   return { initial, live };
 }
 
@@ -98,19 +134,8 @@ export async function fetchUpcoming(days = 7) {
 }
 
 export function getUpcoming(days = 7) {
-  let cached = null;
-  try {
-    const raw = localStorage.getItem(upcomingKey(days));
-    if (raw) {
-      const { at, data } = JSON.parse(raw);
-      if (Date.now() - at <= UPCOMING_TTL_MS) cached = data;
-    }
-  } catch { /* fall through to mock */ }
-  const initial = canonicalizeUpcoming(cached ?? getMockUpcoming());
-  const live = TOKEN
-    ? fetchUpcoming(days).catch(() => initial)
-    : Promise.resolve(initial);
-  return { initial, live };
+  return upcomingSource(upcomingKey(days), UPCOMING_TTL_MS,
+    () => fetchUpcoming(days), () => getMockUpcoming());
 }
 
 // ── rolling window: an explicit [timeMin, timeMax) range (the week grid) ──
@@ -136,19 +161,8 @@ export async function fetchRange(timeMin, timeMax) {
 }
 
 export function getRange(timeMin, timeMax) {
-  let cached = null;
-  try {
-    const raw = localStorage.getItem(rangeKey(timeMin, timeMax));
-    if (raw) {
-      const { at, data } = JSON.parse(raw);
-      if (Date.now() - at <= RANGE_TTL_MS) cached = data;
-    }
-  } catch { /* fall through to mock */ }
-  const initial = canonicalizeUpcoming(cached ?? getMockUpcoming());
-  const live = TOKEN
-    ? fetchRange(timeMin, timeMax).catch(() => initial)
-    : Promise.resolve(initial);
-  return { initial, live };
+  return upcomingSource(rangeKey(timeMin, timeMax), RANGE_TTL_MS,
+    () => fetchRange(timeMin, timeMax), () => getMockUpcoming());
 }
 
 // ── month view: arbitrary month windows via timeMin/timeMax ──
@@ -172,23 +186,13 @@ export async function fetchMonth(year, month) {
   return events;
 }
 
+// Uncached month + real backend: serve EMPTY (or last-known real), never mock —
+// flashing fake events read as a double page-load on the wall (2026-07-11
+// feedback). Mock stays for tokenless dev so the grid isn't blank. This rule now
+// lives in upcomingSource, shared with getUpcoming/getRange (2026-08).
 export function getMonth(year, month) {
-  let cached = null;
-  try {
-    const raw = localStorage.getItem(monthKey(year, month));
-    if (raw) {
-      const { at, data } = JSON.parse(raw);
-      if (Date.now() - at <= MONTH_TTL_MS) cached = data;
-    }
-  } catch { /* fall through */ }
-  // Uncached month + real backend: serve an EMPTY initial, not mock. Flashing
-  // fake events until live data landed read as a double page-load on the wall
-  // (2026-07-11 feedback). Mock stays for tokenless dev so the grid isn't blank.
-  const initial = canonicalizeUpcoming(cached ?? (TOKEN ? [] : getMockMonth(year, month)));
-  const live = TOKEN
-    ? fetchMonth(year, month).catch(() => initial)
-    : Promise.resolve(initial);
-  return { initial, live };
+  return upcomingSource(monthKey(year, month), MONTH_TTL_MS,
+    () => fetchMonth(year, month), () => getMockMonth(year, month));
 }
 
 export const isConfigured = Boolean(TOKEN);

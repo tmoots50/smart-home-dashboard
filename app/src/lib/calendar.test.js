@@ -1,5 +1,6 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
-import { canonicalizeCalendarData, canonicalizeUpcoming, fetchMonth } from './calendar.js';
+import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
+import { canonicalizeCalendarData, canonicalizeUpcoming, fetchMonth, chooseFallback } from './calendar.js';
+import { getMockUpcoming } from './calendar-mock.js';
 
 describe('calendar canonicalization (person-keyed, alias retired)', () => {
   it('preserves the real calendar label and backfills person for work feeds', () => {
@@ -56,5 +57,66 @@ describe('fetchMonth', () => {
   it('throws on a non-ok response', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 502 })));
     await expect(fetchMonth(2026, 6)).rejects.toThrow('502');
+  });
+});
+
+// The 2026-08 bug: a transient fetch failure on a configured wall repainted the
+// bundled mock (retired Narvar/job-search placeholders) over the real calendar.
+// The fix: prefer real cache (even stale) → empty on a wall → mock only when
+// there is NO token. chooseFallback is that rule, isolated + pure.
+describe('chooseFallback — mock never reaches a configured wall', () => {
+  const mock = () => [{ id: 'MOCK' }];
+
+  it('serves last-known real cache over everything, even without a token', () => {
+    const stale = [{ id: 'real' }];
+    expect(chooseFallback(stale, { hasToken: true, empty: [], mock })).toBe(stale);
+    expect(chooseFallback(stale, { hasToken: false, empty: [], mock })).toBe(stale);
+  });
+
+  it('serves EMPTY (not mock) on a configured wall when there is no cache', () => {
+    expect(chooseFallback(null, { hasToken: true, empty: [], mock })).toEqual([]);
+  });
+
+  it('serves mock only in tokenless dev when there is no cache', () => {
+    expect(chooseFallback(null, { hasToken: false, empty: [], mock })).toEqual([{ id: 'MOCK' }]);
+  });
+});
+
+// End-to-end proof against the reported bug: with a token set and the live
+// fetch rejecting (the transient CF 503), getUpcoming's live promise must NOT
+// resolve to the bundled mock. Imported fresh with the env stubbed, since the
+// module captures VITE_DASHBOARD_TOKEN at load.
+describe('getUpcoming under a failing fetch (token set)', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubEnv('VITE_DASHBOARD_TOKEN', 'test-token');
+    localStorage.clear();
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    localStorage.clear();
+  });
+
+  it('resolves to EMPTY, never the retired mock placeholders, when uncached', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('CF 503'); }));
+    const { getUpcoming } = await import('./calendar.js');
+    const { initial, live } = getUpcoming(90);
+    const resolved = await live;
+    expect(resolved).toEqual([]);
+    expect(initial).toEqual([]);
+    // The placeholder that was leaking onto the wall.
+    expect(JSON.stringify(resolved)).not.toContain('Recruiter call');
+    expect(resolved.length).not.toBe(getMockUpcoming().length);
+  });
+
+  it('serves the last-known real cache (serve-stale) when the fetch fails', async () => {
+    const realEvent = { id: 'g-123', calendar: 'Family', person: 'Family', title: 'Real dentist', startsAt: '2026-08-20T14:00:00' };
+    // A cache entry older than the 5-min TTL but within the 24h serve-stale window.
+    localStorage.setItem('calendar:upcoming:90:v1', JSON.stringify({ at: Date.now() - 10 * 60 * 1000, data: [realEvent] }));
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('CF 503'); }));
+    const { getUpcoming } = await import('./calendar.js');
+    const resolved = await getUpcoming(90).live;
+    expect(resolved).toEqual([realEvent]);
   });
 });
