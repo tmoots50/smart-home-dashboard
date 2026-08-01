@@ -1,103 +1,14 @@
 # Followups
 
-The dumping ground for everything that isn't on the v1 critical path. Active backlog of feature ideas, known limitations, and parking-lot items.
+Engineering ledger for the smart-home-dashboard. Feature backlog and parking lot are now tracked in [Linear (Smart Home Dashboard project)](https://linear.app/mootsy/project/smart-home-dashboard-195dd1a7a7f6) — PRO-54 onwards.
 
 **What lives where:**
 - [`spec.md`](./spec.md) — durable contract: what we're building, why, acceptance criteria, decision history, high-level future themes.
 - [`todo.md`](./todo.md) — ordered v1 execution checklist.
-- **`followups.md`** (this file) — everything else: feature backlog, ideas, limitations, parking lot. Append-only; reorganize when patterns emerge.
+- **`followups.md`** (this file) — active limitations (known gaps we're living with) + recently resolved log. Backlog and parking lot moved to Linear 2026-08-01.
 - [`_audits/`](./_audits/) — UI audit records over time.
 
-**Format:** four sections. Move items between sections as priority changes. Prune "recently resolved" beyond ~10 items.
-
 ---
-
-## Feature backlog — high priority
-*(should ship in v1 or shortly after — these are blockers for the wife-test pass)*
-
-- **✅ KV namespaces bound (2026-07-08, automated via API token).** Both created + bound to Production **and** Preview: `CURATED` → `smart-home-dashboard-curated` (`baf2a2d5c09a45548af3ea07f09b2f81`) and `HOME_DEVICES` → `smart-home-dashboard-home_devices` (`0604585a58d44b8d97c8313f0cdaf2f2`). Done by widening the CF API token to `Workers KV Storage: Edit` (+ existing `Pages: Edit`) and running `source .envrc.local && node scripts/bind-kv.mjs CURATED && node scripts/bind-kv.mjs HOME_DEVICES` — idempotent, additive (14 Pages env vars preserved). **Activation:** bindings only take effect on the *next deployment* — the `api/curated.js` / `api/home/devices.js` code was already shipped in `6a4b337`, so any push activates them. Redeployed 2026-07-09; end-to-end test: `hermes cron run curate-dashboard` on the Old Mac → blob in KV → live on the dashboard.
-- **Tablet one-time settings (Fully Kiosk + Telegram).** Scroll + mic features need tablet-side toggles — full steps in [`docs/tablet-kiosk-setup.md`](./docs/tablet-kiosk-setup.md).
-- **Activate the `tablet` QA profile** *(promoted from medium 2026-07-10 — the last big blind spot behind the density regression; hands-on, ~10 min at the wall. Second strike 2026-07-26: the Morning Brief letter layout passed every canvas check, then over-wrapped badly on the actual wall — narrow-column rail items ran 3–4 lines each and Tim had to redesign from a photo. A tablet profile would have shown it pre-ship.)*. Runbook:
-  1. In Fully Kiosk on the Meswao B3: Settings → Web Content → note the Start URL and its `?scale=` value.
-  2. Load `<start URL>&probe=1` on the tablet — the green probe overlay (already in `main.js`) reports CSS viewport, DPR, physical px, and root font-size. Photograph it.
-  3. Remove `&probe=1` / restore the Start URL.
-  4. Fill + uncomment `tablet` in `app/tests/qa/devices.js` (viewport = innerWidth×innerHeight, deviceScaleFactor = dpr, `query` = the production `&scale=…`).
-  5. `cd app && npm run qa` — every spec now runs at both profiles. Canvas-passing layouts that fail at tablet are the real findings this profile exists for. Note: `auditDesignContract` is canvas-only by design — decide then whether to add scale-adjusted bands.
-  6. Recompute the 44px floor physically: 44 CSS px × scale × dpr → physical px → mm on the B3 panel; if under ~9mm, raise the per-profile minimum.
-- **Activate Spotify + voice infrastructure.** Local implementation is complete.
-  Remaining hands-on gates: Spotify protected-content smoke test/token mint;
-  domain + registrar/Cloudflare zone; Workers plan; Fully Kiosk PLUS; Telegram
-  API credential + old-Mac user-session login; Workers AI binding; tunnel; and
-  on-wall failure drills. Runbooks: `docs/spotify-setup.md` and
-  `docs/voice-command-flow.md`.
-- **Calendar a Spotify token reauthorization.** Developer Dashboard refresh
-  tokens now expire six months after consent and refreshing does not extend the
-  lifetime. Add a reminder when the first production token is minted; runbook is
-  `docs/spotify-setup.md` §6.
-- **Seed `reference/household/entertainment-taste.md`** in the Hermes vault (else Atlanta Picks stay generic). Hermes can draft it — say "draft our entertainment taste profile" on Telegram and confirm.
-- **Caroline + Apple Notes divergence.** Since the 2026-07-08 SoR cutover, Telegram captures land in Google Tasks (shared with the dashboard). If Caroline still edits the legacy Apple Notes directly, her items diverge silently. One conversation + optionally "Hermes, migrate the old Apple groceries" (item-by-item, curated — see `hermes-setup/_context/tasks-migration-diff.md`).
-- **Add US Holidays to the family feed** *(the Catholic feast-day half SHIPPED 2026-07-26 — see Recently resolved; US Holidays is still open).* Original bundled note kept below for the US-Holidays half + the ICS mechanism reference. The ICS system already ingests arbitrary read-only feeds via `ICS_CALENDARS_JSON` (same path as Caroline's Outlook), so **adding sources needs no code** — it's config. **Findings from probing prod (2026-07-26):** (a) `ICS_CALENDARS_JSON` is currently **NOT SET** in Production or Preview (Caroline's Outlook is not wired through it right now), so adding feeds is **zero risk** to existing sources — no wipe hazard. (b) The feast days visible in the month overlay are **mock only** — the live `/api/calendar/upcoming` feed has just `Tim (Work)` / `Family` / `Tim`; production has no feasts/holidays today. (c) US Holidays ICS is **confirmed reachable + valid**: `https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics`. **Two decisions needed before shipping (why it wasn't auto-done):** (1) **Which Catholic feed** — pick a source you trust; a General Roman Calendar / US Ordinary-Form liturgical ICS matches the mock feasts (St. Brigid, Presentation of the Lord, Our Lady of Lourdes). Third-party liturgical feeds vary in reliability, and the tradition is your call. (2) **Wall crowding** — a liturgical calendar has a feast *almost every day*; piped straight into the week-grid all-day band (capped ~2 rows) it would put a bar on nearly every column and bury the family's own all-day events. Recommended treatment: give holidays/feasts their own `person`+`kind`, then either (i) show them only in the month overlay + Coming-Up and **exclude from the week-grid all-day band**, or (ii) show on the week grid but de-emphasized + capped and/or filtered to major feasts. That filtering/styling-by-kind **is** a small code change once you pick the treatment. **Turnkey apply for US Holidays alone** (sparse, safe, no crowding): `source .envrc.local && node scripts/set-cf-env-var.mjs ICS_CALENDARS_JSON '[{"label":"US Holidays","url":"https://calendar.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics","person":"Holidays","kind":"holiday"}]'`, then trigger a redeploy and confirm with `scripts/smoke-live.sh` + `/api/calendar/upcoming`. Add the Catholic entry to the **same** JSON array (one `set-cf-env-var.mjs` call sets the whole value — include both feeds together).
-
-## Feature backlog — medium priority
-*(post-v1, but architecturally directional — informs how v1 should be structured so they're easy to add)*
-
-- **Visible "live data unavailable" indicator instead of silent mock fallback (parked
-  2026-07-20, Tim's call).** When a Google-backed endpoint fails, the frontend silently
-  serves mock events / empty month grids (`app/src/lib/calendar.js`), which made the
-  2026-07-20 secret-wipe outage read as "the dashboard reverted to an old build" — a
-  misdiagnosis a one-word badge would have prevented. Add a subtle per-card indicator
-  (and/or a corner dot on the briefing) when a widget is rendering fallback data.
-  app/src UI change → QA harness trio + design-contract check + visual sign-off. Design
-  constraint: must be glanceable-but-quiet on the wall (kiosk, family-facing — not an
-  error banner).
-
-- **✅ Hermes Coming-Up override channel (2026-07-11, BOTH sides done).** Rules engine
-  stays the baseline order; Tim ad-hoc adjusts through Hermes. Dashboard: `GET/POST
-  /api/comingup` (bearer) stores `{match, score?, pane?, hide?}` in the CURATED KV
-  namespace (`comingup-overrides`); widget merges every refresh (≤5 min). Old Mac:
-  `~/.hermes/bin/dash-comingup {current|publish|clear}` + the `adjust-comingup` skill
-  + an AGENTS.md capture-table row ("hide the watering from coming up" → read-merge-
-  publish). Deployed, round-trip smoke-tested, gateway restarted, static smoke 12/12
-  (hermes-setup `c2c7956`). Voice-test whenever: "Hermes, hide X from coming up."
-- **Atlanta Picks: bring back later (2026-07-11).** Unmounted from the briefing on
-  Tim's request; `widgets/pick.js`, the curated KV feed, harness entry, and QA spec
-  all remain live. Re-mounting is one line in `views/morning-briefing.js` — decide
-  where it lives when it returns (the old slot now belongs to Coming Up).
-
-- **Harness the remaining widgets.** QA-harness coverage (fixtures + spec + harness entry, see `docs/qa-harness.md`) currently spans calendar + calendar-overlay. The coverage report in every `npm run qa` prints the gap. Priority order: home (touch-heavy, mock-first), todos/groceries (shared list engine, undo-toast timing), pick/headlines, weather, event-detail edge states. Per CLAUDE.md convention, any UX-touching change to one of these must add its harness trio as part of that change — so the gap closes organically; this item is for proactively sweeping the rest.
-- **Card empty-columns "next up" fill.** Same pattern the overlay got on 2026-07-10: an empty Tim/Family/Caroline column shows that person's next upcoming event as a muted row instead of "Nothing scheduled." Needs upcoming data plumbed into `mountCalendar` + its own fit derivation (rows that fit without growing the card past the tallest column). *Source: `_audits/2026-07-10-qa-harness-calendar-overlay.md`.*
-
-- **Time-of-day-driven views.** A "leaving the house" morning fold (weather + next event + transit alert + diaper-bag check) collapses 30s of phone-checking into one glance. The killer feature an off-the-shelf product can't ship — and the natural payoff for the Claude / OpenClaw integration already in `spec.md`. *Source: `_audits/2026-04-29-ui-audit.md`.*
-
-- **Prune the dead headlines widget.** `widgets/headlines.js` `renderHeadlines`/`mountHeadlines` are unused since the Pick card (only `fetchHeadlines` remains, as the fallback). Delete the widget + its test once the pick card is proven live via KV; keep `/api/headlines` (pool source + fallback). *(The rest of the old "finish the Hermes side" item shipped 2026-07-08: `.env`, allowlist, gateway restart, 6:30a cron, `gtask`, `dash-curated upcoming` — see Recently resolved.)*
-- **Old Mac: system `python3` is broken** (`xcrun: invalid active developer path` — Command Line Tools missing after the macOS 26.5.1 update). Helpers now use the Hermes venv python so nothing of ours is blocked, but anything else on that box calling bare `python3` will fail. Fix when convenient: `xcode-select --install` on the Old Mac.
-
-## Ideas / parking lot
-*(uncategorized; weighed cost vs. benefit when something else triggers re-evaluation)*
-
-- **Data-health visibility (silent-mock-fallback detector).** The whole Google data layer died for ~7 weeks and nobody noticed, because every widget fails soft to mock and there's no signal that it's faking. The fail-soft is correct for *transient* outages but hides *permanent* ones. Options: (a) a tiny `/api/health` endpoint that pings each backend + a discreet dot on the dashboard when something's stale/degraded; (b) widgets tag mock-sourced data and render a subtle "· offline" marker; (c) a scheduled cron (CF or laptop) that curls the endpoints daily and pings Tim on failure. (c) is lowest-effort, highest-signal — catches it without touching the wife-visible UI. Born from the 2026-07-02 calendar outage.
-- **Smart-home network/energy layer (Pi home server).** Once the Pi is up (see `docs/pi-home-server.md`): AdGuard/Pi-hole for DNS filtering — **blocked on verifying the Xfinity gateway allows a DHCP DNS override** (locked ISP gateways often don't; fallback is per-device DNS or bridge-mode + own router). Per-device bandwidth graphs are **not achievable** beside a closed gateway (needs inline / port-mirror / SNMP) — substitute Pi-hole per-device DNS stats + WAN speed tracking. HA Energy dashboard is viable **only if the Aqara plug models report wattage** (verify). Biggest future unlock for real network control: ISP gateway → bridge mode + own router (UniFi etc.).
-
-- **Commute card → Maps overlay.** When commute returns to the dashboard, tapping it should open a Maps view with alternate routes. Use case: explore Maps app integration; Caroline can see if the recommended route still wins. (Currently no commute card in the live view since weather replaced it in the time card.)
-- **Calendar editing from the tablet.** The 7-day overlay is read-only on purpose — editing routes through phone calendar apps or Hermes on Telegram, avoiding a Google write-scope re-mint. Revisit only if read-only chafes in practice. A month-grid view is a possible later evolution of the same overlay.
-
-- **Caroline Outlook work calendar — integration prep.** When ready: (1) Outlook on the web → Calendar → right-click calendar → Share → Publish → copy ICS URL. (2) `source .envrc.local && node scripts/set-cf-env-var.mjs CAROLINE_OUTLOOK_ICS_URL <url>`. (3) In `app/functions/api/calendar.js`, if `CAROLINE_OUTLOOK_ICS_URL` is set, `fetch()` the ICS, parse VEVENTs (~40 lines: extract `UID`, `DTSTART`, `DTEND`, `SUMMARY`, `LOCATION`, `DESCRIPTION`), normalize to the standard event shape, and inject as a `{ label: "Caroline (Work)", events }` section. (4) Add `cal-chip--caroline-work { color: #c97d4e }` (warm sienna — distinct from the existing coral/green/blue). (5) Given portrait layout, consider stacking Work under Caroline's column rather than adding a 4th full column. No OAuth needed — ICS is a public unauthenticated feed; keep the URL in CF env only.
-
-- **iCloud "Caroline and Tim" calendar feed.** Caroline owns a shared iCloud calendar that has a bunch of household events (dinners, plans together) that don't end up on the Google Family calendar. Want it to show up as a third section on the dashboard. Recommended path when this surfaces: ask Caroline to enable Public Calendar on it (iCloud Calendar → right-click → Share Calendar → Public), grab the `webcal://` URL, store as `ICLOUD_CALENDAR_ICS_URL` env var on CF Pages, add a small ICS/VEVENT parser (~40 lines) in `app/functions/api/calendar.js` and merge as a third section. Tradeoff: iCloud caches public feeds 5–15 min so adds take a few minutes to propagate — fine for an ambient kiosk. Blocked on Caroline flipping the public-share toggle (only the calendar owner can do it). Alternatives if Caroline won't share publicly: CalDAV with an Apple app-specific password (~150 lines, real-time, secrets to rotate), or move recurring shared events to the existing Google Family calendar.
-- **Monarch Money button → Monarch view.** `?theme=light` shows a `$` button in the action bar (replaces phone). Stubbed alert. Real wiring: open Monarch in the same kiosk window or a focused overlay; show $ goals.
-
-- **USB lavalier mic + Whisper.cpp on the Pi.** ~$30 hardware, one weekend of wiring. Closes the "I'd add this to a chore list but only my phone can type" loop — turns the wall from a display into a capture surface. Pairs with the Claude / OpenClaw integration the spec already anticipates. *Source: `_audits/2026-04-29-ui-audit.md`.*
-- **Voice refinements after real use.** Silence-based auto-stop/VAD; Cloudflare
-  Access in front of relay health/command paths; Caroline's separately
-  authorized voice/persona; optional client-side WAV encoding only if Workers AI
-  rejects the tablet's real webm/opus output.
-- **Motion-sensor wake/sleep** to extend monitor lifespan and reduce midnight glow. *Migrated from `todo.md`.* **Important: PIR (passive infrared), NOT camera-based.** Fully Kiosk Plus offers camera-based motion via the tablet's front cam; rejected 2026-05-06 because the dashboard mounts in a bathroom — a camera there is a non-starter regardless of on-device-only claims (future Fully bugs, Caroline's comfort, family/guest perception). Real implementation: external PIR sensor (ESP32 + HC-SR501, Aqara wireless, or similar) wired to hit an HTTP endpoint that toggles brightness. v1 fallback: schedule-based dimming via Fully's daily schedule (bright 06:30 → dim 22:00).
-- **Display upgrade to Elo 1502L FHD 15.6"** (commercial-grade, 5–7yr humid-bathroom lifespan) if the family loves the v1 build. *Migrated from `todo.md`.*
-- **Smart-home control surface** — lights, thermostat, locks — once Home Assistant joins the stack. *Migrated from `todo.md`.*
-- **Multi-device personalization** — face/phone-proximity → which view (morning Caroline vs. evening Tim). *Migrated from `todo.md`.*
-- **Anthropic Claude / OpenClaw integration** for AI-rearranged views per person/moment. *Migrated from `todo.md`. (Note: also referenced in `spec.md` "What done looks like" — this entry is the implementation parking lot, the spec is the vision.)*
-- **Postpartum-arc widget.** The dashboard knows Mabel's age in weeks; surface week-N normalcy hints (Claude-curated, midwife/pediatric sources). Pairs with a real referent for the "Halfway through" greeting. *Source: `_audits/2026-04-29-ui-audit.md` (idea #2).*
-- **Photo focal point = Mabel's face.** Today the photo card uses CSS `object-fit: cover` which crops to the geometric center — fine for landscapes, awful for portraits where Mabel's face ends up clipped or off-frame. Want the crop to keep her face centered in the visible card. Implementation options to weigh when this surfaces: (a) Drive folder convention — pre-crop sources to ~16:9 around the face; (b) browser-side `face-api.js`/MediaPipe inference + `object-position` per image; (c) server-side detection (Vision API or onnx model in the Function) and bake `focal: {x, y}` into `/api/photos` response. (a) is simplest, (c) is the only one that scales without tablet CPU cost.
 
 ## Active limitations
 *(known gaps we're living with for now — explicit accept-it-for-now decisions)*
