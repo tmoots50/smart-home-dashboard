@@ -14,19 +14,18 @@ async function openBriefing(page) {
   await freezeMotion(page);
 }
 
-test('morning briefing: calendar precedes the full-width Coming-Up row', async ({ page }, testInfo) => {
+test('morning briefing: the calendar card carries the coming-up strip; the duo follows', async ({ page }, testInfo) => {
   await openBriefing(page);
 
   const calendar = page.locator('[data-slot="calendar"]');
-  const updates = page.locator('.briefing__updates');
   await expect(calendar).toBeVisible();
-  await expect(updates).toBeVisible();
-  const [calBox, updatesBox] = await Promise.all([calendar.boundingBox(), updates.boundingBox()]);
-  expect(calBox.y + calBox.height).toBeLessThanOrEqual(updatesBox.y);
-  // .briefing__updates keeps the 21rem (336px) real estate the old duo row
-  // had — Coming Up widened into the Atlanta Picks slot, it didn't grow down.
-  expect(updatesBox.height).toBeLessThanOrEqual(344);
-  await expect(updates.locator('.countdown__pane')).toHaveCount(2);
+  // The standalone Coming-Up card left the page on 2026-08-01 — its rows live
+  // behind the calendar card's footer strip now.
+  await expect(page.locator('.briefing__updates')).toHaveCount(0);
+  await expect(calendar.locator('.calweek__custrip')).toBeVisible();
+  const duo = page.locator('.briefing__duo.briefing__lists');
+  const [calBox, duoBox] = await Promise.all([calendar.boundingBox(), duo.boundingBox()]);
+  expect(calBox.y + calBox.height).toBeLessThanOrEqual(duoBox.y);
   // Atlanta Picks is unmounted (2026-07-11) until further notice.
   await expect(page.locator('.pick__item')).toHaveCount(0);
   expect((await detectOverflow(page)).horizontal).toBe(false);
@@ -43,6 +42,25 @@ test('morning briefing: calendar precedes the full-width Coming-Up row', async (
   await captureArtifact(page, 'briefing-layout', testInfo);
 });
 
+test('morning briefing: expanding the strip floats the sheet OVER the duo — nothing reflows', async ({ page }, testInfo) => {
+  await openBriefing(page);
+
+  const todos = page.locator('[data-slot="todos"]');
+  const before = await todos.boundingBox();
+  await page.locator('.custrip__chev').tap();
+  await expect(page.locator('.calweek__cusheet')).toBeVisible();
+  // The duo must not move — the sheet overlays it (the whole point of the
+  // expand-over design; pushing the lists down was explicitly rejected).
+  const after = await todos.boundingBox();
+  expect(after.y).toBe(before.y);
+  const sheet = await page.locator('.calweek__cusheet').boundingBox();
+  expect(sheet.y + sheet.height).toBeGreaterThan(after.y); // it genuinely overlaps
+  await captureArtifact(page, 'briefing-cu-expanded', testInfo);
+
+  await page.locator('.custrip__chev').tap();
+  await expect(page.locator('.calweek__cusheet')).toHaveCount(0);
+});
+
 test('morning briefing: ≥3 todo and ≥3 grocery rows land above the fold', async ({ page }) => {
   test.skip(page.viewportSize()?.width !== 1080, 'fold contract is canvas-only');
   await openBriefing(page);
@@ -57,12 +75,14 @@ test('morning briefing: ≥3 todo and ≥3 grocery rows land above the fold', as
     await expect(daybrief).toBeHidden();
   }
 
+  // Raised 3 → 5 on 2026-08-01: merging the Coming-Up card into the calendar
+  // freed ~19rem, so the full 5-row mock lists must now clear the fold.
   const fold = page.viewportSize().height;
   for (const selector of ['.todos__item', '.groceries__item']) {
     const rows = page.locator(selector);
-    expect(await rows.count(), `${selector} needs ≥3 mock rows to measure`).toBeGreaterThanOrEqual(3);
-    const third = await rows.nth(2).boundingBox();
-    expect(third.y + third.height, `${selector} row 3 bottom vs fold`).toBeLessThanOrEqual(fold);
+    expect(await rows.count(), `${selector} needs ≥5 mock rows to measure`).toBeGreaterThanOrEqual(5);
+    const fifth = await rows.nth(4).boundingBox();
+    expect(fifth.y + fifth.height, `${selector} row 5 bottom vs fold`).toBeLessThanOrEqual(fold);
   }
 });
 

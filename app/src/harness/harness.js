@@ -72,12 +72,23 @@ const WIDGETS = {
           <section class="card" data-slot="calendar"></section>
         </main>`;
       const slot = root.querySelector('[data-slot="calendar"]');
-      // Mirror the wall's week-nav so QA can drive ‹ › / Today against fixture
-      // data. WINDOW_STEP is 5 in calendar.js; keep this step in sync.
+      // Mirror the wall's week-nav + coming-up strip so QA can drive ‹ › /
+      // Today AND expand/collapse against fixture data. WINDOW_STEP is 5 and
+      // the auto-collapse is 60s in calendar.js; keep both in sync. The strip
+      // rows derive from the fixture's own events (renderWeek's default).
       let offsetDays = 0;
+      let cuExpanded = false;
+      let cuTimer = null;
       const render = () => {
-        slot.innerHTML = renderCalendar(fixture.data, new Date(), { flavor: fixture.flavor, offsetDays });
+        slot.classList.toggle('card--cuopen', cuExpanded);
+        slot.innerHTML = renderCalendar(fixture.data, new Date(), { flavor: fixture.flavor, offsetDays, cuExpanded });
         if (fixture.flavor === 'week') scrollWeekToOpen(slot); // mirror the wall's open-at-8-AM
+      };
+      const setExpanded = (on) => {
+        cuExpanded = on;
+        clearTimeout(cuTimer);
+        cuTimer = on ? setTimeout(() => setExpanded(false), 60_000) : null;
+        render();
       };
       render();
       slot.addEventListener('click', (e) => {
@@ -91,8 +102,11 @@ const WIDGETS = {
           return;
         }
         const row = e.target.closest('[data-event]');
-        if (!row) return;
-        try { openEventDetail(JSON.parse(row.dataset.event)); } catch {}
+        if (row) {
+          try { openEventDetail(JSON.parse(row.dataset.event)); } catch {}
+          return;
+        }
+        if (e.target.closest('[data-cutoggle]')) setExpanded(!cuExpanded);
       });
     },
   },

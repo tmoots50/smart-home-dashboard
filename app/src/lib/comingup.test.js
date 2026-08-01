@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rankComingUp, classify, weekEnd, normalizeItem, CARD_MAX_PER_COLUMN } from './comingup.js';
+import { rankComingUp, upNext, classify, weekEnd, normalizeItem, CARD_MAX_PER_COLUMN } from './comingup.js';
 
 // Wednesday 2026-07-15 → "this week" runs through Sat Jul 18; the left pane
 // window is [Sun Jul 19, Sun Aug 16).
@@ -220,5 +220,64 @@ describe('rankComingUp overrides (the Hermes hand)', () => {
     const flagged = ev({ id: 'evt-42', title: 'Mystery block', startsAt: '2026-07-21T10:00:00' });
     const { left } = rankComingUp([flagged], { now: NOW, overrides: [{ match: 'evt-42', hide: true }] });
     expect(left).toEqual([]);
+  });
+});
+
+describe('upNext (chronological strip picker)', () => {
+  it('returns date-ordered events after the 5-day card window, capped at 8', () => {
+    const events = [
+      ev({ title: 'On the card', startsAt: '2026-07-16T10:00:00' }),        // day 1 — grid shows it
+      ev({ title: 'Last grid day', startsAt: '2026-07-19T10:00:00' }),      // day 4 — grid shows it
+      ev({ title: 'First off-grid', startsAt: '2026-07-20T10:00:00' }),     // day 5 — first eligible
+      ...Array.from({ length: 10 }, (_, i) =>
+        ev({ title: `Later ${i}`, startsAt: `2026-07-${21 + i}T10:00:00` })),
+    ];
+    const picked = upNext(events, { now: NOW });
+    expect(picked).toHaveLength(8);
+    expect(picked[0].title).toBe('First off-grid');
+    expect(picked.map(it => it.days)).toEqual([5, 6, 7, 8, 9, 10, 11, 12]);
+  });
+
+  it('is chronological even when a far event outranks near ones by importance', () => {
+    const picked = upNext([
+      ev({ title: 'Flight to NYC', startsAt: '2026-09-20T09:00:00' }),   // travel, far
+      ev({ title: 'Library visit', startsAt: '2026-07-22T10:00:00' }),   // mundane, near
+    ], { now: NOW });
+    expect(picked.map(it => it.title)).toEqual(['Library visit', 'Flight to NYC']);
+  });
+
+  it('stays inside the 90-day window and skips liturgical + dinner events', () => {
+    const picked = upNext([
+      ev({ title: 'Too far', startsAt: '2026-10-14T10:00:00' }),                              // day 91
+      ev({ title: 'Saint Feast', startsAt: '2026-07-25', allDay: true, liturgical: true }),
+      ev({ title: 'Dinner: Enchiladas', startsAt: '2026-07-26', allDay: true }),
+      ev({ title: 'Keeper', startsAt: '2026-07-26T10:00:00' }),
+    ], { now: NOW });
+    expect(picked.map(it => it.title)).toEqual(['Keeper']);
+  });
+
+  it('honors Hermes hide overrides and kiosk-local dismissals', () => {
+    const events = [
+      ev({ title: 'Water planters', startsAt: '2026-07-22T10:00:00' }),
+      ev({ id: 'gone', title: 'Dismissed thing', startsAt: '2026-07-23T10:00:00' }),
+      ev({ title: 'Keeper', startsAt: '2026-07-24T10:00:00' }),
+    ];
+    const picked = upNext(events, {
+      now: NOW,
+      overrides: [{ match: 'water planters', hide: true }],
+      dismissed: new Set(['gone']),
+    });
+    expect(picked.map(it => it.title)).toEqual(['Keeper']);
+  });
+
+  it('dedupes repeating series by title and keeps category tags for row colors', () => {
+    const picked = upNext([
+      ev({ title: 'Give Chloe heartworm pill', startsAt: '2026-07-22', allDay: true }),
+      ev({ title: 'Give Chloe heartworm pill', startsAt: '2026-08-22', allDay: true }),
+      ev({ title: "Aidan's 3rd Birthday", startsAt: '2026-07-23', allDay: true }),
+    ], { now: NOW });
+    expect(picked.map(it => it.title)).toEqual(['Give Chloe heartworm pill', "Aidan's 3rd Birthday"]);
+    expect(picked[0].category).toBe('recurring');
+    expect(picked[1].category).toBe('birthday');
   });
 });

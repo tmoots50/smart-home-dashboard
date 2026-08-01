@@ -196,3 +196,83 @@ test('calendar/week: opens scrolled so 8 AM sits at the top of the viewport', as
   });
   expect(gap).toBeLessThan(24); // 8 AM within ~one row of the viewport top → 8 AM–6 PM visible
 });
+
+// ── dinner lane + coming-up strip (2026-08-01) ──
+
+test('calendar/week: dinner lane shows each day\'s meal with the prefix stripped', async ({ page }) => {
+  await open(page, 'week');
+  await expect(page.locator('.calweek__meals')).toBeVisible();
+  await expect(page.locator('.calweek__meal').filter({ hasText: 'Salmon & corn' })).toBeVisible();
+  await expect(page.locator('.calweek__meals')).not.toContainText('Dinner:'); // lane strips the convention prefix
+  await expect(page.locator('.calweek__meal--empty')).toHaveCount(1);         // day 4 unplanned → "ask Nigel…"
+});
+
+test('calendar/week: dinner events stay off the all-day band; a dinner OUTING stays off the lane', async ({ page }) => {
+  await open(page, 'week');
+  await expect(page.locator('.calweek__bar').filter({ hasText: 'Dinner' })).toHaveCount(0);
+  await expect(page.locator('.calweek__meals')).not.toContainText('Dinner with Mom'); // timed outing ≠ meal plan
+});
+
+test('calendar/week: tapping a meal opens the event detail with the full title', async ({ page }) => {
+  await open(page, 'week');
+  await page.locator('.calweek__meal').first().tap();
+  await expect(page.locator('.event-detail')).toBeVisible();
+  await expect(page.locator('.event-detail .overlay__title')).toHaveText('Dinner: Salmon & corn');
+});
+
+test('calendar/week: strip shows the 3 nearest picks and the overflow counter', async ({ page }) => {
+  await open(page, 'week');
+  await expect(page.locator('.cu-pill:not(.cu-pill--more)')).toHaveCount(3);
+  await expect(page.locator('.cu-pill--more')).toHaveText('+5 more'); // 11 eligible, capped at 8, 3 shown
+  await expect(page.locator('.cu-pill').first()).toContainText('Swim lesson'); // day 5 — nearest off-grid event
+});
+
+test('calendar/week: pill tap opens detail, not the sheet', async ({ page }) => {
+  await open(page, 'week');
+  await page.locator('.cu-pill:not(.cu-pill--more)').first().tap();
+  await expect(page.locator('.event-detail')).toBeVisible();
+  await expect(page.locator('.calweek__cusheet')).toHaveCount(0);
+});
+
+test('calendar/week: strip expands to 8 chronological rows in two columns, then collapses', async ({ page }) => {
+  await open(page, 'week');
+  await page.locator('.custrip__chev').tap();
+  await expect(page.locator('.calweek__cusheet')).toBeVisible();
+  await expect(page.locator('.cusheet__col')).toHaveCount(2);
+  await expect(page.locator('.curow')).toHaveCount(8);
+  // Chronological: day counts read ascending in DOM order (col 1 then col 2).
+  const days = await page.locator('.curow__days').allTextContents();
+  const nums = days.map(t => (t === 'today' ? 0 : t === 'tomorrow' ? 1 : parseInt(t, 10)));
+  expect([...nums].sort((a, b) => a - b)).toEqual(nums);
+  await page.locator('.custrip__chev').tap();
+  await expect(page.locator('.calweek__cusheet')).toHaveCount(0);
+});
+
+test('calendar/week: sheet row tap opens the event detail', async ({ page }) => {
+  await open(page, 'week');
+  await page.locator('.custrip__chev').tap();
+  await page.locator('.curow').first().tap();
+  await expect(page.locator('.event-detail')).toBeVisible();
+  await expect(page.locator('.event-detail .overlay__title')).not.toHaveText('');
+});
+
+test('calendar/week: the sheet auto-returns to the week after a minute', async ({ page }) => {
+  await open(page, 'week');
+  await page.locator('.custrip__chev').tap();
+  await expect(page.locator('.calweek__cusheet')).toBeVisible();
+  await page.clock.runFor(61_000);
+  await expect(page.locator('.calweek__cusheet')).toHaveCount(0);
+});
+
+test('calendar/week-no-dinners: every day in the window nudges for a plan', async ({ page }) => {
+  await open(page, 'week-no-dinners');
+  await expect(page.locator('.calweek__meal--empty')).toHaveCount(5);
+  await expect(page.locator('.calweek__meals')).toContainText('ask Nigel');
+});
+
+test('calendar/week-allday-heavy: the doubled band caps at 4 rows and clips the pile-up', async ({ page }) => {
+  await open(page, 'week-allday-heavy');
+  const box = await page.locator('.calweek__allday').boundingBox();
+  expect(box.height).toBeGreaterThan(3.8 * 16);        // grew past the old 2-row cap…
+  expect(box.height).toBeLessThanOrEqual(7.6 * 16 + 1); // …but clips at the new one
+});

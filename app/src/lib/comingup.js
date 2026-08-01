@@ -21,6 +21,7 @@
 // on its next refresh. Baseline order stays deterministic.
 
 import { visibleEvents, visibleRoster } from './calendar-people.js';
+import { isDinnerEvent } from './meals.js';
 
 const DAY_MS = 86_400_000;
 
@@ -197,6 +198,45 @@ function dedupeByTitle(items) {
     seen.add(t);
     return true;
   });
+}
+
+// ── chronological strip picker ──
+//
+// 2026-08-01: the standalone Coming-Up card folded into the calendar card's
+// footer strip, and Tim chose plain chronology over the two-pane importance
+// ranking ("chronology for now"). rankComingUp stays above for the retired
+// countdown widget (kept unmounted, like Atlanta Picks).
+//
+// upNext = the next `max` events, in date order, starting AFTER the week
+// grid's visible 5-day window (the grid already shows those days) out to 90
+// days. Category classification still runs (it colors the rows), Hermes
+// `hide` overrides still apply (score/pane are ranking concepts — ignored
+// here), dismissed keys are kiosk-local swipe-dismissals, and dinner-lane
+// events never appear (they live on the lane).
+export const UP_NEXT_MAX = 8;
+const UP_NEXT_LEAD_DAYS = 5;    // == WINDOW_DAYS in widgets/calendar.js
+const UP_NEXT_WINDOW_DAYS = 90;
+
+export function upNext(events, { now = new Date(), overrides = [], dismissed = new Set(), max = UP_NEXT_MAX } = {}) {
+  const today = dayStart(now);
+  const start = addDays(today, UP_NEXT_LEAD_DAYS);
+  const end = addDays(today, UP_NEXT_WINDOW_DAYS);
+  return dedupeByTitle(
+    visibleEvents(events)
+      .filter(it => !it.liturgical)
+      .filter(it => !isDinnerEvent(it))
+      .map(normalizeItem)
+      .filter(it => it.startsAt)
+      .map(it => classify(it))
+      .map(it => applyOverride(it, overrides))
+      .filter(it => !it.hidden)
+      .map(it => ({ ...it, day: dayStart(parseLocalDate(it.startsAt)) }))
+      .filter(it => it.day >= start && it.day < end)
+      .map(it => ({ ...it, days: Math.round((it.day - today) / DAY_MS) }))
+      .sort((a, b) => (a.day - b.day) || String(a.startsAt).localeCompare(String(b.startsAt))),
+  )
+    .filter(it => !dismissed.has(it.key))
+    .slice(0, max);
 }
 
 // ── date helpers ──

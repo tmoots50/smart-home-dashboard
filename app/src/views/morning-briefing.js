@@ -2,7 +2,8 @@ import { mountClock } from '../widgets/clock.js';
 import { mountWeather } from '../widgets/weather.js';
 import { mountCalendar } from '../widgets/calendar.js';
 import { mountDaybrief } from '../widgets/daybrief.js';
-import { mountComingUp } from '../widgets/countdown.js';
+// Coming Up folded into the Family Calendar card's footer strip (2026-08-01).
+// The countdown widget stays in the codebase unmounted, like Atlanta Picks.
 import { mountTodos } from '../widgets/todos.js';
 import { mountGroceries } from '../widgets/groceries.js';
 import { renderBible, fitBible } from '../widgets/bible.js';
@@ -90,11 +91,13 @@ export function renderMorningBriefing(root) {
            cleared, or past noon. When visible it pushes the calendar down. -->
       <section class="card daybrief" data-slot="daybrief" hidden></section>
 
+      <!-- The calendar card carries the dinner lane + the coming-up strip
+           (2026-08-01 — the standalone Coming-Up card is gone; its rows live
+           behind the strip and drop OVER the duo below when expanded). -->
       <section class="card" data-slot="calendar"></section>
 
       <!-- Atlanta Picks unmounted 2026-07-11 (Tim: bring back later); the
-           widget + curated feed stay in the codebase. Coming Up owns the row. -->
-      <section class="card briefing__updates" data-slot="coming-up"></section>
+           widget + curated feed stay in the codebase. -->
 
       <section class="briefing__duo briefing__lists">
         <div class="card" data-slot="todos"></div>
@@ -126,7 +129,6 @@ export function renderMorningBriefing(root) {
   }
   const daybriefCtl = mountDaybrief(root.querySelector('[data-slot="daybrief"]'), getDaybrief(), { flavor: briefFlavor });
   fitBible(root.querySelector('.bible'));
-  mountComingUp(root.querySelector('[data-slot="coming-up"]'));
 
   const todoActions = tasksConfigured
     ? { append: appendTodo, strike: strikeTodo, move: moveTodo, update: updateTodo, setDone: setTodoDone }

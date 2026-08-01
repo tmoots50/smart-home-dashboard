@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="en" data-theme="fun">
+<head>
+<meta charset="utf-8">
+<title>Family Calendar redesign — v2</title>
+<link rel="stylesheet" href="styles/tokens.css">
+<link rel="stylesheet" href="styles/global.css">
+<link rel="stylesheet" href="styles/themes-fun.css">
+<style>
+  /* ── mockup chrome (not part of the design) ── */
+  body { padding: 24px; }
+  .plate { width: 1048px; margin: 0 auto 56px; }
+  .plate-label {
+    font: 700 15px var(--font-body); color: var(--color-muted);
+    letter-spacing: .06em; text-transform: uppercase; margin: 0 0 10px 6px;
+  }
+  .plate-note { font: 400 13px var(--font-body); color: var(--color-muted); margin: 8px 0 0 6px; }
+
+  /* Mockup overrides: calweek height is content-driven here (no JS scroll). */
+  .calweek { height: auto; }
+  .calweek__scroll { overflow: hidden; flex: 0 0 auto; }
+
+  /* ── PROPOSED: dinner lane — first row under the day names (a constant) ── */
+  .calweek__meals {
+    display: grid;
+    grid-template-columns: var(--calweek-gutter) repeat(var(--calweek-cols), minmax(0, 1fr));
+    flex-shrink: 0;
+    gap: 2px;
+    padding: 3px 0;
+    border-bottom: 1px solid var(--color-border);
+    align-items: stretch;
+  }
+  .calweek__meal {
+    margin: 0 2px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--color-event-feed) 18%, var(--color-surface));
+    border-left: 3px solid var(--color-event-feed);
+    font-size: 0.72rem;
+    line-height: 1.2;
+    color: var(--color-fg);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+  }
+  .calweek__meal--empty {
+    background: transparent;
+    border: 1px dashed var(--color-border);
+    color: var(--color-muted);
+    font-style: italic;
+  }
+
+  /* ── PROPOSED: all-day band 2× (was max-height 3.8rem / ~2 rows) ── */
+  .calweek__allday { max-height: 7.6rem; }
+
+  /* ── PROPOSED: coming-up strip with nearest-event pills ── */
+  .calweek__custrip {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: 2.85rem;         /* 45.6px — whole strip is a tap target */
+    padding-top: 4px;
+    border-top: 1px solid var(--color-border);
+    margin-top: 2px;
+    cursor: pointer;
+  }
+  .custrip__label {
+    font: 600 0.68rem var(--font-body);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--color-muted);
+    flex-shrink: 0;
+  }
+  .custrip__chev {
+    width: 2.75rem; height: 2.75rem; flex-shrink: 0; margin-left: auto;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--color-border); border-radius: 999px;
+    background: transparent; color: var(--color-muted);
+    font-size: 1.1rem; line-height: 1; cursor: pointer;
+  }
+  .custrip__hint { font-size: 0.72rem; color: var(--color-muted); flex-shrink: 0; }
+  .cu-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 11px; border-radius: 999px;
+    font-size: 0.8rem; color: var(--color-fg);
+    border: 1px solid var(--color-border);
+    white-space: nowrap; cursor: pointer;
+  }
+  .cu-pill b { color: var(--color-accent); font-weight: 700; }
+  .cu-pill--birthday  { border-color: #b07cc6; background: color-mix(in srgb, #b07cc6 10%, transparent); }
+  .cu-pill--recurring { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 10%, transparent); }
+  .cu-pill--travel    { border-color: #5fa8d3; background: color-mix(in srgb, #5fa8d3 10%, transparent); }
+  .cu-pill--more      { color: var(--color-muted); }
+
+  /* ── PROPOSED: coming-up panel (expanded) ── */
+  .calweek__cupanel { flex: 0 0 auto; padding-top: 6px; }
+  .cupanel__cols {
+    display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4);
+  }
+  .cupanel__col { min-width: 0; }
+  .cupanel__col + .cupanel__col {
+    border-left: 1px solid var(--color-border);
+    padding-left: var(--space-4);
+  }
+  .cu-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-2);
+    min-height: 2.85rem;        /* 45.6px row = its own tap target (no checkbox) */
+    padding: 0 var(--space-2);
+    border-left: 3px solid transparent;
+    border-bottom: 1px solid var(--color-border);
+    cursor: pointer;
+  }
+  .cupanel__col .cu-row:last-child { border-bottom: none; }
+  .cu-row--birthday  { border-left-color: #b07cc6; }
+  .cu-row--recurring { border-left-color: var(--color-accent); }
+  .cu-row--mabel     { border-left-color: #d98a9c; }
+  .cu-row--travel    { border-left-color: #5fa8d3; }
+  .cu-row__name {
+    font-size: 0.9rem; color: var(--color-fg);
+    min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .cu-row__when { display: inline-flex; align-items: baseline; gap: 6px; flex-shrink: 0; white-space: nowrap; }
+  .cu-row__days { font-family: var(--font-display); font-weight: 700; color: var(--color-accent); font-size: 0.88rem; }
+  .cu-row__date { color: var(--color-muted); font-size: 0.7rem; letter-spacing: 0.04em; }
+
+  /* ── expansion behaviors ──
+     Plate 1 (chosen): the CARD grows downward and floats OVER the modules
+     below — nothing under it reflows. The slot keeps the collapsed height.
+     Plate 2 (saved alternative): panel swaps in over the hour grid instead. */
+  .cardslot { position: relative; z-index: 5; }
+  .cardslot .card { position: absolute; top: 0; left: 0; right: 0; }
+  .cardslot .card.is-open {
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(120, 90, 60, 0.10), 0 24px 64px rgba(120, 90, 60, 0.28);
+  }
+  .calweek:not(.is-expanded) .calweek__cupanel { display: none; }
+  .calweek:not(.is-expanded) .custrip__hint { display: none; }
+  .calweek.is-expanded .calweek__custrip .cu-pill { display: none; }
+  /* swap variant only (plate 2): hide the hour grid while expanded */
+  .calweek--swap.is-expanded .calweek__scroll { display: none; }
+
+  /* mock todos/groceries stubs (context only — show that they don't move) */
+  .mock-duo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .mock-row { display: flex; align-items: center; gap: 12px; min-height: 3.65rem; border-bottom: 1px solid var(--color-border); }
+  .mock-row:last-child { border-bottom: none; }
+  .mock-row i {
+    width: 1.5rem; height: 1.5rem; flex-shrink: 0;
+    border: 2px solid var(--color-muted); border-radius: 999px;
+  }
+  .mock-row span { font-size: 0.95rem; color: var(--color-fg); }
+</style>
+</head>
+<body>
+
+<!-- panel markup is generated from EVENTS in the script below -->
+
+<!-- ══════════ PLATE 1 — proposed: card grows OVER the modules below ══════════ -->
+<section class="plate" id="plate-1">
+  <p class="plate-label">1 · Proposed — dinner lane on top · all-day ×2 · pills strip · expands over the cards below</p>
+  <div class="cardslot" id="slot-1">
+    <div class="card">
+      <div class="calendar calendar--week">
+        <div class="card__header">
+          <h2 class="card__title">Family Calendar</h2>
+          <div class="calweek__actions">
+            <div class="calweek__nav">
+              <button class="calweek__nav-btn">‹</button>
+              <button class="calweek__nav-label">Aug 1 – 5</button>
+              <button class="calweek__nav-btn">›</button>
+            </div>
+            <button class="cal-monthbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg></button>
+          </div>
+        </div>
+        <div class="calweek" id="calweek-1">
+          <div class="calweek__head">
+            <div class="calweek__corner"></div>
+            <div class="calweek__dow is-today"><span class="calweek__dow-name">Sat</span><span class="calweek__dow-num">1</span></div>
+            <div class="calweek__dow"><span class="calweek__dow-name">Sun</span><span class="calweek__dow-num">2</span></div>
+            <div class="calweek__dow"><span class="calweek__dow-name">Mon</span><span class="calweek__dow-num">3</span></div>
+            <div class="calweek__dow"><span class="calweek__dow-name">Tue</span><span class="calweek__dow-num">4</span></div>
+            <div class="calweek__dow"><span class="calweek__dow-name">Wed</span><span class="calweek__dow-num">5</span></div>
+          </div>
+          <div class="calweek__meals">
+            <div class="calweek__corner"><span>dinner</span></div>
+            <div class="calweek__meal">Grilled salmon &amp; corn</div>
+            <div class="calweek__meal">Slow-cooker chili</div>
+            <div class="calweek__meal">Tacos al pastor</div>
+            <div class="calweek__meal">Leftovers</div>
+            <div class="calweek__meal calweek__meal--empty">ask Nigel…</div>
+          </div>
+          <div class="calweek__allday">
+            <div class="calweek__corner"><span>all-day</span></div>
+            <div class="calweek__bar calweek__bar--feast" style="grid-column:2/3;grid-row:1">St. Alphonsus Liguori</div>
+            <div class="calweek__bar" style="grid-column:3/6;grid-row:1">Grandma visiting</div>
+            <div class="calweek__bar calweek__bar--feast" style="grid-column:6/7;grid-row:1">St. Mary Major</div>
+            <div class="calweek__bar" style="grid-column:2/4;grid-row:2">Peggs at the lake</div>
+            <div class="calweek__bar calweek__bar--feast" style="grid-column:5/6;grid-row:2">St. John Vianney</div>
+            <div class="calweek__bar" style="grid-column:6/7;grid-row:3">School supply drop-off</div>
+          </div>
+          <div class="calweek__scroll">
+            <div class="calweek__grid" style="height:calc(7.5 * var(--calweek-hour-h))">
+              <div class="calweek__gutter">
+                <span class="calweek__hour" style="top:0%">8 AM</span>
+                <span class="calweek__hour" style="top:13.33%">9 AM</span>
+                <span class="calweek__hour" style="top:26.67%">10 AM</span>
+                <span class="calweek__hour" style="top:40%">11 AM</span>
+                <span class="calweek__hour" style="top:53.33%">12 PM</span>
+                <span class="calweek__hour" style="top:66.67%">1 PM</span>
+                <span class="calweek__hour" style="top:80%">2 PM</span>
+                <span class="calweek__hour" style="top:93.33%">3 PM</span>
+              </div>
+              <div class="calweek__col is-today">
+                <div class="calweek__now" style="top:16.67%"><span class="calweek__now-dot"></span></div>
+                <div class="calweek__event" style="top:6.67%;height:13.33%;left:4px;right:4px">
+                  <span class="calweek__event-time">8:30 AM</span>
+                  <span class="calweek__title">Pediatrician — Mabel</span>
+                </div>
+                <div class="calweek__event calweek__event--next" style="top:26.67%;height:20%;left:4px;right:4px">
+                  <span class="calweek__event-time">10:00 AM</span>
+                  <span class="calweek__title">Farmers market</span>
+                </div>
+              </div>
+              <div class="calweek__col">
+                <div class="calweek__event" style="top:13.33%;height:13.33%;left:4px;right:4px">
+                  <span class="calweek__event-time">9:00 AM</span>
+                  <span class="calweek__title">Mass</span>
+                </div>
+              </div>
+              <div class="calweek__col">
+                <div class="calweek__event" style="top:13.33%;height:13.33%;left:4px;right:4px">
+                  <span class="calweek__event-time">9:00 AM</span>
+                  <span class="calweek__title">Coffee w/ Sarah</span>
+                </div>
+              </div>
+              <div class="calweek__col">
+                <div class="calweek__event" style="top:40%;height:26.67%;left:4px;right:4px">
+                  <span class="calweek__event-time">11:00 AM</span>
+                  <span class="calweek__title">HVAC service</span>
+                </div>
+              </div>
+              <div class="calweek__col">
+                <div class="calweek__event" style="top:20%;height:13.33%;left:4px;right:4px">
+                  <span class="calweek__event-time">9:30 AM</span>
+                  <span class="calweek__title">Swim lesson — Mabel</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="calweek__custrip">
+            <span class="custrip__label">🎉 Coming up</span>
+            <!-- pills + hint injected by script -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="mock-duo">
+    <div class="card">
+      <div class="card__header"><h2 class="card__title">✅ To-do</h2></div>
+      <div class="mock-row"><i></i><span>Stroller walk before noon</span></div>
+      <div class="mock-row"><i></i><span>Email pediatrician about feeding</span></div>
+      <div class="mock-row"><i></i><span>Book newborn portraits</span></div>
+    </div>
+    <div class="card">
+      <div class="card__header"><h2 class="card__title">🛒 Groceries</h2></div>
+      <div class="mock-row"><i></i><span>Whole milk ×2</span></div>
+      <div class="mock-row"><i></i><span>Diapers size 1</span></div>
+      <div class="mock-row"><i></i><span>Bananas</span></div>
+    </div>
+  </div>
+  <p class="plate-note">Tap the strip: the calendar card itself grows and floats over To-do/Groceries — they don't move. Tap any pill or expanded row → the regular event-detail modal. Auto-returns after 60s.</p>
+</section>
+
+<!-- ══════════ PLATE 2 — saved alternative: panel swaps over the hour grid ══════════ -->
+<section class="plate" id="plate-2">
+  <p class="plate-label">2 · Saved alternative — same card, but expanding swaps the panel in over the hour grid (footprint fixed)</p>
+  <div class="card">
+    <div class="calendar calendar--week">
+      <div class="card__header">
+        <h2 class="card__title">Family Calendar</h2>
+        <div class="calweek__actions">
+          <div class="calweek__nav">
+            <button class="calweek__nav-btn">‹</button>
+            <button class="calweek__nav-label">Aug 1 – 5</button>
+            <button class="calweek__nav-btn">›</button>
+          </div>
+          <button class="cal-monthbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg></button>
+        </div>
+      </div>
+      <div class="calweek calweek--swap" id="calweek-2">
+        <div class="calweek__head">
+          <div class="calweek__corner"></div>
+          <div class="calweek__dow is-today"><span class="calweek__dow-name">Sat</span><span class="calweek__dow-num">1</span></div>
+          <div class="calweek__dow"><span class="calweek__dow-name">Sun</span><span class="calweek__dow-num">2</span></div>
+          <div class="calweek__dow"><span class="calweek__dow-name">Mon</span><span class="calweek__dow-num">3</span></div>
+          <div class="calweek__dow"><span class="calweek__dow-name">Tue</span><span class="calweek__dow-num">4</span></div>
+          <div class="calweek__dow"><span class="calweek__dow-name">Wed</span><span class="calweek__dow-num">5</span></div>
+        </div>
+        <div class="calweek__meals">
+          <div class="calweek__corner"><span>dinner</span></div>
+          <div class="calweek__meal">Grilled salmon &amp; corn</div>
+          <div class="calweek__meal">Slow-cooker chili</div>
+          <div class="calweek__meal">Tacos al pastor</div>
+          <div class="calweek__meal">Leftovers</div>
+          <div class="calweek__meal calweek__meal--empty">ask Nigel…</div>
+        </div>
+        <div class="calweek__allday">
+          <div class="calweek__corner"><span>all-day</span></div>
+          <div class="calweek__bar calweek__bar--feast" style="grid-column:2/3;grid-row:1">St. Alphonsus Liguori</div>
+          <div class="calweek__bar" style="grid-column:3/6;grid-row:1">Grandma visiting</div>
+          <div class="calweek__bar calweek__bar--feast" style="grid-column:6/7;grid-row:1">St. Mary Major</div>
+          <div class="calweek__bar" style="grid-column:2/4;grid-row:2">Peggs at the lake</div>
+          <div class="calweek__bar calweek__bar--feast" style="grid-column:5/6;grid-row:2">St. John Vianney</div>
+          <div class="calweek__bar" style="grid-column:6/7;grid-row:3">School supply drop-off</div>
+        </div>
+        <div class="calweek__scroll">
+          <div class="calweek__grid" style="height:calc(7.5 * var(--calweek-hour-h))">
+            <div class="calweek__gutter">
+              <span class="calweek__hour" style="top:0%">8 AM</span>
+              <span class="calweek__hour" style="top:13.33%">9 AM</span>
+              <span class="calweek__hour" style="top:26.67%">10 AM</span>
+              <span class="calweek__hour" style="top:40%">11 AM</span>
+              <span class="calweek__hour" style="top:53.33%">12 PM</span>
+              <span class="calweek__hour" style="top:66.67%">1 PM</span>
+              <span class="calweek__hour" style="top:80%">2 PM</span>
+              <span class="calweek__hour" style="top:93.33%">3 PM</span>
+            </div>
+            <div class="calweek__col is-today">
+              <div class="calweek__now" style="top:16.67%"><span class="calweek__now-dot"></span></div>
+              <div class="calweek__event" style="top:6.67%;height:13.33%;left:4px;right:4px">
+                <span class="calweek__event-time">8:30 AM</span>
+                <span class="calweek__title">Pediatrician — Mabel</span>
+              </div>
+              <div class="calweek__event calweek__event--next" style="top:26.67%;height:20%;left:4px;right:4px">
+                <span class="calweek__event-time">10:00 AM</span>
+                <span class="calweek__title">Farmers market</span>
+              </div>
+            </div>
+            <div class="calweek__col">
+              <div class="calweek__event" style="top:13.33%;height:13.33%;left:4px;right:4px">
+                <span class="calweek__event-time">9:00 AM</span>
+                <span class="calweek__title">Mass</span>
+              </div>
+            </div>
+            <div class="calweek__col">
+              <div class="calweek__event" style="top:13.33%;height:13.33%;left:4px;right:4px">
+                <span class="calweek__event-time">9:00 AM</span>
+                <span class="calweek__title">Coffee w/ Sarah</span>
+              </div>
+            </div>
+            <div class="calweek__col">
+              <div class="calweek__event" style="top:40%;height:26.67%;left:4px;right:4px">
+                <span class="calweek__event-time">11:00 AM</span>
+                <span class="calweek__title">HVAC service</span>
+              </div>
+            </div>
+            <div class="calweek__col">
+              <div class="calweek__event" style="top:20%;height:13.33%;left:4px;right:4px">
+                <span class="calweek__event-time">9:30 AM</span>
+                <span class="calweek__title">Swim lesson — Mabel</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="calweek__custrip">
+          <span class="custrip__label">🎉 Coming up</span>
+          <!-- pills + hint injected by script -->
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="plate-note">Same interactions as plate 1 — but the week's hour grid hides while the 90-day panel is open, and the card never changes size.</p>
+</section>
+
+<script>
+  // ── the 8 importance-picked events (chronological), shared by both plates ──
+  const EVENTS = [
+    { title: 'Give Chloe heartworm pill', days: '5 days',  date: 'Thu, Aug 6',  cat: 'recurring', when: 'Thursday, August 6 · All day', cal: 'Family' },
+    { title: "Aidan's 3rd Birthday",      days: '7 days',  date: 'Sat, Aug 8',  cat: 'birthday',  when: 'Saturday, August 8 · All day', cal: 'Family' },
+    { title: 'Flight to NYC',             days: '12 days', date: 'Thu, Aug 13', cat: 'travel',    when: 'Thursday, August 13 · 9:40 AM – 12:55 PM', cal: 'Family', sub: 'DL 2381 · ATL → LGA' },
+    { title: '4-month check-up — Mabel',  days: '19 days', date: 'Thu, Aug 20', cat: 'mabel',     when: 'Thursday, August 20 · 8:30 AM – 9:15 AM', cal: 'Family', sub: 'Northside Pediatrics' },
+    { title: 'Stay at Hamilton',          days: '21 days', date: 'Sat, Aug 22', cat: 'travel',    when: 'Saturday, August 22 · All day', cal: 'Family', sub: 'The Hamilton, NYC' },
+    { title: 'Instacart offsite',         days: '33 days', date: 'Thu, Sep 3',  cat: 'travel',    when: 'Thursday, September 3 · All day', cal: 'Tim (Work)' },
+    { title: 'Baby shower for Kate',      days: '44 days', date: 'Mon, Sep 14', cat: 'birthday',  when: 'Monday, September 14 · 2:00 PM – 4:00 PM', cal: 'Family', sub: "The Whitmores'" },
+    { title: 'Nonna & Pop arrive',        days: '62 days', date: 'Fri, Oct 2',  cat: '',          when: 'Friday, October 2 · All day', cal: 'Family' },
+  ];
+
+  // ── event-detail modal: same .overlay / .event-detail chrome the app uses ──
+  const CLOSE_SVG = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  const CLOCK_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+  const PIN_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>';
+
+  function openDetail(ev) {
+    const host = document.createElement('div');
+    host.className = 'overlay overlay--event-detail';
+    const chipHue = ev.cal === 'Tim (Work)' ? 'tim' : 'family';
+    host.innerHTML = `
+      <div class="overlay__panel event-detail" role="dialog">
+        <div class="overlay__header">
+          <h2 class="overlay__title">${ev.title}</h2>
+          <button class="overlay__close" data-action="close" aria-label="Close">${CLOSE_SVG}</button>
+        </div>
+        <div class="event-detail__body">
+          <div class="event-detail__row">
+            <span class="event-detail__icon">${CLOCK_SVG}</span>
+            <span class="event-detail__text">${ev.when}</span>
+          </div>
+          <div class="event-detail__row">
+            <span class="event-detail__icon event-detail__icon--chip">
+              <span class="cal-chip cal-chip--${chipHue}">${ev.cal}</span>
+            </span>
+          </div>
+          ${ev.sub ? `<div class="event-detail__row">
+            <span class="event-detail__icon">${PIN_SVG}</span>
+            <span class="event-detail__text">${ev.sub}</span>
+          </div>` : ''}
+        </div>
+      </div>`;
+    document.body.appendChild(host);
+    document.documentElement.classList.add('has-overlay');
+    const close = () => { host.remove(); document.documentElement.classList.remove('has-overlay'); };
+    host.addEventListener('click', (e) => {
+      if (e.target === host || e.target.closest('[data-action="close"]')) close();
+    });
+    document.addEventListener('keydown', function onKey(e) {
+      if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); }
+    });
+  }
+
+  // ── build the expanded panel (4+4 chronological) + strip pills per plate ──
+  function buildPanel() {
+    const panel = document.createElement('div');
+    panel.className = 'calweek__cupanel';
+    const cols = document.createElement('div');
+    cols.className = 'cupanel__cols';
+    for (const half of [EVENTS.slice(0, 4), EVENTS.slice(4)]) {
+      const col = document.createElement('div');
+      col.className = 'cupanel__col';
+      for (const ev of half) {
+        const row = document.createElement('div');
+        row.className = `cu-row${ev.cat ? ' cu-row--' + ev.cat : ''}`;
+        row.innerHTML = `
+          <span class="cu-row__name">${ev.title}</span>
+          <span class="cu-row__when"><span class="cu-row__days">${ev.days}</span><span class="cu-row__date">${ev.date}</span></span>`;
+        row.addEventListener('click', () => openDetail(ev));
+        col.appendChild(row);
+      }
+      cols.appendChild(col);
+    }
+    panel.appendChild(cols);
+    return panel;
+  }
+
+  function buildPills(strip) {
+    const short = [['Chloe heartworm pill', 0], ["Aidan's 3rd 🎂", 1], ['Flight to NYC', 2]];
+    for (const [label, i] of short) {
+      const ev = EVENTS[i];
+      const pill = document.createElement('span');
+      pill.className = `cu-pill${ev.cat ? ' cu-pill--' + ev.cat : ''}`;
+      pill.innerHTML = `${label} <b>${ev.days.replace(' days', 'd')}</b>`;
+      pill.addEventListener('click', (e) => { e.stopPropagation(); openDetail(ev); });
+      strip.appendChild(pill);
+    }
+    const more = document.createElement('span');
+    more.className = 'cu-pill cu-pill--more';
+    more.textContent = '+5 more';
+    strip.appendChild(more);
+    const hint = document.createElement('span');
+    hint.className = 'custrip__hint';
+    hint.textContent = 'returns to the week in 60s';
+    hint.style.marginLeft = 'auto';
+    strip.appendChild(hint);
+    const chev = document.createElement('button');
+    chev.className = 'custrip__chev';
+    chev.textContent = '⌄';
+    strip.appendChild(chev);
+  }
+
+  // ── wire both plates ──
+  for (const id of ['calweek-1', 'calweek-2']) {
+    const cw = document.getElementById(id);
+    const strip = cw.querySelector('.calweek__custrip');
+    buildPills(strip);
+    cw.insertBefore(buildPanel(), strip);
+
+    const card = cw.closest('.card');
+    let timer;
+    const set = (on) => {
+      cw.classList.toggle('is-expanded', on);
+      card.classList.toggle('is-open', on);
+      strip.querySelector('.custrip__chev').textContent = on ? '⌃' : '⌄';
+      clearTimeout(timer);
+      if (on) timer = setTimeout(() => set(false), 60_000);
+    };
+    strip.addEventListener('click', (e) => {
+      if (e.target.closest('.cu-pill:not(.cu-pill--more)')) return; // pill taps open the modal
+      set(!cw.classList.contains('is-expanded'));
+    });
+  }
+
+  // Plate 1's card is absolutely positioned so it can grow OVER the duo below;
+  // the slot locks in the collapsed height so nothing under it ever reflows.
+  const slot = document.getElementById('slot-1');
+  const card1 = slot.querySelector('.card');
+  slot.style.height = card1.offsetHeight + 'px';
+</script>
+</body>
+</html>

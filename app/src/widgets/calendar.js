@@ -23,10 +23,13 @@
 // Pick a flavor at runtime with ?calflavor=week|stacked|rail|days|classic
 // (the view persists the choice in localStorage 'calendar:flavor').
 
-import { getCalendar, fetchCalendar, getRange, fetchRange } from '../lib/calendar.js';
-import { CARD_MAX_PER_COLUMN } from '../lib/comingup.js';
+import { getCalendar, fetchCalendar, getRange, fetchRange, getUpcoming, fetchUpcoming } from '../lib/calendar.js';
+import { CARD_MAX_PER_COLUMN, upNext, parseLocalDate as parseCuDate } from '../lib/comingup.js';
+import { getOverrides, fetchOverrides } from '../lib/comingup-overrides.js';
+import { dinnersByDay, isDinnerEvent, ymdLocal } from '../lib/meals.js';
 import { visibleRoster, isHiddenEvent } from '../lib/calendar-people.js';
 import { openEventDetail } from './event-detail.js';
+import { showToast } from './toast.js';
 import { CAL_SVG } from '../lib/icons.js';
 
 // "Open month view" control. Replaces the old "See more" text link with the same
@@ -68,9 +71,9 @@ export const FLAVORS = ['week', 'stacked', 'rail', 'days', 'classic'];
 // predate the week grid render unchanged.
 export const DEFAULT_FLAVOR = 'stacked';
 
-export function renderCalendar(data, now = new Date(), { flavor = DEFAULT_FLAVOR, offsetDays = 0 } = {}) {
+export function renderCalendar(data, now = new Date(), { flavor = DEFAULT_FLAVOR, offsetDays = 0, comingUp, cuExpanded = false } = {}) {
   if (!FLAVORS.includes(flavor)) flavor = DEFAULT_FLAVOR;
-  if (flavor === 'week') return renderWeek(flattenEvents(data), now, { offsetDays });
+  if (flavor === 'week') return renderWeek(flattenEvents(data), now, { offsetDays, comingUp, cuExpanded });
   if (flavor === 'days') return renderDayGrouped(data, now);
   return renderColumns(data, now, flavor);
 }
@@ -330,7 +333,14 @@ function weekEventAttrs(event) {
 
 // `offsetDays` shifts the visible window off today (0 = today-anchored). It's a
 // multiple of WINDOW_STEP in practice, but the render is robust to any value.
-export function renderWeek(events, now = new Date(), { offsetDays = 0 } = {}) {
+//
+// `comingUp` is the chronological next-90-days strip data (see lib/comingup.js
+// upNext) — the mount supplies it from the wide getUpcoming(90) feed merged
+// with Hermes overrides + kiosk dismissals; when omitted (fixtures, direct
+// callers) it's derived from the same `events` stream. `cuExpanded` drops the
+// sheet of rows below the card (the card visually grows OVER the modules
+// beneath it — nothing reflows; see .calweek__cusheet in global.css).
+export function renderWeek(events, now = new Date(), { offsetDays = 0, comingUp, cuExpanded = false } = {}) {
   const today0 = startOfDay(now);
   const windowStart = addDays(today0, offsetDays);
   const days = Array.from({ length: WINDOW_DAYS }, (_, i) => addDays(windowStart, i));
@@ -339,6 +349,8 @@ export function renderWeek(events, now = new Date(), { offsetDays = 0 } = {}) {
   const todayIdx = Math.round((today0 - windowStart) / 86_400_000);
 
   const visible = (events ?? []).filter(e => !isHiddenEvent(e));
+  const dinners = dinnersByDay(visible);
+  const cu = comingUp ?? upNext(events ?? [], { now });
 
   // next-up highlight: soonest timed event from now (all-day events excluded).
   const nowMs = now.getTime();
@@ -352,7 +364,8 @@ export function renderWeek(events, now = new Date(), { offsetDays = 0 } = {}) {
   const allDay = [];
   const timedByDay = Array.from({ length: WINDOW_DAYS }, () => []);
   for (const e of visible) {
-    if (e.allDay) { allDay.push(e); continue; }
+    // Dinner-plan events live on the dinner lane, not the all-day band.
+    if (e.allDay) { if (!isDinnerEvent(e)) allDay.push(e); continue; }
     const idx = dayOffsetFrom(windowStart, e.startsAt);
     if (idx >= 0 && idx < WINDOW_DAYS) timedByDay[idx].push(e);
   }
@@ -380,6 +393,7 @@ export function renderWeek(events, now = new Date(), { offsetDays = 0 } = {}) {
       </div>
       <div class="calweek">
         ${head}
+        ${renderMealsLane(days, dinners, today0)}
         ${renderAllDayBand(allDay, windowStart)}
         <div class="calweek__scroll">
           <div class="calweek__grid">
@@ -387,7 +401,9 @@ export function renderWeek(events, now = new Date(), { offsetDays = 0 } = {}) {
             ${cols}
           </div>
         </div>
+        ${renderCuStrip(cu, cuExpanded)}
       </div>
+      ${cuExpanded ? renderCuSheet(cu) : ''}
     </div>`;
 }
 
@@ -522,6 +538,85 @@ function packAllDayRows(bars) {
   return out;
 }
 
+// ── dinner lane ──
+// A constant row pinned under the day names (above the all-day band): the
+// planned meal for each day, fed by "Dinner: …" all-day events on the family
+// calendar (lib/meals.js — Nigel writes them; Instacart-derived plans later).
+// Meal cells are glanceable taps (data-event → detail) like the event blocks;
+// an empty FUTURE day nudges "ask Nigel…", a past day stays quietly blank.
+function renderMealsLane(days, dinners, today0) {
+  const cells = days.map(d => {
+    const meal = dinners.get(ymdLocal(d));
+    if (meal) {
+      return `<div class="calweek__meal" ${weekEventAttrs(meal.event)} tabindex="0">${escapeHtml(meal.label)}</div>`;
+    }
+    return d < today0
+      ? '<div class="calweek__meal calweek__meal--past"></div>'
+      : '<div class="calweek__meal calweek__meal--empty">ask Nigel…</div>';
+  }).join('');
+  return `<div class="calweek__meals"><div class="calweek__corner"><span>dinner</span></div>${cells}</div>`;
+}
+
+// ── coming-up strip + sheet ──
+// The strip lives at the card's bottom edge: collapsed it shows the 3 nearest
+// picks as tappable pills (+N more), expanded it swaps to a hint while the
+// sheet of up to 8 chronological rows drops below the card. Pills and rows
+// carry [data-event] (tap → detail); [data-cutoggle] toggles the sheet.
+// Row/strip/chevron hold the 44px floor; pills are glanceable taps like the
+// grid's event blocks (same convention as the header note above).
+const CU_PILL_COUNT = 3;
+
+function renderCuStrip(items, expanded) {
+  const label = '<span class="custrip__label">Coming up</span>';
+  const chev = `<button class="custrip__chev" data-cutoggle aria-label="${expanded ? 'Back to the week' : 'Show the next 90 days'}">${expanded ? '⌃' : '⌄'}</button>`;
+  if (expanded) {
+    return `<div class="calweek__custrip is-open" data-cutoggle>${label}<span class="custrip__hint">next 90 days · returns to the week in a minute</span>${chev}</div>`;
+  }
+  const body = items.length
+    ? items.slice(0, CU_PILL_COUNT).map(it =>
+        `<span class="cu-pill${it.category ? ` cu-pill--${it.category}` : ''}" ${weekEventAttrs({ ...it, title: it.name })} tabindex="0"><span class="cu-pill__name">${escapeHtml(it.name)}</span><b>${it.days}d</b></span>`).join('')
+      + (items.length > CU_PILL_COUNT ? `<span class="cu-pill cu-pill--more">+${items.length - CU_PILL_COUNT} more</span>` : '')
+    : '<span class="custrip__hint">Nothing in the next 90 days</span>';
+  return `<div class="calweek__custrip" data-cutoggle>${label}${body}${chev}</div>`;
+}
+
+function renderCuSheet(items) {
+  if (!items.length) {
+    return '<div class="calweek__cusheet"><p class="muted cusheet__empty">Nothing in the next 90 days.</p></div>';
+  }
+  const row = (it) => `
+    <div class="curow${it.category ? ` curow--${it.category}` : ''}" role="button" tabindex="0" data-cukey="${escapeHtml(it.key)}" ${weekEventAttrs({ ...it, title: it.name })}>
+      <span class="curow__name">${escapeHtml(it.name)}</span>
+      <span class="curow__when"><span class="curow__days">${formatCuDays(it.days)}</span><span class="curow__date">${formatCuDate(it.startsAt)}</span></span>
+    </div>`;
+  const half = Math.ceil(items.length / 2);
+  const col = (list) => `<div class="cusheet__col">${list.map(row).join('')}</div>`;
+  return `<div class="calweek__cusheet"><div class="cusheet__cols">${col(items.slice(0, half))}${col(items.slice(half))}</div></div>`;
+}
+
+function formatCuDays(days) {
+  if (days === 0) return 'today';
+  if (days === 1) return 'tomorrow';
+  return `${days} days`;
+}
+function formatCuDate(dateStr) {
+  const d = parseCuDate(dateStr);
+  const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(d);
+  const month = new Intl.DateTimeFormat(undefined, { month: 'short' }).format(d);
+  return `${weekday}, ${month} ${d.getDate()}`;
+}
+
+// Kiosk-local swipe-dismissals for the coming-up strip. Same storage key the
+// retired countdown card used, so prior dismissals carry over.
+const CU_DISMISSED_KEY = 'coming-up:dismissed:v1';
+function readCuDismissed() {
+  try { return new Set(JSON.parse(localStorage.getItem(CU_DISMISSED_KEY) || '[]')); }
+  catch { return new Set(); }
+}
+function writeCuDismissed(values) {
+  try { localStorage.setItem(CU_DISMISSED_KEY, JSON.stringify([...values].slice(-100))); } catch {}
+}
+
 // Scroll the grid so 8 AM sits at the top of the viewport (→ 8 AM–8 PM shown).
 // Called after every (re)render because innerHTML resets scrollTop.
 export function scrollWeekToOpen(el) {
@@ -574,11 +669,16 @@ function parseLocalish(value) {
 export function mountCalendar(el, { flavor = 'week' } = {}) {
   if (!FLAVORS.includes(flavor)) flavor = 'week';
 
+  // A completed swipe-dismiss must not ALSO read as a tap on the row under the
+  // pointer — the week branch sets this; the shared handler consumes it.
+  let cuSwiped = false;
+
   // Event delegation — survives innerHTML refreshes on the container. Shared by
   // every flavor (blocks and rows both carry [data-event]).
   el.addEventListener('click', (e) => {
     const row = e.target.closest('[data-event]');
     if (!row) return;
+    if (cuSwiped) { cuSwiped = false; return; }
     try { openEventDetail(JSON.parse(row.dataset.event)); } catch {}
   });
 
@@ -587,10 +687,37 @@ export function mountCalendar(el, { flavor = 'week' } = {}) {
   // is recomputed against "today" on each refresh, so a long-running kiosk that
   // crosses midnight re-anchors itself. Refresh keeps the current offset (the
   // Today control is the only reset — no surprise snap-backs on the wall).
+  //
+  // The coming-up strip rides this card (2026-08-01, replacing the standalone
+  // Coming-Up card): its rows come from the WIDE 90-day feed (the grid's range
+  // fetch only spans the pageable windows), merged with Hermes overrides and
+  // kiosk-local swipe-dismissals. Expanding drops the sheet OVER the cards
+  // below (no reflow) and auto-returns to the week after a minute.
   if (flavor === 'week') {
+    const CU_AUTO_COLLAPSE_MS = 60_000;
     let offsetDays = 0;
     let events = [];
-    const paint = () => { el.innerHTML = renderWeek(events, new Date(), { offsetDays }); scrollWeekToOpen(el); };
+    let cuItems = [];
+    let cuOverrides = [];
+    let cuExpanded = false;
+    let cuTimer = null;
+    const dismissed = readCuDismissed();
+
+    const paint = () => {
+      el.classList.toggle('card--cuopen', cuExpanded);
+      el.innerHTML = renderWeek(events, new Date(), {
+        offsetDays,
+        comingUp: upNext(cuItems, { now: new Date(), overrides: cuOverrides, dismissed }),
+        cuExpanded,
+      });
+      scrollWeekToOpen(el);
+    };
+    const setExpanded = (on) => {
+      cuExpanded = on;
+      clearTimeout(cuTimer);
+      cuTimer = on ? setTimeout(() => setExpanded(false), CU_AUTO_COLLAPSE_MS) : null;
+      paint();
+    };
     // [timeMin, timeMax] covering every reachable window, with today re-read
     // each call so the range tracks the real date on a kiosk left running.
     const rangeArgs = () => {
@@ -599,8 +726,15 @@ export function mountCalendar(el, { flavor = 'week' } = {}) {
     };
 
     const { initial, live } = getRange(...rangeArgs());
-    events = initial; paint();
+    const cuSource = getUpcoming(90);
+    const ovSource = getOverrides();
+    events = initial;
+    cuItems = cuSource.initial ?? [];
+    cuOverrides = ovSource.initial ?? [];
+    paint();
     live.then(evs => { if (evs) { events = evs; paint(); } });
+    cuSource.live.then(next => { if (next) { cuItems = next; paint(); } });
+    ovSource.live?.then(next => { if (next) { cuOverrides = next; paint(); } });
 
     // ‹ › page a full window; a tap on the range label returns to today. Its
     // own listener — the shared [data-event] one above ignores nav buttons.
@@ -614,10 +748,45 @@ export function mountCalendar(el, { flavor = 'week' } = {}) {
       paint();
     });
 
+    // Strip toggle. Pills/rows carry [data-event] and open detail via the
+    // shared handler above — only empty strip area + chevron toggle the sheet.
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('[data-event]')) return;
+      if (e.target.closest('[data-cutoggle]')) setExpanded(!cuExpanded);
+    });
+
+    // Swipe-left on a sheet row dismisses it (kiosk-local, Undo toast) —
+    // carried over from the retired countdown card.
+    let cuStartX = null;
+    el.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.curow')) { cuStartX = e.clientX; cuSwiped = false; }
+    });
+    el.addEventListener('pointerup', (e) => {
+      const row = e.target.closest('.curow');
+      if (row && cuStartX != null) {
+        const dx = e.clientX - cuStartX;
+        if (Math.abs(dx) > 10) cuSwiped = true;
+        if (dx < -60) {
+          const key = row.dataset.cukey;
+          const name = row.querySelector('.curow__name')?.textContent ?? '';
+          dismissed.add(key);
+          writeCuDismissed(dismissed);
+          paint();
+          showToast(`Dismissed "${name}"`, {
+            actionLabel: 'Undo',
+            onAction: () => { dismissed.delete(key); writeCuDismissed(dismissed); paint(); },
+          });
+        }
+      }
+      cuStartX = null;
+    });
+
     const id = setInterval(() => {
       fetchRange(...rangeArgs()).then(evs => { events = evs; paint(); }).catch(() => { /* keep the last good frame */ });
+      fetchUpcoming(90).then(next => { cuItems = next; paint(); }).catch(() => {});
+      fetchOverrides().then(next => { cuOverrides = next; paint(); }).catch(() => {});
     }, REFRESH_MS);
-    return () => clearInterval(id);
+    return () => { clearInterval(id); clearTimeout(cuTimer); };
   }
 
   const { initial, live } = getCalendar();

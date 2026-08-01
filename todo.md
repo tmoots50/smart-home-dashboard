@@ -156,5 +156,14 @@ Scope expanded: Aqara U100 lock + smart plugs (in Aqara Home + Apple HomeKit). D
 
 ---
 
+## Phase 16 — Calendar: dinner lane + Coming-Up merge *(shipped 2026-08-01)*
+- [x] Dinner lane pinned under the day names — `Dinner: <meal>` all-day events on the Family calendar (`lib/meals.js`; system of record = the calendar; Nigel writes them)
+- [x] All-day band doubled to ~4 rows; hour grid's visible span condensed ~25% (still scrolls 5 AM–midnight)
+- [x] Standalone Coming-Up card retired → pills strip on the calendar card + expand-over sheet of ≤8 chronological next-90-day rows (`upNext()`; no checkboxes; tap = detail, swipe = dismiss; 60s auto-return)
+- [x] Fixtures/harness/QA specs for lane, band cap, strip, sheet, no-reflow expand; fold contract raised to 5 rows
+- [x] `scripts/smoke-dinner.mjs` — e2e create → feed → lane → delete via Nigel's endpoint; this week's real dinners created and verified live
+
+---
+
 ## Future / parking lot
 *Migrated to [`followups.md`](./followups.md). Feature backlog, ideas, limitations, and parking-lot items live there now. This section kept as a pointer.*

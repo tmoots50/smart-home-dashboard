@@ -199,6 +199,7 @@ When she walks up to the mirror, she sees:
 
 - **Time, date, and weather** — anchored in a corner, always visible
 - **Today's meetings** — her calendar for the day, color-coded, with the next event highlighted
+- **Tonight's dinner** — the week's meal plan on the calendar card's dinner lane, written as `Dinner: <meal>` all-day events on the Family calendar (Nigel writes them; the calendar stays the system of record; a future source may derive them from the Instacart cart via `lib/meals.js`)
 - **Family todo list** — shared between us, what's outstanding for today and this week
 - **Outstanding bills / actions / reminders** — surfaced from our financial accounts and ongoing commitments
 - **A photo or two** — rotating family memories, pulled from our photo library
