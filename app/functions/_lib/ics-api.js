@@ -110,6 +110,45 @@ async function getIcsText(env, url) {
 // week grid + month view still show them). Keeps all four ranks — dropping the
 // optional memorials [m] (about half) is a one-line change if the wall gets busy.
 const LITURGICAL_RANK = /\[(S|F|M|m)\]/;
+
+// GCatholic publishes one VEVENT for nearly every day, but only rank-tagged
+// celebrations are user-visible. Remove ferial VEVENT blocks before handing the
+// annual document to ical-expander so cold Worker requests do not spend CPU
+// parsing hundreds of events that liturgicalRankedOnly would discard anyway.
+// Calendar-level properties and retained blocks stay byte-for-byte intact;
+// unfolding is used only to inspect a possibly folded SUMMARY value.
+export function filterLiturgicalRankedIcs(icsText) {
+  const lines = String(icsText).match(/[^\r\n]*(?:\r\n|\r|\n|$)/g) || [];
+  const output = [];
+  let eventLines = null;
+
+  for (const line of lines) {
+    const content = line.replace(/(?:\r\n|\r|\n)$/, '');
+    if (eventLines) {
+      eventLines.push(line);
+      if (/^END:VEVENT$/i.test(content)) {
+        const block = eventLines.join('');
+        const unfolded = block.replace(/(?:\r\n|\r|\n)[ \t]/g, '');
+        const summary = unfolded.match(/(?:^|\r\n|\r|\n)SUMMARY(?:;[^:\r\n]*)?:([^\r\n]*)/i)?.[1] || '';
+        if (LITURGICAL_RANK.test(summary)) output.push(block);
+        eventLines = null;
+      }
+      continue;
+    }
+
+    if (/^BEGIN:VEVENT$/i.test(content)) {
+      eventLines = [line];
+    } else {
+      output.push(line);
+    }
+  }
+
+  // Preserve malformed input for the existing parser/fail-soft path rather
+  // than silently dropping an unterminated VEVENT.
+  if (eventLines) output.push(eventLines.join(''));
+  return output.join('');
+}
+
 export function liturgicalRankedOnly(events) {
   const out = [];
   for (const ev of events) {
@@ -124,7 +163,8 @@ export function liturgicalRankedOnly(events) {
 // Expand an ICS document into normalized events within [timeMin, timeMax].
 // Output shape matches normalizeUpcoming() so the two sources merge seamlessly.
 export function expandIcs(icsText, timeMin, timeMax, { label, person, kind, readOnly = true, filter } = {}) {
-  const expander = new IcalExpander({ ics: icsText, maxIterations: ICS_MAX_ITERATIONS });
+  const preparedIcs = filter === 'liturgical-ranked' ? filterLiturgicalRankedIcs(icsText) : icsText;
+  const expander = new IcalExpander({ ics: preparedIcs, maxIterations: ICS_MAX_ITERATIONS });
   const { events, occurrences } = expander.between(new Date(timeMin), new Date(timeMax));
 
   const single = events.map(e => shape(e.uid, e.summary, e.location, e.description, e.startDate, e.endDate, false));

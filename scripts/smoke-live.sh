@@ -38,6 +38,7 @@ ENDPOINTS=(
 
 probe_all() {
   FAILED=0
+  WORKER_CPU_EXHAUSTED=0
   for entry in "${ENDPOINTS[@]}"; do
     path="${entry%%|*}"
     label="${entry##*|}"
@@ -49,7 +50,12 @@ probe_all() {
     else
       FAILED=1
       echo "✗ $path — $label (HTTP $status)"
-      echo "    $(head -c 200 <<<"$payload")"
+      if [ "$status" = "503" ] && [[ "$payload" == *"error code: 1102"* ]]; then
+        WORKER_CPU_EXHAUSTED=1
+        echo "    Cloudflare Worker CPU exhausted (error 1102)."
+      else
+        echo "    $(head -c 200 <<<"$payload")"
+      fi
     fi
   done
 }
@@ -66,11 +72,16 @@ fi
 
 if [ "$FAILED" = "1" ]; then
   echo ""
-  echo "✗ Live smoke FAILED. Likely causes, most common first:"
-  echo "  1. A secret env var got wiped (GET omits secret values — never PATCH"
-  echo "     a full env map; per-key only via scripts/set-cf-env-var.mjs)."
-  echo "  2. Env change without a redeploy — CF Pages binds env at deploy time."
-  echo "  3. Google refresh token expired/revoked (docs/google-setup.md §2.6)."
+  if [ "$WORKER_CPU_EXHAUSTED" = "1" ]; then
+    echo "✗ Live smoke FAILED: Cloudflare Worker CPU exhaustion (error 1102)."
+    echo "  This is runtime CPU pressure, not a missing token or env binding."
+  else
+    echo "✗ Live smoke FAILED. Likely causes, most common first:"
+    echo "  1. A secret env var got wiped (GET omits secret values — never PATCH"
+    echo "     a full env map; per-key only via scripts/set-cf-env-var.mjs)."
+    echo "  2. Env change without a redeploy — CF Pages binds env at deploy time."
+    echo "  3. Google refresh token expired/revoked (docs/google-setup.md §2.6)."
+  fi
   exit 1
 fi
 echo "✓ Live smoke passed."

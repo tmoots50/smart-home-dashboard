@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { parseIcsCalendars, icsCalendarFor, expandIcs, fetchIcsEvents } from './ics-api.js';
+import * as icsApi from './ics-api.js';
 
 // A realistic Outlook publish feed: a Windows-named TZID resolved via the
 // embedded VTIMEZONE, a weekly MO/WE/FR series with COUNT + one EXDATE, a
@@ -96,6 +97,43 @@ END:VCALENDAR`;
 
 const AUG = { timeMin: '2026-08-01T00:00:00Z', timeMax: '2026-09-01T00:00:00Z' };
 const LIT_META = { label: 'Catholic Calendar', person: 'Catholic', kind: 'personal', filter: 'liturgical-ranked' };
+
+const LITURGICAL_FOLDED_ICS = `BEGIN:VCALENDAR\r
+PRODID:-//gcatholic.org//Liturgical Calendar//EN\r
+VERSION:2.0\r
+X-WR-CALDESC:Calendar metadata that must survive filtering\r
+BEGIN:VEVENT\r
+UID:boundary-start@gc\r
+SUMMARY:⚪ [M] Saint Al\r
+ pha\\, bishop and martyr\r
+DTSTART;VALUE=DATE:20260801\r
+DTEND;VALUE=DATE:20260802\r
+END:VEVENT\r
+BEGIN:VEVENT\r
+UID:ferial@gc\r
+SUMMARY:⚪ Monday of week 18 in Ordinary Time\r
+DTSTART;VALUE=DATE:20260802\r
+DTEND;VALUE=DATE:20260803\r
+END:VEVENT\r
+BEGIN:VEVENT\r
+UID:boundary-end@gc\r
+SUMMARY:🔴 [F] Saint Omega\\, deacon and martyr\r
+DTSTART;VALUE=DATE:20260831\r
+DTEND;VALUE=DATE:20260901\r
+END:VEVENT\r
+END:VCALENDAR\r
+`;
+
+function productionSizedLiturgicalIcs() {
+  const events = [];
+  for (let i = 0; i < 494; i += 1) {
+    const day = new Date(Date.UTC(2026, 0, 1 + (i % 365))).toISOString().slice(0, 10).replaceAll('-', '');
+    const nextDay = new Date(Date.UTC(2026, 0, 2 + (i % 365))).toISOString().slice(0, 10).replaceAll('-', '');
+    const summary = i < 214 ? `⚪ [M] Ranked celebration ${i}` : `⚪ Ferial day ${i}`;
+    events.push(`BEGIN:VEVENT\r\nUID:production-${i}@gc\r\nSUMMARY:${summary}\r\nDTSTART;VALUE=DATE:${day}\r\nDTEND;VALUE=DATE:${nextDay}\r\nEND:VEVENT\r\n`);
+  }
+  return `BEGIN:VCALENDAR\r\nPRODID:-//gcatholic.org//Liturgical Calendar//EN\r\nVERSION:2.0\r\n${events.join('')}END:VCALENDAR\r\n`;
+}
 
 describe('parseIcsCalendars', () => {
   it('parses the JSON env var, defaulting person to label and marking read-only', () => {
@@ -214,6 +252,45 @@ describe('expandIcs — liturgical-ranked filter (gcatholic feasts)', () => {
     expect(evs.some(e => /Ordinary Time/.test(e.title))).toBe(true);
     expect(evs.some(e => e.title.includes('[S]'))).toBe(true); // tag NOT stripped
     expect(evs.every(e => e.liturgical === undefined)).toBe(true);
+  });
+});
+
+describe('filterLiturgicalRankedIcs — pre-expansion CPU guard', () => {
+  it('removes ferial VEVENTs while preserving the calendar envelope and ranked event bytes', () => {
+    const filtered = icsApi.filterLiturgicalRankedIcs(LITURGICAL_FOLDED_ICS);
+    expect(filtered.match(/BEGIN:VEVENT/g)).toHaveLength(2);
+    expect(filtered).toContain('X-WR-CALDESC:Calendar metadata that must survive filtering');
+    expect(filtered).toContain('SUMMARY:⚪ [M] Saint Al\r\n pha\\, bishop and martyr');
+    expect(filtered).toContain('DTSTART;VALUE=DATE:20260801');
+    expect(filtered).toContain('DTEND;VALUE=DATE:20260901');
+    expect(filtered).not.toContain('UID:ferial@gc');
+  });
+
+  it('keeps folded and escaped ranked titles correct at both date boundaries after expansion', () => {
+    const events = expandIcs(LITURGICAL_FOLDED_ICS, AUG.timeMin, AUG.timeMax, LIT_META);
+    expect(events.map(({ title, startsAt, endsAt }) => ({ title, startsAt, endsAt }))).toEqual([
+      { title: 'Saint Alpha, bishop and martyr', startsAt: '2026-08-01', endsAt: '2026-08-02' },
+      { title: 'Saint Omega, deacon and martyr', startsAt: '2026-08-31', endsAt: '2026-09-01' },
+    ]);
+  });
+
+  it('returns a valid empty calendar when no VEVENT carries a liturgical rank', () => {
+    const noRanked = LITURGICAL_FOLDED_ICS
+      .replace('⚪ [M] Saint Al\r\n pha\\, bishop and martyr', '⚪ Ferial at start')
+      .replace('🔴 [F] Saint Omega\\, deacon and martyr', '⚪ Ferial at end');
+    const filtered = icsApi.filterLiturgicalRankedIcs(noRanked);
+    expect(filtered).toContain('BEGIN:VCALENDAR');
+    expect(filtered).toContain('END:VCALENDAR');
+    expect(filtered).not.toContain('BEGIN:VEVENT');
+    expect(expandIcs(noRanked, AUG.timeMin, AUG.timeMax, LIT_META)).toEqual([]);
+  });
+
+  it('shrinks a production-sized annual feed before expansion without losing ranked events', () => {
+    const source = productionSizedLiturgicalIcs();
+    const filtered = icsApi.filterLiturgicalRankedIcs(source);
+    expect(source.match(/BEGIN:VEVENT/g)).toHaveLength(494);
+    expect(filtered.match(/BEGIN:VEVENT/g)).toHaveLength(214);
+    expect(expandIcs(source, '2026-01-01T00:00:00Z', '2027-01-02T00:00:00Z', LIT_META)).toHaveLength(214);
   });
 });
 
