@@ -2,8 +2,8 @@
 
 A wall-mounted, touchscreen morning briefing for our home. Time, weather, today's calendar, family todos, a rotating photo, an occasional message — at a glance, on the way out the door.
 
-> **Status:** in development. Started April 2026, target on-the-wall by mid-June 2026.
-> **Stack pivot, 2026-05-05:** v1 ships on a Meswao Android tablet running Fully Kiosk Browser, loading the dashboard from Cloudflare Pages. Original Pi 5 + cocopar plan is shelved; the Pi will eventually host Home Assistant as a back-end data source.
+> **Status:** live on the wall and in daily use since 2026-04-20.
+> **Stack:** a Meswao Android tablet runs Fully Kiosk Browser and loads the dashboard from Cloudflare Pages. The Raspberry Pi already hosts Home Assistant as the live smart-home back end.
 
 ## Why
 
@@ -20,7 +20,7 @@ Three goals:
 - **Display layer:** Fully Kiosk Browser, locked to the dashboard URL
 - **Hosting:** Cloudflare Pages, auto-deployed from `main`
 - **App:** Vite + vanilla JS
-- **Future back end:** Raspberry Pi 5 (already provisioned, Phase 1 hardware foundation complete) will host Home Assistant + a small HTTP shim that bridges the dashboard to Apple Notes (todos / groceries) and the family calendar
+- **Back end:** Raspberry Pi hosts Home Assistant for live device control; Google Calendar and Google Tasks back the dashboard's calendar, todos, and groceries.
 
 Architecture: widgets are dumb leaf components, views compose them. Every widget gets a mock-data adapter before any real API is wired — keeps the visual loop fast and turns real-data wiring into a small swap.
 
