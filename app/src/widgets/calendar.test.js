@@ -160,10 +160,10 @@ describe('renderWeek (5-day rolling window)', () => {
     return { id, startsAt: s.toISOString(), endsAt: e.toISOString(), title, ...extra };
   };
 
-  it('renders five day columns and an hour gutter', () => {
+  it('renders five day columns in the agenda grid', () => {
     const html = renderWeek([], NOW);
     expect((html.match(/calweek__col/g) || [])).toHaveLength(5);
-    expect(html).toContain('calweek__gutter');
+    expect(html).toContain('calweek__agenda');
     expect(html).toContain('calendar--week');
   });
 
@@ -175,9 +175,9 @@ describe('renderWeek (5-day rolling window)', () => {
     expect(html).not.toContain('Today event');
   });
 
-  it('shows the now-line only when today is inside the visible window', () => {
-    expect((renderWeek([], NOW, { offsetDays: 0 }).match(/class="calweek__now"/g) || [])).toHaveLength(1);
-    expect(renderWeek([], NOW, { offsetDays: 5 })).not.toContain('calweek__now'); // today paged out
+  it('highlights the today column only when today is inside the visible window', () => {
+    expect((renderWeek([], NOW, { offsetDays: 0 }).match(/calweek__col is-today/g) || [])).toHaveLength(1);
+    expect(renderWeek([], NOW, { offsetDays: 5 })).not.toContain('is-today'); // today paged out
   });
 
   it('renders ‹ › nav buttons and a date-range Today control', () => {
@@ -201,39 +201,28 @@ describe('renderWeek (5-day rolling window)', () => {
     expect(latest).not.toMatch(/data-calnav="prev"[^>]*disabled/);
   });
 
-  it('draws a timed event as a positioned block carrying data-event', () => {
+  it('renders a timed event as a chip carrying data-event', () => {
     const html = renderWeek([ev('a', 0, 9, 0, 10, 0, 'Grocery Run')], NOW);
     expect(html).toContain('calweek__event');
     expect(html).toContain('Grocery Run');
     expect(html).toContain('data-event=');
-    expect(html).toMatch(/top:[\d.]+%;height:[\d.]+%/); // proportional placement
+    expect(html).not.toMatch(/top:[\d.]+%/); // flow layout, not proportional placement
   });
 
-  // The card's fixed height forces sub-44px blocks; keeping them out of the
-  // button/role=button audit selector is what lets the QA tap floor pass.
-  it('blocks are not buttons and expose no role=button', () => {
+  // Chips are glanceable [data-event] taps, not buttons — keeping them out of
+  // the button/role=button audit selector is what lets the QA tap floor pass.
+  it('chips are not buttons and expose no role=button', () => {
     const html = renderWeek([ev('a', 0, 9, 0, 10, 0, 'X')], NOW);
     expect(html).not.toContain('role="button"');
     expect(html).not.toMatch(/<button[^>]*calweek__event/);
   });
 
-  // Blocks carry a fixed px column-gutter inset, so lane math rides inside a
-  // calc(): two lanes → calc(50.00% - …), one lane → calc(100.00% - …).
-  it('splits overlapping events into side-by-side lanes', () => {
+  it('sorts a day\'s events earliest-first', () => {
     const html = renderWeek([
-      ev('a', 0, 9, 0, 11, 0, 'A'),
-      ev('b', 0, 10, 0, 12, 0, 'B'), // overlaps A
+      ev('late', 0, 16, 0, 17, 0, 'Afternoon'),
+      ev('early', 0, 8, 0, 9, 0, 'Morning'),
     ], NOW);
-    expect(html).toContain('width:calc(50.00%');
-  });
-
-  it('gives a non-overlapping run the full column width back', () => {
-    const html = renderWeek([
-      ev('a', 0, 9, 0, 10, 0, 'A'),
-      ev('b', 0, 11, 0, 12, 0, 'B'), // after A → same lane cluster resets
-    ], NOW);
-    expect(html).toContain('width:calc(100.00%');
-    expect(html).not.toContain('width:calc(50.00%');
+    expect(html.indexOf('Morning')).toBeLessThan(html.indexOf('Afternoon'));
   });
 
   it('places all-day events as a spanning bar in the pinned band', () => {
@@ -269,7 +258,7 @@ describe('renderWeek (5-day rolling window)', () => {
     expect((html.match(/calweek__event--next/g) || [])).toHaveLength(1);
   });
 
-  it('clamps a duration-less event to a default block instead of crashing', () => {
+  it('renders a duration-less event without crashing', () => {
     const s = new Date(NOW); s.setHours(9, 0, 0, 0);
     const html = renderWeek([{ id: 'a', startsAt: s.toISOString(), title: 'No end' }], NOW);
     expect(html).toContain('No end');

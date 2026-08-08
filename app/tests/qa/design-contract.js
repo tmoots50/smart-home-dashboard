@@ -38,8 +38,16 @@ export const contract = {
   // Type roles stay inside readable-at-arm's-length bands (px @ root 16).
   fontRoles: [
     { role: 'list text', selector: '.todos__text, .groceries__text', size: [14, 18] },      // now 16
-    { role: 'calendar title', selector: '.calendar__title', size: [12, 16] },               // now 15.2
+    { role: 'calendar title', selector: '.calendar__title', size: [12, 16] },               // now 15.2 (stacked/rail/days/classic flavors)
     { role: 'card title', selector: '.card__title', size: [11, 14] },                       // now 12
     { role: 'pick title', selector: '.pick__title', size: [14, 18] },                       // now 16
+    // Week-agenda type, enlarged 2026-08-08 (Tim: the old time-grid text was
+    // unreadable at 3m). These sizes clear the current .calendar__title band by
+    // design; banded here so a future shrink is a recorded change, not silent.
+    { role: 'week event title', selector: '.calweek__title', size: [15, 19] },              // now 16
+    { role: 'week event time', selector: '.calweek__event-time', size: [14, 17] },          // now 15
+    { role: 'week dinner', selector: '.calweek__meal', size: [14, 17] },                    // now 15 (empty cell 14)
+    { role: 'week all-day', selector: '.calweek__bar', size: [15, 18] },                    // now 16
+    { role: 'week dow num', selector: '.calweek__dow-num', size: [17, 21] },                // now 19
   ],
 };

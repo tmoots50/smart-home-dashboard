@@ -132,36 +132,36 @@ test('calendar/typical-days: day-grouped flavor shows day headers and a Family-o
 
 // ── week grid (the wall default) ──
 
-test('calendar/week: 5-day time grid with hour gutter and a now-line', async ({ page }) => {
+test('calendar/week: 5-day agenda with a highlighted today column', async ({ page }) => {
   await open(page, 'week');
   await expect(page.locator('.calendar--week')).toBeVisible();
   await expect(page.locator('.calweek__col')).toHaveCount(5);
-  await expect(page.locator('.calweek__gutter')).toBeVisible();
-  // FIXED_NOW (07:30) is inside the 5 AM–midnight range, so the now-line shows.
-  await expect(page.locator('.calweek__now')).toHaveCount(1);
+  await expect(page.locator('.calweek__agenda')).toBeVisible();
+  // FIXED_NOW is inside the visible window → exactly one column reads as today.
+  await expect(page.locator('.calweek__col.is-today')).toHaveCount(1);
   expect(await page.locator('.calweek__event').count()).toBeGreaterThan(0);
 });
 
 test('calendar/week: ‹ › page the window a full 5 days; Today snaps back', async ({ page }) => {
   await open(page, 'week');
-  // At rest: today-anchored window. Today's event shows, the now-line marks
-  // today, and the range label is not accented (is-away absent).
+  // At rest: today-anchored window. Today's event shows, today's column is
+  // highlighted, and the range label is not accented (is-away absent).
   await expect(page.locator('.calweek__event').filter({ hasText: 'Grocery Run' })).toBeVisible();
-  await expect(page.locator('.calweek__now')).toHaveCount(1);
+  await expect(page.locator('.calweek__col.is-today')).toHaveCount(1);
   await expect(page.locator('.calweek__nav-label.is-away')).toHaveCount(0);
 
   // Next → the following 5 days: a next-window event appears, today's is gone,
-  // the now-line disappears, and the range label goes accented.
+  // no column is highlighted, and the range label goes accented.
   await page.locator('[data-calnav="next"]').tap();
   await expect(page.locator('.calweek__event').filter({ hasText: 'Swim lesson' })).toBeVisible();
   await expect(page.locator('.calweek__event').filter({ hasText: 'Grocery Run' })).toHaveCount(0);
-  await expect(page.locator('.calweek__now')).toHaveCount(0);
+  await expect(page.locator('.calweek__col.is-today')).toHaveCount(0);
   await expect(page.locator('.calweek__nav-label.is-away')).toHaveCount(1);
 
   // Today → back to the today-anchored window.
   await page.locator('[data-calnav="today"]').tap();
   await expect(page.locator('.calweek__event').filter({ hasText: 'Grocery Run' })).toBeVisible();
-  await expect(page.locator('.calweek__now')).toHaveCount(1);
+  await expect(page.locator('.calweek__col.is-today')).toHaveCount(1);
 
   // Prev → the previous 5 days: a past-window event shows, today's is gone.
   await page.locator('[data-calnav="prev"]').tap();
@@ -180,21 +180,6 @@ test('calendar/week: tapping a block opens the event detail', async ({ page }) =
   await page.locator('.calweek__event').first().tap();
   await expect(page.locator('.event-detail')).toBeVisible();
   await expect(page.locator('.event-detail .overlay__title')).not.toHaveText('');
-});
-
-test('calendar/week: the hour grid scrolls inside the card', async ({ page }) => {
-  await open(page, 'week');
-  await expectNestedScrollContained(page, '.calweek__scroll');
-});
-
-test('calendar/week: opens scrolled so 8 AM sits at the top of the viewport', async ({ page }) => {
-  await open(page, 'week');
-  const gap = await page.evaluate(() => {
-    const scroll = document.querySelector('.calweek__scroll');
-    const eight = [...document.querySelectorAll('.calweek__hour')].find(h => h.textContent.trim().startsWith('8'));
-    return Math.abs(eight.getBoundingClientRect().top - scroll.getBoundingClientRect().top);
-  });
-  expect(gap).toBeLessThan(24); // 8 AM within ~one row of the viewport top → 8 AM–6 PM visible
 });
 
 // ── dinner lane + coming-up strip (2026-08-01) ──
@@ -270,9 +255,14 @@ test('calendar/week-no-dinners: every day in the window nudges for a plan', asyn
   await expect(page.locator('.calweek__meals')).toContainText('ask Nigel');
 });
 
-test('calendar/week-allday-heavy: the doubled band caps at 4 rows and clips the pile-up', async ({ page }) => {
+test('calendar/week-allday-heavy: the band grows to fit every bar with no clip', async ({ page }) => {
   await open(page, 'week-allday-heavy');
-  const box = await page.locator('.calweek__allday').boundingBox();
-  expect(box.height).toBeGreaterThan(3.8 * 16);        // grew past the old 2-row cap…
-  expect(box.height).toBeLessThanOrEqual(7.6 * 16 + 1); // …but clips at the new one
+  const band = page.locator('.calweek__allday');
+  await expect(band).toBeVisible();
+  const { clipped, height } = await band.evaluate(el => ({
+    clipped: el.scrollHeight > el.clientHeight + 1,
+    height: el.getBoundingClientRect().height,
+  }));
+  expect(clipped, 'all-day band must show every bar — the card grows instead of clipping').toBe(false);
+  expect(height).toBeGreaterThan(2.6 * 16); // multiple rows deep on a heavy week
 });

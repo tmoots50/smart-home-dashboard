@@ -1,13 +1,14 @@
 // Family Calendar card. Five render flavors behind one entry point. Flavors:
 //
-//   week     (default) — a rolling 5-day time grid: five day columns starting
-//              at today, hours as rows, events drawn as proportional blocks.
-//              ‹ › page the window a full 5 days at a time and a tap on the
-//              date range snaps back to today (see mountCalendar). 8 AM–6 PM
-//              sits in the card's fixed viewport; the grid scrolls to reach
-//              5 AM–midnight without growing the module. All-day / multi-day
-//              events ride a pinned band above the grid. One calendar → one
-//              color (the theme accent).
+//   week     (default) — a rolling 5-day agenda: five day columns starting at
+//              today, each an earliest→first vertical LIST of that day's
+//              events (time over title) — no hour ruler, no proportional
+//              blocks. The card grows to fit every event (the family rarely
+//              has more than one or two a day), so there's no "see more" to
+//              tap into. ‹ › page the window a full 5 days at a time and a tap
+//              on the date range snaps back to today (see mountCalendar). A
+//              dinner lane + an all-day/multi-day band ride above the lists.
+//              One calendar → one color (the theme accent).
 //   stacked  — three person columns kept; title-first rows (wraps to 2
 //              lines), day+time on a meta line under it, day bolded and
 //              accent-colored when it's today.
@@ -30,7 +31,7 @@ import { dinnersByDay, isDinnerEvent, ymdLocal } from '../lib/meals.js';
 import { visibleRoster, isHiddenEvent } from '../lib/calendar-people.js';
 import { openEventDetail } from './event-detail.js';
 import { showToast } from './toast.js';
-import { CAL_SVG } from '../lib/icons.js';
+import { CAL_SVG, CHEVRON_DOWN_SVG } from '../lib/icons.js';
 
 // "Open month view" control. Replaces the old "See more" text link with the same
 // calendar glyph the action bar uses — both fire data-overlay="calendar", which
@@ -276,15 +277,18 @@ function renderDayGrouped(data, now) {
   `;
 }
 
-// ── flavor: week (5-day rolling time grid) ──
+// ── flavor: week (5-day rolling agenda) ──
 //
-// The wall default. Blocks are deliberately NOT <button>/role="button": on a
-// fixed-height card the 8 AM–6 PM requirement forces sub-44px blocks, which
-// can't meet the tap floor. Following the month-calendar precedent, blocks are
-// glanceable and tap via [data-event] delegation, while the 44px interaction
-// (See more → full overlay) stays large. Same reason the QA tap audit passes.
-// The ‹ › nav buttons and the date-range/Today control DO carry the 44px hit
-// floor — they're real touch targets and are policed by the tap audit.
+// The wall default. Event chips are deliberately NOT <button>/role="button":
+// they're glanceable and tap via [data-event] delegation (the month-calendar
+// precedent), so the QA 44px tap audit doesn't police them — it can't, since a
+// chip sized to its content is often under 44px. The ‹ › nav buttons and the
+// date-range/Today control DO carry the 44px hit floor — they're real touch
+// targets and are policed by the tap audit.
+//
+// The card grows to fit its content (see .calweek in global.css — no fixed
+// height): the family rarely has more than a couple of events on any one day,
+// so every event lists in place rather than hiding behind a "see more".
 
 const WINDOW_DAYS = 5;            // day columns shown at once
 const WINDOW_STEP = WINDOW_DAYS;  // ‹ › shift a full, non-overlapping window
@@ -294,22 +298,13 @@ const WINDOW_STEP = WINDOW_DAYS;  // ‹ › shift a full, non-overlapping windo
 // window-aligned and today is only ever in view at offset 0.
 const WEEK_MIN_OFFSET = -WINDOW_STEP;
 const WEEK_MAX_OFFSET = WINDOW_STEP * 5;
-const WEEK_START_HOUR = 5;        // grid top (5 AM)
-const WEEK_END_HOUR = 24;         // grid bottom (midnight)
-export const WEEK_OPEN_HOUR = 8;  // scrolled-to hour on mount → 8 AM–6 PM visible
-const WEEK_RANGE_MIN = (WEEK_END_HOUR - WEEK_START_HOUR) * 60;
-// Horizontal inset per side on each timed block → a breathing gutter between
-// adjacent day columns so packed weeks don't read as one crunched slab.
-const WEEK_BLOCK_GUTTER_PX = 4;
 const WEEK_DOW_FMT = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
-const WEEK_HOUR_FMT = new Intl.DateTimeFormat(undefined, { hour: 'numeric' });
 // Nav range label, e.g. "Jul 15 – 19" (same month) or "Jul 29 – Aug 2".
 const WEEK_RANGE_MON_DAY = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
 const WEEK_RANGE_DAY = new Intl.DateTimeFormat(undefined, { day: 'numeric' });
 
 function startOfDay(d) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
 function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
-function minutesOfDay(value) { const d = parseLocalish(value); return d.getHours() * 60 + d.getMinutes(); }
 
 // Whole days from a start-of-day anchor to `value`'s start-of-day.
 function dayOffsetFrom(anchor, value) {
@@ -380,7 +375,7 @@ export function renderWeek(events, now = new Date(), { offsetDays = 0, comingUp,
         </div>`).join('')}
     </div>`;
 
-  const cols = days.map((_, i) => renderDayColumn(timedByDay[i], i === todayIdx ? now : null, nextId)).join('');
+  const body = renderAgendaBody(timedByDay, todayIdx, now, nextId);
 
   return `
     <div class="calendar calendar--week">
@@ -395,12 +390,7 @@ export function renderWeek(events, now = new Date(), { offsetDays = 0, comingUp,
         ${head}
         ${renderMealsLane(days, dinners, today0)}
         ${renderAllDayBand(allDay, windowStart)}
-        <div class="calweek__scroll">
-          <div class="calweek__grid">
-            ${renderHourGutter()}
-            ${cols}
-          </div>
-        </div>
+        ${body}
         ${renderCuStrip(cu, cuExpanded)}
       </div>
       ${cuExpanded ? renderCuSheet(cu) : ''}
@@ -424,76 +414,34 @@ function renderWeekNav(windowStart, windowEnd, offsetDays) {
     </div>`;
 }
 
-function renderHourGutter() {
-  let labels = '';
-  for (let h = WEEK_START_HOUR; h < WEEK_END_HOUR; h++) {
-    const top = ((h - WEEK_START_HOUR) * 60) / WEEK_RANGE_MIN * 100;
-    labels += `<span class="calweek__hour" style="top:${top.toFixed(2)}%">${escapeHtml(WEEK_HOUR_FMT.format(new Date(2000, 0, 1, h)))}</span>`;
-  }
-  return `<div class="calweek__gutter">${labels}</div>`;
+// The five day-lists, aligned under the dinner/all-day bands by sharing the
+// same gutter+5-column grid template (an empty gutter cell keeps column 1 clear
+// for the "dinner"/"all-day" labels above). The grid's row height tracks the
+// busiest day, so the card grows to fit every event — no per-column scroll, no
+// "+N more". `now` is unused per-column now (the today COLUMN is highlighted,
+// not a live now-line) but kept in the signature for symmetry with the band.
+function renderAgendaBody(timedByDay, todayIdx, now, nextId) {
+  const cols = timedByDay
+    .map((dayEvents, i) => renderAgendaColumn(dayEvents, i === todayIdx, nextId))
+    .join('');
+  return `<div class="calweek__agenda"><div class="calweek__agenda-gutter"></div>${cols}</div>`;
 }
 
-function renderDayColumn(dayEvents, nowForCol, nextId) {
-  const rangeStart = WEEK_START_HOUR * 60, rangeEnd = WEEK_END_HOUR * 60;
-  const laid = packLanes(dayEvents.map(e => {
-    let start = minutesOfDay(e.startsAt);
-    let end = e.endsAt ? minutesOfDay(e.endsAt) : start + 30;
-    if (end <= start) end = start + 30; // guard bad/zero-length data
-    return { e, start, end };
-  }));
-
-  const blocks = laid.map(({ e, start, end, lane, lanes }) => {
-    const s = Math.max(start, rangeStart), en = Math.min(end, rangeEnd);
-    if (en <= s) return ''; // fully outside the visible range
-    const top = (s - rangeStart) / WEEK_RANGE_MIN * 100;
-    const height = (en - s) / WEEK_RANGE_MIN * 100;
-    const isNext = e.id != null && e.id === nextId;
-    const laneLeft = (lane * 100 / lanes).toFixed(2);
-    const laneWidth = (100 / lanes).toFixed(2);
-    return `<div class="calweek__event${isNext ? ' calweek__event--next' : ''}${e.liturgical ? ' calweek__event--feast' : ''}"
-      style="top:${top.toFixed(2)}%;height:${height.toFixed(2)}%;left:calc(${laneLeft}% + ${WEEK_BLOCK_GUTTER_PX}px);width:calc(${laneWidth}% - ${2 * WEEK_BLOCK_GUTTER_PX}px)"
-      ${weekEventAttrs(e)} tabindex="0">
-      <span class="calweek__event-time">${eventTime(e)}</span>
-      <span class="calweek__title">${escapeHtml(e.title)}</span>
-    </div>`;
-  }).join('');
-
-  let nowLine = '';
-  if (nowForCol) {
-    const m = nowForCol.getHours() * 60 + nowForCol.getMinutes();
-    if (m >= rangeStart && m <= rangeEnd) {
-      const top = (m - rangeStart) / WEEK_RANGE_MIN * 100;
-      nowLine = `<div class="calweek__now" style="top:${top.toFixed(2)}%"><span class="calweek__now-dot"></span></div>`;
-    }
-  }
-
-  return `<div class="calweek__col${nowForCol ? ' is-today' : ''}">${nowLine}${blocks}</div>`;
-}
-
-// Greedy interval packing: events that overlap in time split the column width
-// into side-by-side lanes; a gap flushes the cluster so the next run reclaims
-// full width. Returns each item with its {lane, lanes}.
-function packLanes(items) {
-  const sorted = [...items].sort((a, b) => a.start - b.start || a.end - b.end);
-  const out = [];
-  let columns = [];
-  let clusterEnd = -Infinity;
-  const flush = () => {
-    const lanes = columns.length;
-    columns.forEach((col, lane) => col.forEach(it => out.push({ ...it, lane, lanes })));
-    columns = [];
-  };
-  for (const it of sorted) {
-    if (it.start >= clusterEnd && columns.length) flush();
-    let placed = false;
-    for (const col of columns) {
-      if (col[col.length - 1].end <= it.start) { col.push(it); placed = true; break; }
-    }
-    if (!placed) columns.push([it]);
-    clusterEnd = Math.max(clusterEnd, it.end);
-  }
-  flush();
-  return out;
+// One day column: every event as a flow chip (time over title), earliest
+// first. Chips are glanceable [data-event] taps, not buttons — see the flavor
+// note above.
+function renderAgendaColumn(dayEvents, isToday, nextId) {
+  const chips = [...dayEvents]
+    .sort((a, b) => parseLocalish(a.startsAt) - parseLocalish(b.startsAt))
+    .map((e) => {
+      const isNext = e.id != null && e.id === nextId;
+      return `<div class="calweek__event${isNext ? ' calweek__event--next' : ''}${e.liturgical ? ' calweek__event--feast' : ''}" ${weekEventAttrs(e)} tabindex="0">
+        <span class="calweek__event-time">${eventTime(e)}</span>
+        <span class="calweek__title">${escapeHtml(e.title)}</span>
+      </div>`;
+    })
+    .join('');
+  return `<div class="calweek__col${isToday ? ' is-today' : ''}">${chips}</div>`;
 }
 
 // All-day / multi-day events ride a pinned band above the grid, as spanning
@@ -568,7 +516,7 @@ const CU_PILL_COUNT = 3;
 
 function renderCuStrip(items, expanded) {
   const label = '<span class="custrip__label">Coming up</span>';
-  const chev = `<button class="custrip__chev" data-cutoggle aria-label="${expanded ? 'Back to the week' : 'Show the next 90 days'}">${expanded ? '⌃' : '⌄'}</button>`;
+  const chev = `<button class="custrip__chev${expanded ? ' is-open' : ''}" data-cutoggle aria-label="${expanded ? 'Back to the week' : 'Show the next 90 days'}">${CHEVRON_DOWN_SVG}</button>`;
   if (expanded) {
     return `<div class="calweek__custrip is-open" data-cutoggle>${label}<span class="custrip__hint">next 90 days · returns to the week in a minute</span>${chev}</div>`;
   }
@@ -615,15 +563,6 @@ function readCuDismissed() {
 }
 function writeCuDismissed(values) {
   try { localStorage.setItem(CU_DISMISSED_KEY, JSON.stringify([...values].slice(-100))); } catch {}
-}
-
-// Scroll the grid so 8 AM sits at the top of the viewport (→ 8 AM–8 PM shown).
-// Called after every (re)render because innerHTML resets scrollTop.
-export function scrollWeekToOpen(el) {
-  const scroll = el.querySelector('.calweek__scroll');
-  if (!scroll) return;
-  const frac = (WEEK_OPEN_HOUR - WEEK_START_HOUR) / (WEEK_END_HOUR - WEEK_START_HOUR);
-  scroll.scrollTop = scroll.scrollHeight * frac;
 }
 
 // ── shared helpers ──
@@ -710,7 +649,6 @@ export function mountCalendar(el, { flavor = 'week' } = {}) {
         comingUp: upNext(cuItems, { now: new Date(), overrides: cuOverrides, dismissed }),
         cuExpanded,
       });
-      scrollWeekToOpen(el);
     };
     const setExpanded = (on) => {
       cuExpanded = on;

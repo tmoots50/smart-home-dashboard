@@ -14,7 +14,7 @@
 // FIXED_NOW. No fetches happen here — fixtures only.
 import { mountHomeCard } from '../widgets/home-card.js';
 import { states as homeCardStates } from '../widgets/home-card.fixtures.js';
-import { renderCalendar, scrollWeekToOpen } from '../widgets/calendar.js';
+import { renderCalendar } from '../widgets/calendar.js';
 import { openCalendarOverlay } from '../widgets/calendar-overlay.js';
 import { openEventDetail } from '../widgets/event-detail.js';
 import { states as calendarStates } from '../widgets/calendar.fixtures.js';
@@ -82,7 +82,6 @@ const WIDGETS = {
       const render = () => {
         slot.classList.toggle('card--cuopen', cuExpanded);
         slot.innerHTML = renderCalendar(fixture.data, new Date(), { flavor: fixture.flavor, offsetDays, cuExpanded });
-        if (fixture.flavor === 'week') scrollWeekToOpen(slot); // mirror the wall's open-at-8-AM
       };
       const setExpanded = (on) => {
         cuExpanded = on;
