@@ -16,7 +16,9 @@ export async function onRequest({ request, env, waitUntil, now = new Date() }) {
     });
   }
 
-  if (!env.LINEAR_API_KEY) {
+  // Production env has this secret under LINEAR_KEY; accept both names.
+  const linearKey = env.LINEAR_API_KEY || env.LINEAR_KEY;
+  if (!linearKey) {
     return json(unavailable('Linear standup is not configured.', now), {
       status: 503,
       headers: { 'cache-control': 'no-store' },
@@ -31,7 +33,7 @@ export async function onRequest({ request, env, waitUntil, now = new Date() }) {
   }
 
   try {
-    const payload = await fetchLinearStandup(env.LINEAR_API_KEY, { now });
+    const payload = await fetchLinearStandup(linearKey, { now });
     const response = json(payload, { headers: { 'cache-control': CACHE_CONTROL } }, cors);
     if (cache && waitUntil) {
       const cacheable = json(payload, { headers: { 'cache-control': 'public, max-age=60' } });
