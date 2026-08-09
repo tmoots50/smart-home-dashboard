@@ -61,7 +61,7 @@ test('morning briefing: expanding the strip floats the sheet OVER the duo — no
   await expect(page.locator('.calweek__cusheet')).toHaveCount(0);
 });
 
-test('morning briefing: ≥3 todo and ≥3 grocery rows land above the fold', async ({ page }) => {
+test('morning briefing: todo rows and the standup matrix land above the fold', async ({ page }) => {
   test.skip(page.viewportSize()?.width !== 1080, 'fold contract is canvas-only');
   await openBriefing(page);
 
@@ -75,15 +75,19 @@ test('morning briefing: ≥3 todo and ≥3 grocery rows land above the fold', as
     await expect(daybrief).toBeHidden();
   }
 
-  // Raised 3 → 5 on 2026-08-01: merging the Coming-Up card into the calendar
-  // freed ~19rem, so the full 5-row mock lists must now clear the fold.
+  // Groceries left this slot for PRO-127; the replacement standup card still
+  // has to clear the fold with every agent visible in the steady state.
   const fold = page.viewportSize().height;
-  for (const selector of ['.todos__item', '.groceries__item']) {
-    const rows = page.locator(selector);
-    expect(await rows.count(), `${selector} needs ≥5 mock rows to measure`).toBeGreaterThanOrEqual(5);
-    const fifth = await rows.nth(4).boundingBox();
-    expect(fifth.y + fifth.height, `${selector} row 5 bottom vs fold`).toBeLessThanOrEqual(fold);
-  }
+  const todoRows = page.locator('.todos__item');
+  expect(await todoRows.count(), 'todos needs ≥5 mock rows to measure').toBeGreaterThanOrEqual(5);
+  const fifthTodo = await todoRows.nth(4).boundingBox();
+  expect(fifthTodo.y + fifthTodo.height, 'todo row 5 bottom vs fold').toBeLessThanOrEqual(fold);
+
+  await expect(page.locator('[data-slot="groceries"]')).toHaveCount(0);
+  const standupRows = page.locator('.standup .agent-row');
+  await expect(standupRows).toHaveCount(5);
+  const fifthAgent = await standupRows.nth(4).boundingBox();
+  expect(fifthAgent.y + fifthAgent.height, 'standup row 5 bottom vs fold').toBeLessThanOrEqual(fold);
 });
 
 test('action bar: theme toggle is leftmost, meets the tap floor, and flips light↔dark', async ({ page }, testInfo) => {
