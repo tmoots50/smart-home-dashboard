@@ -26,11 +26,13 @@ import { states as articleOverlayStates } from '../widgets/article-overlay.fixtu
 import { mountComingUp } from '../widgets/countdown.js';
 import { mountTodos } from '../widgets/todos.js';
 import { mountGroceries } from '../widgets/groceries.js';
+import { mountStandup } from '../widgets/standup.js';
 import { states as weatherStates } from '../widgets/weather.fixtures.js';
 import { states as pickStates } from '../widgets/pick.fixtures.js';
 import { states as countdownStates } from '../widgets/countdown.fixtures.js';
 import { states as todosStates } from '../widgets/todos.fixtures.js';
 import { states as groceriesStates } from '../widgets/groceries.fixtures.js';
+import { states as standupStates } from '../widgets/standup.fixtures.js';
 import { renderSpotifyTicker } from '../widgets/spotify-ticker.js';
 import { states as spotifyTickerStates } from '../widgets/spotify-ticker.fixtures.js';
 import { renderSpotifyDrawer } from '../widgets/spotify-drawer.js';
@@ -185,10 +187,22 @@ const WIDGETS = {
   groceries: {
     states: groceriesStates,
     mount(root, fixture) {
-      root.innerHTML = `<main class="briefing"><section class="briefing__duo briefing__lists"><div></div><section class="card" data-slot="groceries"></section></section></main>`;
+      // Groceries remains a supported standalone widget, but PRO-127 removed
+      // its production slot and that slot's 16rem sizing contract. Preserve an
+      // explicit harness viewport so the overflow fixture still exercises its
+      // internal scroller without restoring obsolete production CSS.
+      root.innerHTML = `<main class="briefing"><section class="briefing__duo briefing__lists"><div></div><section class="card" style="height:16rem;overflow:hidden" data-slot="groceries"></section></section></main>`;
       mountGroceries(root.querySelector('[data-slot="groceries"]'), fixture, {
         append: async () => {}, strike: async () => {}, move: async () => {}, update: async () => {}, setDone: async () => {},
       });
+    },
+  },
+
+  standup: {
+    states: standupStates,
+    mount(root, fixture) {
+      root.innerHTML = `<main class="briefing"><section class="briefing__duo briefing__lists"><div></div><section class="card standup" data-slot="standup"></section></section></main>`;
+      mountStandup(root.querySelector('[data-slot="standup"]'), { initial: fixture, live: Promise.resolve(null) });
     },
   },
 

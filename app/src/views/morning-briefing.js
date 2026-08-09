@@ -5,7 +5,7 @@ import { mountDaybrief } from '../widgets/daybrief.js';
 // Coming Up folded into the Family Calendar card's footer strip (2026-08-01).
 // The countdown widget stays in the codebase unmounted, like Atlanta Picks.
 import { mountTodos } from '../widgets/todos.js';
-import { mountGroceries } from '../widgets/groceries.js';
+import { mountStandup } from '../widgets/standup.js';
 import { renderBible, fitBible } from '../widgets/bible.js';
 import { mountCardPhoto } from '../widgets/card-photo.js';
 import { openHomeOverlay } from '../widgets/home.js';
@@ -27,10 +27,11 @@ import { toggleTheme, isDark } from '../lib/theme-mode.js';
 
 import { getMockBibleVerse } from '../lib/bible-mock.js';
 import { getPhotos } from '../lib/photos.js';
+import { getStandup } from '../lib/standup.js';
 import {
-  getTodos, getGroceries,
+  getTodos,
   appendTodo, strikeTodo, moveTodo, updateTodo,
-  appendGrocery, strikeGrocery, moveGrocery, updateGrocery, setTodoDone, setGroceryDone,
+  setTodoDone,
   isConfigured as tasksConfigured,
 } from '../lib/tasks.js';
 import { showToast } from '../widgets/toast.js';
@@ -61,7 +62,7 @@ export function renderMorningBriefing(root) {
     location: params.get('location') || DEFAULT_LOC.location,
   };
   const todos = getTodos();
-  const groceries = getGroceries();
+  const standup = getStandup();
   const verse = getMockBibleVerse();
   const photos = getPhotos();
 
@@ -102,7 +103,7 @@ export function renderMorningBriefing(root) {
       <section class="briefing__duo briefing__lists">
         <div class="card" data-slot="todos"></div>
         <div class="briefing__stack">
-          <div class="card" data-slot="groceries"></div>
+          <div class="card standup" data-slot="standup"></div>
           <div class="card" data-slot="home-card"></div>
         </div>
       </section>
@@ -133,13 +134,9 @@ export function renderMorningBriefing(root) {
   const todoActions = tasksConfigured
     ? { append: appendTodo, strike: strikeTodo, move: moveTodo, update: updateTodo, setDone: setTodoDone }
     : null;
-  const groceryActions = tasksConfigured
-    ? { append: appendGrocery, strike: strikeGrocery, move: moveGrocery, update: updateGrocery, setDone: setGroceryDone }
-    : null;
   const todosCtl = mountTodos(root.querySelector('[data-slot="todos"]'), todos.initial, todoActions);
-  const groceriesCtl = mountGroceries(root.querySelector('[data-slot="groceries"]'), groceries.initial, groceryActions);
+  mountStandup(root.querySelector('[data-slot="standup"]'), standup);
   todos.live.then(items => { if (items) todosCtl.setItems(items); });
-  groceries.live.then(items => { if (items) groceriesCtl.setItems(items); });
 
   mountCardPhoto(root.querySelector('[data-slot="photo"]'), photos);
   mountHomeCard(root.querySelector('[data-slot="home-card"]'), getHome, homeActions, deviceActions, { askEntityId: homeConfigured });

@@ -55,7 +55,7 @@ The production page is one `.briefing` grid in this order:
 2. two-column hero (`time/weather/actions` + photo);
 3. optional Morning Brief;
 4. full-width family calendar;
-5. two-column lists (`Todos` + a stack of `Groceries` and `Home`).
+5. two-column lower modules (`Todos` + a stack of `Scrum Standup` and `Home`).
 
 That DOM order is the implemented composition (`app/src/views/morning-briefing.js:68-110`). The grid uses `auto 1fr auto auto auto`, 10px inter-widget gaps, and a 16px outer inset at root 16px (`app/src/styles/global.css:137-168`). The flexible `1fr` belongs to the hero; spare height must not stretch every section equally (`app/src/styles/global.css:143-150`).
 
@@ -70,9 +70,9 @@ All grid children must preserve the `min-width: 0` chain. Without it, nowrap con
 
 ### §2.3 Above-the-fold contract
 
-At the 1080 × 1920 canvas, the steady-state briefing must show at least five Todo rows and five Grocery rows above the fold. The Morning Brief is an approved temporary exception because it intentionally pushes the page down until cleared or noon (`app/tests/qa/briefing-layout.spec.js:64-86`).
+At the 1080 × 1920 canvas, the steady-state briefing must show at least five Todo rows and all five Scrum Standup agent rows above the fold. The Morning Brief is an approved temporary exception because it intentionally pushes the page down until cleared or noon (`app/tests/qa/briefing-layout.spec.js:64-91`).
 
-Do not recover vertical space by shrinking locked type, card insets, row padding, or visible controls. Adjust composition, content limits, track sizing, or dedicated scroll regions instead. The current list-card heights and nested scrollers are explicit composition constraints (`app/src/styles/global.css:2785-2801`).
+Do not recover vertical space by shrinking locked type, card insets, row padding, or visible controls. Adjust composition, content limits, track sizing, or dedicated scroll regions instead. Todos owns the fixed list-card height and nested scroller; Standup keeps its natural five-row matrix (`app/src/styles/global.css:2813-2826`).
 
 ## §3. Token system
 
@@ -216,6 +216,14 @@ Panels must use dynamic viewport units after a fallback because Android kiosk br
 
 Modal markup uses a dialog role and accessible label; Spotify and month calendar are references (`app/src/widgets/spotify-drawer.js:13-29`, `app/src/widgets/month-calendar.js:144-147`). Standard close paths are visible close/back control, scrim tap, and Escape; the month-calendar implementation documents and implements them (`app/src/widgets/month-calendar.js:18-22`, `app/src/widgets/month-calendar.js:352-362`). When the overlay opens, apply `html.has-overlay` so the page behind it does not scroll (`app/src/styles/global.css:258-263`).
 
+### §6.6 Scrum Standup matrix
+
+`.standup` is a scoped fixed matrix, not a generic list reskin. It uses one explicit identity track plus `repeat(3, minmax(0, 1fr))` for Yesterday, Today, and Blockers, with `min-width: 0` preserved through each grid child (`app/src/styles/global.css:2348-2377`). All five agent rows remain in the first scan.
+
+Each populated or clear cell is a native button with a 44px CSS-pixel minimum. A cell shows one primary issue, clamps only the title child to two lines, and exposes additional records as `+N`; the in-context Standup detail uses the shared overlay exits from §6.5 (`app/src/widgets/standup.js`, `app/src/styles/global.css:2372-2414`). Yesterday alone carries an observed quality verdict or explicit `QA pending`. Blockers pair the exceptional hue with an awaiting/blocked label, and clear cells say `No blockers`.
+
+Attribution and coverage are data-integrity states. Uncertain ownership must render the complete `Grouped by <basis>` text. Unresolved records, cell-limit omissions, upstream 100-issue truncation, loading, stale last-known data, and unavailable feeds must remain visibly labelled; none may be replaced by silent demo rows in a configured session (`app/src/widgets/standup.js`, `app/src/lib/standup.js`, `app/functions/_lib/standup-api.js`).
+
 ## §7. Color semantics and states
 
 ### §7.1 State is more than color
@@ -330,7 +338,7 @@ Moving a band requires Tim’s explicit approval recorded in the commit message.
 
 The project uses vanilla JS render/mount functions. Leaf widgets render data they receive; the view selects sources, places slots, and wires cross-widget actions. `morning-briefing.js` imports widget mounts separately from data adapters (`app/src/views/morning-briefing.js:1-35`) and then composes/mounts them (`app/src/views/morning-briefing.js:56-145`).
 
-A new widget must not fetch from inside its render path. Add a mock/data adapter under `app/src/lib/`, keep initial and live data swappable, and let the view compose it. The production sources commonly expose `{ initial, live }`, allowing a deterministic first paint before live replacement; the mount wiring shows that pattern for Todos, Groceries, photos, and Home (`app/src/views/morning-briefing.js:133-145`).
+A new widget must not fetch from inside its render path. Add a mock/data adapter under `app/src/lib/`, keep initial and live data swappable, and let the view compose it. The production sources commonly expose `{ initial, live }`, allowing a deterministic first paint before live replacement; the mount wiring shows that pattern for Todos, Standup, photos, and Home (`app/src/views/morning-briefing.js:134-142`).
 
 ### §11.2 Existing primitives before new patterns
 
@@ -406,7 +414,7 @@ Calendar’s `open` helper is the reference (`app/tests/qa/calendar.spec.js:11-1
 
 ### §13.4 Composition QA
 
-Isolated widgets do not prove the wall composition. Any change affecting heights, ordering, shared tracks, or above-fold content must also exercise `briefing-layout.spec.js`. That spec checks calendar/duo ordering, no page-width regression, full-composition clipping and design bands, non-reflowing overlay sheets, above-fold list rows, and action-bar targets (`app/tests/qa/briefing-layout.spec.js:17-42`, `app/tests/qa/briefing-layout.spec.js:45-119`).
+Isolated widgets do not prove the wall composition. Any change affecting heights, ordering, shared tracks, or above-fold content must also exercise `briefing-layout.spec.js`. That spec checks calendar/duo ordering, no page-width regression, full-composition clipping and design bands, non-reflowing overlay sheets, above-fold Todo and Standup rows, and action-bar targets (`app/tests/qa/briefing-layout.spec.js:17-42`, `app/tests/qa/briefing-layout.spec.js:45-124`).
 
 ## §14. Verification and shipping
 

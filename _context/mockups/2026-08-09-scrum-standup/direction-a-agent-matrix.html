@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en" data-theme="fun">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>PRO-127 · Direction A · Agent matrix</title>
+  <link rel="stylesheet" href="../../../app/src/styles/tokens.css">
+  <link rel="stylesheet" href="../../../app/src/styles/global.css">
+  <link rel="stylesheet" href="../../../app/src/styles/themes-fun.css">
+  <link rel="stylesheet" href="../../../app/src/styles/themes-cosy.css">
+  <style>
+    body { min-height: 100vh; padding: var(--space-3); }
+    .preview { width: min(1048px, 100%); margin: 0 auto; }
+    .preview__bar {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: var(--space-3); min-height: 3rem; margin-bottom: 10px;
+    }
+    .preview__copy { min-width: 0; }
+    .preview__eyebrow { margin: 0; color: var(--color-muted); font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .preview__note { margin: 2px 0 0; color: var(--color-muted); font-size: .8rem; }
+    .preview__theme { min-width: 7rem; padding-inline: var(--space-3); }
+    .context-title { margin: 0 0 var(--space-2); color: var(--color-muted); font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; }
+    .mock-list { list-style: none; margin: 0; padding: 0; }
+    .mock-list li { display: flex; align-items: center; gap: var(--space-3); min-height: var(--list-row); padding: .625rem 0; border-bottom: 1px solid var(--color-border); }
+    .mock-list li:last-child { border-bottom: 0; }
+    .mock-check { width: 1.5rem; height: 1.5rem; flex: 0 0 auto; border: 2px solid var(--color-muted); border-radius: 6px; }
+    .mock-list span:last-child { font-size: 1rem; }
+    .home-stub { min-height: 9rem; }
+    .home-stub__row { display: flex; align-items: center; justify-content: space-between; min-height: 3.25rem; border-bottom: 1px solid var(--color-border); }
+    .home-stub__row:last-child { border: 0; }
+    .home-stub__state { color: var(--color-accent); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+
+    /* Direction A: each agent owns one glanceable row; statuses stay in fixed columns. */
+    .standup { min-width: 0; }
+    .standup__header { align-items: center; }
+    .standup__freshness { color: var(--color-muted); font-size: .7rem; white-space: nowrap; }
+    .standup__legend,
+    .agent-row {
+      display: grid;
+      grid-template-columns: 5.25rem repeat(3, minmax(0, 1fr));
+      gap: var(--space-2);
+      min-width: 0;
+    }
+    .standup__legend { align-items: end; padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border); }
+    .standup__legend span { min-width: 0; color: var(--color-muted); font-size: .64rem; font-weight: 700; letter-spacing: .08em; line-height: 1.15; text-transform: uppercase; }
+    .standup__legend span:first-child { color: transparent; }
+    .agent-row { align-items: stretch; padding: .5rem 0; border-bottom: 1px solid var(--color-border); }
+    .agent-row:last-of-type { border-bottom: 0; }
+    .agent-row__identity { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+    .agent-row__avatar {
+      width: 2.25rem; height: 2.25rem; flex: 0 0 auto; display: grid; place-items: center;
+      border-radius: 50%; border: 1px solid var(--color-border);
+      background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+      color: var(--color-accent); font-size: .76rem; font-weight: 800;
+    }
+    .agent-row__name { min-width: 0; font-size: .82rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .standup-cell {
+      min-width: 0; min-height: 3.5rem; padding: .45rem .5rem;
+      display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
+      border: 1px solid transparent; border-radius: 10px; background: transparent;
+      color: var(--color-fg); font-family: var(--font-body); text-align: left; cursor: pointer;
+    }
+    .standup-cell:active,
+    .standup-cell.is-selected { border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border)); background: color-mix(in srgb, var(--color-accent) 7%, transparent); }
+    .standup-cell__issue { color: var(--color-muted); font-size: .68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+    .standup-cell__title {
+      width: 100%; margin-top: 2px; font-size: .85rem; line-height: 1.2;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere;
+    }
+    .standup-cell__meta { display: flex; align-items: center; gap: 4px; margin-top: 4px; min-width: 0; }
+    .quality {
+      display: inline-flex; align-items: center; min-height: 1.25rem; padding: 0 6px;
+      border: 1px solid color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+      border-radius: 999px; color: var(--color-accent); font-size: .68rem; font-weight: 800; letter-spacing: .04em; white-space: nowrap;
+    }
+    .quality--pending { color: var(--color-muted); border-color: var(--color-border); }
+    .attribution { color: var(--color-muted); font-size: .68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .overflow-count {
+      display: inline-flex; align-items: center; min-height: 1.25rem; padding: 0 6px;
+      border-radius: 999px; background: color-mix(in srgb, var(--color-muted) 12%, transparent);
+      color: var(--color-muted); font-size: .68rem; font-weight: 800; letter-spacing: .04em; white-space: nowrap;
+    }
+    .standup-cell--clear .standup-cell__title { color: var(--color-muted); font-style: italic; }
+    .standup-cell--blocked { border-left-color: #c66; }
+    .standup-cell--blocked .standup-cell__issue { color: #c66; }
+    .overlay[hidden] { display: none; }
+    .standup-detail__key { margin: 0 0 var(--space-1); color: var(--color-accent); font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .standup-detail__title { margin: 0 0 var(--space-2); font-family: var(--font-display); font-size: 1.4rem; line-height: 1.25; }
+    .standup-detail__note { margin: 0; color: var(--color-muted); font-size: .85rem; line-height: 1.4; }
+    @media (max-width: 760px) {
+      .standup__legend, .agent-row { grid-template-columns: 4.6rem repeat(3, minmax(0, 1fr)); gap: 4px; }
+      .agent-row__avatar { display: none; }
+      .standup-cell { padding-inline: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="preview">
+    <header class="preview__bar">
+      <div class="preview__copy">
+        <p class="preview__eyebrow">PRO-127 · Direction A · Agent matrix</p>
+        <p class="preview__note">Fixed columns preserve the half-second scan. Tap any cell for the Linear detail.</p>
+      </div>
+      <button class="btn btn--text preview__theme" type="button" data-theme-toggle>Switch to cosy</button>
+    </header>
+
+    <section class="briefing__duo briefing__lists" aria-label="Existing dashboard lower modules">
+      <section class="card" aria-label="Todos context">
+        <h2 class="card__title">Todos</h2>
+        <ul class="mock-list">
+          <li><span class="mock-check"></span><span>Confirm pediatrician paperwork</span></li>
+          <li><span class="mock-check"></span><span>Order replacement air filters</span></li>
+          <li><span class="mock-check"></span><span>Book dinner for Saturday</span></li>
+          <li><span class="mock-check"></span><span>Move car before street cleaning</span></li>
+          <li><span class="mock-check"></span><span>Call insurance about the invoice</span></li>
+        </ul>
+      </section>
+
+      <div class="briefing__stack">
+        <section class="card standup" aria-label="Scrum standup">
+          <div class="card__header standup__header">
+            <h2 class="card__title">Scrum Standup</h2>
+            <span class="standup__freshness">Linear · 8:42 AM</span>
+          </div>
+          <div class="standup__legend" aria-hidden="true">
+            <span>Agent</span><span>Yesterday</span><span>Today</span><span>Blockers</span>
+          </div>
+          <div data-rows></div>
+        </section>
+
+        <section class="card home-stub" aria-label="Home context">
+          <h2 class="card__title">Home</h2>
+          <div class="home-stub__row"><span>Front Door</span><span class="home-stub__state">Locked</span></div>
+          <div class="home-stub__row"><span>Living room lamps</span><span class="home-stub__state">On</span></div>
+        </section>
+      </div>
+    </section>
+
+    <div class="overlay" hidden data-overlay>
+      <section class="overlay__panel" role="dialog" aria-modal="true" aria-labelledby="standup-detail-title">
+        <button type="button" class="overlay__close" aria-label="Close standup detail" data-close>×</button>
+        <p class="standup-detail__key" data-detail-key>Nigel · today</p>
+        <h2 class="standup-detail__title" id="standup-detail-title" data-detail-title>Orchestrate PRO-127 handoff</h2>
+        <p class="standup-detail__note" data-detail-note>In Progress · directly attributed by assignee and triage comment.</p>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const agents = [
+      { name: 'Nigel', initials: 'NI', cells: [
+        ['PRO-124', 'Accepted calendar cleanup', 'QA A', 'direct', 'Acceptance passed with no follow-up.'],
+        ['PRO-127', 'Orchestrate handoff', '', 'direct', 'In Progress · directly attributed by assignee and triage comment.'],
+        ['', 'No blockers', '', '', 'No blockers found in Linear.'] ] },
+      { name: 'Derek', initials: 'DE', cells: [
+        ['PRO-123', 'Shipped live overview docs', 'QA A', 'direct', 'Sam verdict: PASS. Build and regressions clean.'],
+        ['PRO-128', 'Linear standup adapter', '', 'direct', 'In Progress · direct Linear assignee.'],
+        ['INPUT', 'API field decision', '', '', 'Awaiting input on the quality payload shape.'] ] },
+      { name: 'Mo', initials: 'MO', cells: [
+        ['PRO-125', 'Calendar design verdict', 'QA A−', 'direct', 'Design pass; one density note recorded.'],
+        ['PRO-127', 'Standup directions', '', 'direct', 'In Progress · design direction and requirements.'],
+        ['', 'No blockers', '', '', 'No blockers found in Linear.'] ] },
+      { name: 'Smith', initials: 'SM', cells: [
+        ['PRO-119', 'Agent routing repair', 'QA B+', 'grouped', 'Grouped by route:ops because no clean assignee existed.', 2, 'route:ops'],
+        ['PRO-126', 'Skill health audit', '', 'grouped', 'Grouped by route:ops · attribution is intentionally explicit.', 1, 'route:ops'],
+        ['', 'No blockers', '', '', 'No blockers found in Linear.'] ] },
+      { name: 'Sam', initials: 'SA', cells: [
+        ['PRO-123', 'Release review', 'PASS', 'direct', 'Verdict PASS · no regression findings.'],
+        ['PRO-127', 'Prepare release checks', '', 'direct', 'In Review · regression plan drafted.'],
+        ['TIM', 'Wall screenshot pending', '', '', 'Awaiting Tim · real-device evidence is not available yet.'] ] },
+    ];
+    const columns = ['yesterday', 'today', 'blockers'];
+    const rows = document.querySelector('[data-rows]');
+    rows.innerHTML = agents.map((agent, agentIndex) => `
+      <div class="agent-row">
+        <div class="agent-row__identity"><span class="agent-row__avatar">${agent.initials}</span><span class="agent-row__name">${agent.name}</span></div>
+        ${agent.cells.map((cell, cellIndex) => {
+          const clear = cell[1] === 'No blockers';
+          const blocked = cellIndex === 2 && !clear;
+          return `<button type="button" class="standup-cell${clear ? ' standup-cell--clear' : ''}${blocked ? ' standup-cell--blocked' : ''}" data-agent="${agent.name}" data-column="${columns[cellIndex]}" data-title="${cell[1]}" data-note="${cell[4]}">
+            <span class="standup-cell__issue">${cell[0] || (clear ? 'Clear' : '')}</span>
+            <span class="standup-cell__title">${cell[1]}</span>
+            ${(cell[2] || cell[3] === 'grouped' || cell[5]) ? `<span class="standup-cell__meta">${cell[2] ? `<span class="quality${cell[2] === 'QA pending' ? ' quality--pending' : ''}">${cell[2]}</span>` : ''}${cell[3] === 'grouped' ? `<span class="attribution">Grouped by ${cell[6] || 'unknown'}</span>` : ''}${cell[5] ? `<span class="overflow-count" aria-label="${cell[5]} more grouped items">+${cell[5]}</span>` : ''}</span>` : ''}
+          </button>`;
+        }).join('')}
+      </div>`).join('');
+
+    rows.addEventListener('click', (event) => {
+      const cell = event.target.closest('.standup-cell');
+      if (!cell) return;
+      document.querySelectorAll('.standup-cell').forEach(item => item.classList.toggle('is-selected', item === cell));
+      document.querySelector('[data-detail-key]').textContent = `${cell.dataset.agent} · ${cell.dataset.column}`;
+      document.querySelector('[data-detail-title]').textContent = cell.dataset.title;
+      document.querySelector('[data-detail-note]').textContent = cell.dataset.note;
+      document.querySelector('[data-overlay]').hidden = false;
+      document.documentElement.classList.add('has-overlay');
+    });
+    const closeOverlay = () => {
+      document.querySelector('[data-overlay]').hidden = true;
+      document.documentElement.classList.remove('has-overlay');
+    };
+    document.querySelector('[data-close]').addEventListener('click', closeOverlay);
+    document.querySelector('[data-overlay]').addEventListener('click', (event) => {
+      if (event.target.matches('[data-overlay]')) closeOverlay();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeOverlay();
+    });
+    document.querySelector('[data-theme-toggle]').addEventListener('click', (event) => {
+      const next = document.documentElement.dataset.theme === 'fun' ? 'cosy' : 'fun';
+      document.documentElement.dataset.theme = next;
+      event.currentTarget.textContent = `Switch to ${next === 'fun' ? 'cosy' : 'fun'}`;
+    });
+  </script>
+</body>
+</html>

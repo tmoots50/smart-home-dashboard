@@ -161,14 +161,14 @@ html.kiosk, html.kiosk body { overscroll-behavior-y: none; }
   gap: 10px;
 }
 
-/* Two equal cards side by side (the Todos + Groceries row). */
+/* Two equal cells side by side (Todos + the Standup/Home stack). */
 .briefing__duo {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 
-/* A duo cell holding two stacked cards (groceries + home). */
+/* A duo cell holding two stacked cards (standup + home). */
 .briefing__stack {
   display: grid;
   gap: 10px;
@@ -2345,7 +2345,80 @@ html.has-overlay, html.has-overlay body { overflow: hidden; }
   font-size: 0.85rem;
 }
 
-/* ───── inline home card (under groceries) ───── */
+/* ───── scrum standup matrix (replaces groceries in the right stack) ───── */
+.standup { min-width: 0; }
+.standup__header { align-items: center; }
+.standup__freshness { color: var(--color-muted); font-size: 0.7rem; white-space: nowrap; }
+.standup__legend,
+.agent-row {
+  display: grid;
+  grid-template-columns: 5.25rem repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  min-width: 0;
+}
+.standup__legend { align-items: end; padding-bottom: var(--space-2); border-bottom: 1px solid var(--color-border); }
+.standup__legend span { min-width: 0; color: var(--color-muted); font-size: 0.64rem; font-weight: 700; letter-spacing: 0.08em; line-height: 1.15; text-transform: uppercase; }
+.standup__legend span:first-child { color: transparent; }
+.agent-row { align-items: stretch; padding: 0.5rem 0; border-bottom: 1px solid var(--color-border); }
+.agent-row:last-of-type { border-bottom: 0; }
+.agent-row__identity { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.agent-row__avatar {
+  width: 2.25rem; height: 2.25rem; flex: 0 0 auto; display: grid; place-items: center;
+  border-radius: 50%; border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface));
+  color: var(--color-accent); font-size: 0.76rem; font-weight: 800;
+}
+.agent-row__name { min-width: 0; font-size: 0.82rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.standup-cell {
+  min-width: 0; min-height: max(3.5rem, 44px); padding: 0.45rem 0.5rem;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: center;
+  border: 1px solid transparent; border-radius: 10px; background: transparent;
+  color: var(--color-fg); font-family: var(--font-body); text-align: left; cursor: pointer;
+}
+.standup-cell:active,
+.standup-cell.is-selected { border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border)); background: color-mix(in srgb, var(--color-accent) 7%, transparent); }
+.standup-cell__issue { color: var(--color-muted); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.standup-cell__title {
+  width: 100%; margin-top: 2px; font-size: 0.85rem; line-height: 1.2;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere;
+}
+.standup-cell__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 4px; min-width: 0; }
+.quality,
+.overflow-count,
+.standup-cell__status {
+  display: inline-flex; align-items: center; min-height: 1.25rem; padding: 0 6px;
+  border-radius: 999px; color: var(--color-accent); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.04em; white-space: nowrap;
+}
+.quality { border: 1px solid color-mix(in srgb, var(--color-accent) 45%, var(--color-border)); }
+.quality--pending,
+.overflow-count { color: var(--color-muted); border: 1px solid var(--color-border); }
+.standup-cell__status { color: #c66; background: rgba(204, 102, 102, 0.10); }
+.attribution { color: var(--color-muted); font-size: 0.68rem; white-space: normal; overflow-wrap: anywhere; }
+.standup-cell--clear .standup-cell__title { color: var(--color-muted); font-style: italic; }
+.standup-cell--blocked { border-left-color: #c66; }
+.standup-cell--blocked .standup-cell__issue { color: #c66; }
+.standup__status,
+.standup__notice { color: var(--color-muted); margin: var(--space-3) 0 0; }
+.standup__notice {
+  padding: var(--space-2) var(--space-3); border: 1px solid var(--color-border);
+  border-radius: 10px; font-size: 0.76rem;
+}
+.standup__unresolved,
+.standup__coverage { margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--color-border); }
+.standup__unresolved p,
+.standup__coverage p { margin: 0; color: var(--color-muted); font-size: 0.68rem; line-height: 1.35; overflow-wrap: anywhere; }
+.standup-detail__key { margin: 0; color: var(--color-accent); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.standup-detail__title { margin: 0; font-family: var(--font-display); font-size: 1.4rem; line-height: 1.25; }
+.standup-detail__note { margin: 0; color: var(--color-muted); font-size: 0.85rem; line-height: 1.4; }
+.standup-detail__items { margin: 0; padding-left: var(--space-4); color: var(--color-muted); }
+.standup-detail .overlay__close { width: max(3rem, 48px); height: max(3rem, 48px); }
+@media (max-width: 760px) {
+  .standup__legend, .agent-row { grid-template-columns: 4.6rem repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .agent-row__avatar { display: none; }
+  .standup-cell { padding-inline: 4px; }
+}
+
+/* ───── inline home card (under standup) ───── */
 .home-card__lock-row {
   display: flex;
   align-items: center;
@@ -2753,9 +2826,6 @@ a.pick__item .pick__title { color: var(--color-accent, var(--color-fg)); }
 }
 .briefing__lists .todos__list::-webkit-scrollbar,
 .briefing__lists .groceries__list::-webkit-scrollbar { display: none; }
-/* 18rem → 16rem (2026-07-11): unified rows are ~19px shorter, so the same
-   ~3 rows fit in less card — the difference feeds the topbox hero row. */
-.briefing__lists [data-slot="groceries"] { height: 16rem; overflow: hidden; }
 
 /* ───── Morning Brief (daybrief) ─────
    The one editorial card: Hermes's daily judgment, not a data feed. Reads
