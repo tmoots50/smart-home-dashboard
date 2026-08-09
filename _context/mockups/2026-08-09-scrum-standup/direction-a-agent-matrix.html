@@ -79,15 +79,10 @@
     .standup-cell--clear .standup-cell__title { color: var(--color-muted); font-style: italic; }
     .standup-cell--blocked { border-left-color: #c66; }
     .standup-cell--blocked .standup-cell__issue { color: #c66; }
-    .standup__detail {
-      min-height: 4.5rem; margin-top: var(--space-2); padding: var(--space-2) var(--space-3);
-      border-radius: 12px; background: color-mix(in srgb, var(--color-accent) 6%, var(--color-bg));
-      display: grid; grid-template-columns: auto 1fr; align-items: center; gap: var(--space-3);
-    }
-    .standup__detail-key { color: var(--color-accent); font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-    .standup__detail-copy { min-width: 0; }
-    .standup__detail-title { margin: 0; font-size: .86rem; line-height: 1.25; }
-    .standup__detail-note { margin: 3px 0 0; color: var(--color-muted); font-size: .7rem; line-height: 1.25; }
+    .overlay[hidden] { display: none; }
+    .standup-detail__key { margin: 0 0 var(--space-1); color: var(--color-accent); font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .standup-detail__title { margin: 0 0 var(--space-2); font-family: var(--font-display); font-size: 1.4rem; line-height: 1.25; }
+    .standup-detail__note { margin: 0; color: var(--color-muted); font-size: .85rem; line-height: 1.4; }
     @media (max-width: 760px) {
       .standup__legend, .agent-row { grid-template-columns: 4.6rem repeat(3, minmax(0, 1fr)); gap: 4px; }
       .agent-row__avatar { display: none; }
@@ -127,13 +122,6 @@
             <span>Agent</span><span>Yesterday</span><span>Today</span><span>Blockers</span>
           </div>
           <div data-rows></div>
-          <div class="standup__detail" aria-live="polite">
-            <span class="standup__detail-key" data-detail-key>Nigel · today</span>
-            <div class="standup__detail-copy">
-              <p class="standup__detail-title" data-detail-title>Orchestrate PRO-127 handoff</p>
-              <p class="standup__detail-note" data-detail-note>In Progress · directly attributed by assignee and triage comment.</p>
-            </div>
-          </div>
         </section>
 
         <section class="card home-stub" aria-label="Home context">
@@ -143,6 +131,15 @@
         </section>
       </div>
     </section>
+
+    <div class="overlay" hidden data-overlay>
+      <section class="overlay__panel" role="dialog" aria-modal="true" aria-labelledby="standup-detail-title">
+        <button type="button" class="overlay__close" aria-label="Close standup detail" data-close>×</button>
+        <p class="standup-detail__key" data-detail-key>Nigel · today</p>
+        <h2 class="standup-detail__title" id="standup-detail-title" data-detail-title>Orchestrate PRO-127 handoff</h2>
+        <p class="standup-detail__note" data-detail-note>In Progress · directly attributed by assignee and triage comment.</p>
+      </section>
+    </div>
   </main>
 
   <script>
@@ -176,7 +173,7 @@
         ${agent.cells.map((cell, cellIndex) => {
           const clear = cell[1] === 'No blockers';
           const blocked = cellIndex === 2 && !clear;
-          return `<button type="button" class="standup-cell${clear ? ' standup-cell--clear' : ''}${blocked ? ' standup-cell--blocked' : ''}${agentIndex === 0 && cellIndex === 1 ? ' is-selected' : ''}" data-agent="${agent.name}" data-column="${columns[cellIndex]}" data-title="${cell[1]}" data-note="${cell[4]}">
+          return `<button type="button" class="standup-cell${clear ? ' standup-cell--clear' : ''}${blocked ? ' standup-cell--blocked' : ''}" data-agent="${agent.name}" data-column="${columns[cellIndex]}" data-title="${cell[1]}" data-note="${cell[4]}">
             <span class="standup-cell__issue">${cell[0] || (clear ? 'Clear' : '')}</span>
             <span class="standup-cell__title">${cell[1]}</span>
             ${(cell[2] || cell[3] === 'grouped') ? `<span class="standup-cell__meta">${cell[2] ? `<span class="quality${cell[2] === 'QA pending' ? ' quality--pending' : ''}">${cell[2]}</span>` : ''}${cell[3] === 'grouped' ? '<span class="attribution">≈ grouped</span>' : ''}</span>` : ''}
@@ -191,6 +188,19 @@
       document.querySelector('[data-detail-key]').textContent = `${cell.dataset.agent} · ${cell.dataset.column}`;
       document.querySelector('[data-detail-title]').textContent = cell.dataset.title;
       document.querySelector('[data-detail-note]').textContent = cell.dataset.note;
+      document.querySelector('[data-overlay]').hidden = false;
+      document.documentElement.classList.add('has-overlay');
+    });
+    const closeOverlay = () => {
+      document.querySelector('[data-overlay]').hidden = true;
+      document.documentElement.classList.remove('has-overlay');
+    };
+    document.querySelector('[data-close]').addEventListener('click', closeOverlay);
+    document.querySelector('[data-overlay]').addEventListener('click', (event) => {
+      if (event.target.matches('[data-overlay]')) closeOverlay();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeOverlay();
     });
     document.querySelector('[data-theme-toggle]').addEventListener('click', (event) => {
       const next = document.documentElement.dataset.theme === 'fun' ? 'cosy' : 'fun';
