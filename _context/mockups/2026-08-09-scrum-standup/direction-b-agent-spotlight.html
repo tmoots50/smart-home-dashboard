@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en" data-theme="fun">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>PRO-127 · Direction B · Agent spotlight</title>
+  <link rel="stylesheet" href="../../../app/src/styles/tokens.css">
+  <link rel="stylesheet" href="../../../app/src/styles/global.css">
+  <link rel="stylesheet" href="../../../app/src/styles/themes-fun.css">
+  <link rel="stylesheet" href="../../../app/src/styles/themes-cosy.css">
+  <style>
+    body { min-height: 100vh; padding: var(--space-3); }
+    .preview { width: min(1048px, 100%); margin: 0 auto; }
+    .preview__bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: 3rem; margin-bottom: 10px; }
+    .preview__copy { min-width: 0; }
+    .preview__eyebrow { margin: 0; color: var(--color-muted); font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .preview__note { margin: 2px 0 0; color: var(--color-muted); font-size: .8rem; }
+    .preview__theme { min-width: 7rem; padding-inline: var(--space-3); }
+    .mock-list { list-style: none; margin: 0; padding: 0; }
+    .mock-list li { display: flex; align-items: center; gap: var(--space-3); min-height: var(--list-row); padding: .625rem 0; border-bottom: 1px solid var(--color-border); }
+    .mock-list li:last-child { border-bottom: 0; }
+    .mock-check { width: 1.5rem; height: 1.5rem; flex: 0 0 auto; border: 2px solid var(--color-muted); border-radius: 6px; }
+    .home-stub { min-height: 9rem; }
+    .home-stub__row { display: flex; align-items: center; justify-content: space-between; min-height: 3.25rem; border-bottom: 1px solid var(--color-border); }
+    .home-stub__row:last-child { border: 0; }
+    .home-stub__state { color: var(--color-accent); font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+
+    /* Direction B: the card rotates one agent into a larger, calmer reading pane. */
+    .spotlight__freshness { color: var(--color-muted); font-size: .7rem; white-space: nowrap; }
+    .spotlight__agents { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-2); margin-bottom: var(--space-3); }
+    .agent-tab {
+      min-width: 0; min-height: 3.25rem; padding: 4px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      border: 1px solid var(--color-border); border-radius: 12px; background: transparent;
+      color: var(--color-muted); font-family: var(--font-body); cursor: pointer;
+    }
+    .agent-tab__initials { font-size: .7rem; font-weight: 800; letter-spacing: .05em; }
+    .agent-tab__name { min-width: 0; max-width: 100%; font-size: .64rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .agent-tab__state { width: 6px; height: 6px; border-radius: 50%; background: #6dac8e; }
+    .agent-tab.has-blocker .agent-tab__state { background: #c66; }
+    .agent-tab.is-selected { border-color: var(--color-accent); background: color-mix(in srgb, var(--color-accent) 9%, transparent); color: var(--color-fg); }
+    .spotlight__masthead { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
+    .spotlight__avatar {
+      width: 3.25rem; height: 3.25rem; flex: 0 0 auto; display: grid; place-items: center;
+      border-radius: 50%; border: 1px solid var(--color-border); color: var(--color-accent);
+      background: color-mix(in srgb, var(--color-accent) 10%, var(--color-surface)); font-size: .9rem; font-weight: 800;
+    }
+    .spotlight__identity { min-width: 0; }
+    .spotlight__name { margin: 0; font-family: var(--font-display); font-size: 1.25rem; line-height: 1.1; }
+    .spotlight__status { margin: 4px 0 0; color: var(--color-muted); font-size: .7rem; }
+    .spotlight__rows { border-top: 1px solid var(--color-border); }
+    .status-row {
+      min-height: var(--list-row); padding: .625rem 0;
+      display: grid; grid-template-columns: 5.3rem minmax(0, 1fr) auto; align-items: center; gap: var(--space-3);
+      border-bottom: 1px solid var(--color-border);
+    }
+    .status-row__label { color: var(--color-muted); font-size: .66rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+    .status-row__copy { min-width: 0; }
+    .status-row__issue { color: var(--color-muted); font-size: .63rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+    .status-row__title { margin-top: 2px; font-size: .88rem; line-height: 1.25; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .status-row--blocked { box-shadow: inset 3px 0 #c66; padding-left: var(--space-2); }
+    .status-row--blocked .status-row__label { color: #c66; }
+    .quality {
+      display: inline-flex; align-items: center; min-height: 1.5rem; padding: 0 8px;
+      border: 1px solid color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+      border-radius: 999px; color: var(--color-accent); font-size: .64rem; font-weight: 800; letter-spacing: .04em; white-space: nowrap;
+    }
+    .status-row__meta { color: var(--color-muted); font-size: .64rem; white-space: nowrap; }
+    .spotlight__footer { min-height: 2.75rem; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+    .spotlight__position { color: var(--color-muted); font-size: .68rem; }
+    .spotlight__pause { min-width: 7.5rem; justify-content: flex-end; }
+    @media (prefers-reduced-motion: reduce) { .spotlight__position span { display: none; } }
+  </style>
+</head>
+<body>
+  <main class="preview">
+    <header class="preview__bar">
+      <div class="preview__copy">
+        <p class="preview__eyebrow">PRO-127 · Direction B · Agent spotlight</p>
+        <p class="preview__note">Larger type, lower density. Tap an agent; automatic rotation pauses.</p>
+      </div>
+      <button class="btn btn--text preview__theme" type="button" data-theme-toggle>Switch to cosy</button>
+    </header>
+
+    <section class="briefing__duo briefing__lists" aria-label="Existing dashboard lower modules">
+      <section class="card" aria-label="Todos context">
+        <h2 class="card__title">Todos</h2>
+        <ul class="mock-list">
+          <li><span class="mock-check"></span><span>Confirm pediatrician paperwork</span></li>
+          <li><span class="mock-check"></span><span>Order replacement air filters</span></li>
+          <li><span class="mock-check"></span><span>Book dinner for Saturday</span></li>
+          <li><span class="mock-check"></span><span>Move car before street cleaning</span></li>
+          <li><span class="mock-check"></span><span>Call insurance about the invoice</span></li>
+        </ul>
+      </section>
+
+      <div class="briefing__stack">
+        <section class="card spotlight" aria-label="Scrum standup">
+          <div class="card__header">
+            <h2 class="card__title">Scrum Standup</h2>
+            <span class="spotlight__freshness">Linear · 8:42 AM</span>
+          </div>
+          <nav class="spotlight__agents" aria-label="Team agents" data-tabs></nav>
+          <div class="spotlight__masthead">
+            <div class="spotlight__avatar" data-avatar>NI</div>
+            <div class="spotlight__identity">
+              <h3 class="spotlight__name" data-name>Nigel</h3>
+              <p class="spotlight__status" data-status>2 active · no blockers · direct attribution</p>
+            </div>
+          </div>
+          <div class="spotlight__rows" data-rows></div>
+          <div class="spotlight__footer">
+            <span class="spotlight__position" data-position>1 of 5 <span>· rotates every 8s</span></span>
+            <button type="button" class="btn btn--text spotlight__pause" data-pause>Pause rotation</button>
+          </div>
+        </section>
+
+        <section class="card home-stub" aria-label="Home context">
+          <h2 class="card__title">Home</h2>
+          <div class="home-stub__row"><span>Front Door</span><span class="home-stub__state">Locked</span></div>
+          <div class="home-stub__row"><span>Living room lamps</span><span class="home-stub__state">On</span></div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const agents = [
+      { name: 'Nigel', initials: 'NI', blocked: false, status: '2 active · no blockers · direct attribution', rows: [
+        ['Yesterday', 'PRO-124', 'Accepted calendar cleanup', 'QA A'],
+        ['Today', 'PRO-127', 'Orchestrate handoff', 'In Progress'],
+        ['Blockers', 'CLEAR', 'No blockers', ''] ] },
+      { name: 'Derek', initials: 'DE', blocked: true, status: '2 active · 1 blocker · direct attribution', rows: [
+        ['Yesterday', 'PRO-123', 'Shipped live overview docs', 'QA A'],
+        ['Today', 'PRO-128', 'Linear standup adapter', 'In Progress'],
+        ['Blockers', 'INPUT', 'API field decision', 'Awaiting input'] ] },
+      { name: 'Mo', initials: 'MO', blocked: false, status: '2 active · no blockers · direct attribution', rows: [
+        ['Yesterday', 'PRO-125', 'Calendar design verdict', 'QA A−'],
+        ['Today', 'PRO-127', 'Standup directions', 'In Progress'],
+        ['Blockers', 'CLEAR', 'No blockers', ''] ] },
+      { name: 'Smith', initials: 'SM', blocked: false, status: '2 active · no blockers · grouped by route:ops', rows: [
+        ['Yesterday', 'PRO-119', 'Agent routing repair', 'QA B+'],
+        ['Today', 'PRO-126', 'Skill health audit', '≈ grouped'],
+        ['Blockers', 'CLEAR', 'No blockers', ''] ] },
+      { name: 'Sam', initials: 'SA', blocked: true, status: '2 active · 1 blocker · direct attribution', rows: [
+        ['Yesterday', 'PRO-123', 'Release review', 'PASS'],
+        ['Today', 'PRO-127', 'Prepare release checks', 'In Review'],
+        ['Blockers', 'TIM', 'Wall screenshot pending', 'Awaiting Tim'] ] },
+    ];
+    let index = 0;
+    let paused = false;
+    let timer;
+    const tabs = document.querySelector('[data-tabs]');
+    const rows = document.querySelector('[data-rows]');
+    const pauseButton = document.querySelector('[data-pause]');
+
+    function render() {
+      tabs.innerHTML = agents.map((agent, i) => `<button type="button" class="agent-tab${agent.blocked ? ' has-blocker' : ''}${i === index ? ' is-selected' : ''}" data-index="${i}" aria-pressed="${i === index}"><span class="agent-tab__initials">${agent.initials}</span><span class="agent-tab__name">${agent.name}</span><span class="agent-tab__state"></span></button>`).join('');
+      const agent = agents[index];
+      document.querySelector('[data-avatar]').textContent = agent.initials;
+      document.querySelector('[data-name]').textContent = agent.name;
+      document.querySelector('[data-status]').textContent = agent.status;
+      document.querySelector('[data-position]').firstChild.textContent = `${index + 1} of ${agents.length} `;
+      rows.innerHTML = agent.rows.map((row, rowIndex) => `<div class="status-row${rowIndex === 2 && row[1] !== 'CLEAR' ? ' status-row--blocked' : ''}"><span class="status-row__label">${row[0]}</span><div class="status-row__copy"><div class="status-row__issue">${row[1]}</div><div class="status-row__title">${row[2]}</div></div>${row[3] ? (rowIndex === 0 ? `<span class="quality">${row[3]}</span>` : `<span class="status-row__meta">${row[3]}</span>`) : '<span></span>'}</div>`).join('');
+    }
+    function schedule() {
+      clearInterval(timer);
+      if (!paused) timer = setInterval(() => { index = (index + 1) % agents.length; render(); }, 8000);
+    }
+    tabs.addEventListener('click', (event) => {
+      const tab = event.target.closest('[data-index]');
+      if (!tab) return;
+      index = Number(tab.dataset.index);
+      paused = true;
+      pauseButton.textContent = 'Resume rotation';
+      render(); schedule();
+    });
+    pauseButton.addEventListener('click', () => {
+      paused = !paused;
+      pauseButton.textContent = paused ? 'Resume rotation' : 'Pause rotation';
+      schedule();
+    });
+    document.querySelector('[data-theme-toggle]').addEventListener('click', (event) => {
+      const next = document.documentElement.dataset.theme === 'fun' ? 'cosy' : 'fun';
+      document.documentElement.dataset.theme = next;
+      event.currentTarget.textContent = `Switch to ${next === 'fun' ? 'cosy' : 'fun'}`;
+    });
+    render(); schedule();
+  </script>
+</body>
+</html>
