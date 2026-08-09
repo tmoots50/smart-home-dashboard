@@ -76,6 +76,11 @@
     }
     .quality--pending { color: var(--color-muted); border-color: var(--color-border); }
     .attribution { color: var(--color-muted); font-size: .68rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .overflow-count {
+      display: inline-flex; align-items: center; min-height: 1.25rem; padding: 0 6px;
+      border-radius: 999px; background: color-mix(in srgb, var(--color-muted) 12%, transparent);
+      color: var(--color-muted); font-size: .68rem; font-weight: 800; letter-spacing: .04em; white-space: nowrap;
+    }
     .standup-cell--clear .standup-cell__title { color: var(--color-muted); font-style: italic; }
     .standup-cell--blocked { border-left-color: #c66; }
     .standup-cell--blocked .standup-cell__issue { color: #c66; }
@@ -157,8 +162,8 @@
         ['PRO-127', 'Standup directions', '', 'direct', 'In Progress · design direction and requirements.'],
         ['', 'No blockers', '', '', 'No blockers found in Linear.'] ] },
       { name: 'Smith', initials: 'SM', cells: [
-        ['PRO-119', 'Agent routing repair', 'QA B+', 'grouped', 'Grouped by route:ops because no clean assignee existed.'],
-        ['PRO-126', 'Skill health audit', '', 'grouped', 'Grouped by route:ops · attribution is intentionally explicit.'],
+        ['PRO-119', 'Agent routing repair', 'QA B+', 'grouped', 'Grouped by route:ops because no clean assignee existed.', 2, 'route:ops'],
+        ['PRO-126', 'Skill health audit', '', 'grouped', 'Grouped by route:ops · attribution is intentionally explicit.', 1, 'route:ops'],
         ['', 'No blockers', '', '', 'No blockers found in Linear.'] ] },
       { name: 'Sam', initials: 'SA', cells: [
         ['PRO-123', 'Release review', 'PASS', 'direct', 'Verdict PASS · no regression findings.'],
@@ -176,7 +181,7 @@
           return `<button type="button" class="standup-cell${clear ? ' standup-cell--clear' : ''}${blocked ? ' standup-cell--blocked' : ''}" data-agent="${agent.name}" data-column="${columns[cellIndex]}" data-title="${cell[1]}" data-note="${cell[4]}">
             <span class="standup-cell__issue">${cell[0] || (clear ? 'Clear' : '')}</span>
             <span class="standup-cell__title">${cell[1]}</span>
-            ${(cell[2] || cell[3] === 'grouped') ? `<span class="standup-cell__meta">${cell[2] ? `<span class="quality${cell[2] === 'QA pending' ? ' quality--pending' : ''}">${cell[2]}</span>` : ''}${cell[3] === 'grouped' ? '<span class="attribution">≈ grouped</span>' : ''}</span>` : ''}
+            ${(cell[2] || cell[3] === 'grouped' || cell[5]) ? `<span class="standup-cell__meta">${cell[2] ? `<span class="quality${cell[2] === 'QA pending' ? ' quality--pending' : ''}">${cell[2]}</span>` : ''}${cell[3] === 'grouped' ? `<span class="attribution">Grouped by ${cell[6] || 'unknown'}</span>` : ''}${cell[5] ? `<span class="overflow-count" aria-label="${cell[5]} more grouped items">+${cell[5]}</span>` : ''}</span>` : ''}
           </button>`;
         }).join('')}
       </div>`).join('');
